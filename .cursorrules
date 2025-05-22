@@ -1,0 +1,78 @@
+Cursor Rules for Nobel Laureate Speech Explorer Project
+This file defines code conventions, architectural patterns, and stylistic preferences for the Cursor AI assistant. These guidelines ensure consistent, maintainable, and modular code generation across all features of the project.
+
+Code Style Guidelines
+Python
+Use snake_case for variable and function names.
+Use PascalCase for class names.
+Always include docstrings for public functions and classes.
+Write type hints for all function parameters and return types.
+Prefer list comprehensions over loops where appropriate.
+Use logging, not print statements.
+Do not use global state. Avoid side effects unless intentional.
+JavaScript/TypeScript (future)
+Use camelCase for variables and functions.
+Use PascalCase for component and class names.
+Co-locate related code (e.g., types, styles, tests) with components.
+Prefer modular functions over class-based designs unless necessary.
+
+Project Structure Rules
+General
+Follow a modular architecture. Group files by domain/feature.
+All scripts should be idempotent and restartable.
+Each subfolder (/scraper, /embeddings, /rag, /frontend) owns its logic with clearly scoped interfaces.
+Folder Layout
+/data               # Structured data and text files
+/scraper            # Scraping logic for NobelPrize.org
+/embeddings         # Vectorization and storage logic
+/rag                # Retrieval-augmented generation engine
+/frontend           # Streamlit or UI-facing components
+/utils              # Shared helper functions
+/tests              # Unit tests organized by module
+
+
+Naming and Abstractions
+Name functions descriptively: verb + object (e.g., load_speeches, build_faiss_index)
+All modules should define a clear interface via top-level functions or classes.
+Do not duplicate logic — reuse existing functions whenever possible.
+If creating a new file or function, first check if the functionality already exists.
+
+Prompting and Completion Behavior
+Describe the intent of the code before implementing it.
+Implement one task at a time unless explicitly told otherwise.
+Never make sweeping edits across files unless instructed.
+Respect TODO and placeholder comments — do not delete them.
+When asked to generate code, always:
+
+
+Use consistent naming with existing code
+Reuse utilities when available
+Provide fallback/error handling where reasonable
+
+Testing & Debugging
+Always write unit tests in /tests/ using pytest (for Python).
+Tests should cover both standard and edge cases.
+If debugging, prefer inserting logging over print statements.
+Include descriptive error messages and avoid catching broad exceptions.
+
+MCP & Prompt Suggestion Features (Post-MVP)
+If implementing memory, store context in a memory-aware object or session (not global vars).
+Suggested prompts should be stored in JSON or Markdown with category and tags.
+All prompt templates must be localizable by theme or category.
+
+Output Format Rules
+When returning answers from LLMs, cite source speech and year.
+When generating data files, use UTF-8 and include all metadata fields as per schema.
+Do not alter schema field names without explicit instruction.
+
+Execution Environment & Terminal Behavior
+Always run Python scripts using the active virtual environment.
+When executing a script from terminal, ensure PYTHONPATH is set to the project root if needed.
+Prefer using relative imports and directory-aware execution (e.g., python -m scraper.scrape_literature) to avoid "module not found" or "folder not found" errors.
+Scripts should be runnable from the project root without manual path adjustments.
+
+Misc
+Do not invent new folders or top-level files without confirmation.
+Follow semantic commit conventions if suggesting Git commits (e.g., feat: add FAISS index builder).
+Document all new modules with a top-of-file summary comment.
+
