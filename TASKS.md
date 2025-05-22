@@ -1,45 +1,58 @@
-# TASKS – Nobel Laureate Speech Explorer
+# TASKS – Nobel Laureate Speech Explorer  
+_Last updated: 2025-05-22_
 
-*Last Edited: 5/22/25*
+This file defines modular, numbered tasks for Cursor to execute. Each task includes:
 
-This file contains modular, numbered tasks for Cursor to execute. Each task includes:
-- **Description**
-- **Target file(s)**
-- **Inputs and expected outputs**
-- **Cursor-specific guidance**
+- Task description
+- Target file(s)
+- Inputs and outputs
+- Cursor-specific instructions
 
-**Cursor must always:**
-- Read and follow the `.cursorrules` file
-- Update `README.md` in the target folder with a brief summary of new files or interfaces added
-- Avoid editing outside the specified files or scope
-
----
-
-## Task 1 – Scrape Literature Prize URLs
-- **File:** `scraper/scrape_literature.py`
-- **Goal:** Scrape the list page to extract links for all Nobel Literature prize entries
-- **Input:** [Nobel Literature List](https://www.nobelprize.org/prizes/lists/all-nobel-prizes-in-literature/all/)
-- **Output:** List of prize detail page URLs (store in `literature_prize_links.json` or return from a function)
-- **Instructions:**
-  - Use `requests` + `BeautifulSoup`
-  - Store list in a variable named `literature_prize_links`
-  - Output should be reusable in later tasks
-  - Update `scraper/README.md` to describe the purpose and output of this script
+Cursor must always:
+- Read and follow `.cursorrules`
+- Update the relevant folder's `README.md` with a summary of new files or logic added
+- Avoid editing outside the task's scope
 
 ---
 
-## Task 2 – Scrape Laureate Facts & Speeches
-- **File:** `scraper/scrape_literature.py`
-- **Goal:** For each prize URL, scrape:
-  - Facts page (e.g. name, country, year, category)
-  - Nobel Lecture and Ceremony Speech pages
-- **Input:** URLs from Task 1
-- **Output:** `data/nobel_literature.json` and `/data/literature_speeches/*.txt`
-- **Instructions:**
-  - Store structured metadata per laureate
-  - Normalize gender, category, and speech fields
-  - Write each speech as a separate `.txt` file (named by year + name)
-  - Update `scraper/README.md` to include this task's data output and structure
+## Task 1 – Scrape Literature Prize Winner URLs **[COMPLETE]**
+
+**Goal**: Scrape the master list of Nobel Literature winners and extract structured links to each winner's `/facts/` page.
+
+**Status**: Complete. URLs were manually curated and are now stored in `nobel_literature_facts_urls.json`.
+
+**Target File**: `nobel_literature_facts_urls.json`  
+**Input**: Manually curated list  
+**Output**: `nobel_literature_facts_urls.json` – list of full URLs to laureate `/facts/` pages
+
+---
+
+## Task 2 – Scrape Laureate Metadata, Lecture, and Ceremony Speech
+
+**Goal**: For each prize winner URL (`/facts/` page), scrape:
+1. Laureate metadata
+2. Nobel lecture transcript (`/speech/` page)
+3. Ceremony speech transcript (by year, from `/ceremony-speech/` page)
+
+**Target File**: `scraper/scrape_literature.py` (to be replaced/updated)  
+**Input**: `nobel_literature_facts_urls.json`  
+**Output**:
+- `data/nobel_literature.json` – structured list of laureates and metadata
+- `data/literature_speeches/*.txt` – one file per lecture
+- `data/ceremony_speeches/*.txt` – one file per ceremony speech
+
+### Details:
+- Load laureate URLs from `nobel_literature_facts_urls.json` (not scraped dynamically)
+- For each `/facts/` page, extract all required fields
+- Fetch and save lecture and ceremony speech text as before
+- Include error handling for missing/404 pages
+- Write structured laureate dicts to `nobel_literature.json`
+- Write plain text speeches to file
+- Update `scraper/README.md` with schema description and file outputs
+
+---
+
+_Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
@@ -138,11 +151,3 @@ This file contains modular, numbered tasks for Cursor to execute. Each task incl
 
 ## Task 10 – Write README for /scraper
 - **File:** `scraper/README.md`
-- **Goal:** Summarize folder purpose, file roles, and cross-module interactions
-- **Instructions:**
-  - Describe each file created so far
-  - Explain CLI or function entry points
-  - Mention outputs and how they are used downstream
-  - Include references to `nobel_literature.json`, `metadata.csv`, and speech file generation
-
-
