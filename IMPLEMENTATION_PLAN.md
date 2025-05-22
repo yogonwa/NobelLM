@@ -1,0 +1,185 @@
+# Implementation Plan – Nobel Laureate Speech Explorer
+
+*This document defines the concrete build phases, technical approach, and modular execution plan for the Nobel Laureate Speech Explorer. It supports development via Cursor and tracks modular milestone execution.*
+
+*Last Edited: 5/22/25*
+
+---
+
+## Overall Learning Goal
+- Build a full-stack, modular Retrieval-Augmented Generation (RAG) project to:
+  - Learn and internalize LLM, embeddings, and vector database concepts through hands-on implementation.
+  - Use Cursor AI assistant as a structured pair-programming partner.
+  - Gain architectural proficiency with RAG systems, data pipelines, and lightweight UI deployment.
+
+---
+
+## Project Goal
+- Create a public-facing tool that:
+  - Scrapes NobelPrize.org for metadata, speeches, and facts (starting with Literature category).
+  - Normalizes and stores data in a structured format.
+  - Enables semantic search via local embeddings + FAISS.
+  - Supports LLM-based Q&A via OpenAI (initial) or local models.
+  - Provides a simple UI for asking and exploring queries.
+  - Modular architecture supports post-MVP features like multi-category support, timeline charts, memory/context, and templated queries.
+
+---
+
+## Constraints and Tradeoffs
+- Solo developer project; must prioritize modularity, readability, and testability.
+- Local development only with CPU-compatible models; cloud deployment via Hugging Face Spaces.
+- Avoid costly dependencies unless strictly necessary.
+- Cursor and AI tools must work within clearly scoped tasks with named modules and reusable logic.
+- Some fields such as `share` will be deferred initially and revisited post-MVP.
+
+---
+
+## In-Scope Features (MVP)
+- Literature category data ingestion
+- Text extraction of Nobel lecture and ceremony speeches
+- Metadata normalization + JSON/CSV export (including rich metadata fields)
+- Sentence embedding using sentence-transformers (MiniLM)
+- Vector search via FAISS
+- RAG pipeline to answer natural language queries using OpenAI
+- Streamlit UI to enter questions and display answers
+- Public deployment of MVP demo via Hugging Face Spaces
+
+### Out-of-Scope (MVP)
+- All other Nobel categories (added in Phase 5b)
+- Multi-turn chat / persistent memory (MCP)
+- Full UI polish, mobile-first layout, advanced filters
+- Charts, timeline graphs, or clustering
+- Entity detection or speech analytics
+- OpenAI embedding model support (Phase 6)
+- Handling `share` field for split awards (deferred)
+
+---
+
+## Folder Structure
+
+```
+/project-root
+├── data/                # Raw data, speech text, embeddings
+├── scraper/             # Scraper scripts
+├── embeddings/          # Text chunking, vector generation, FAISS index
+├── rag/                 # Query pipeline, LLM interfacing
+├── frontend/            # Streamlit app UI
+├── utils/               # Shared helpers
+├── tests/               # Pytest test files
+├── .cursorrules         # Cursor execution rules
+├── .env.example         # Placeholder for API keys
+├── requirements.txt     # Python dependencies
+├── IMPLEMENTATION_PLAN.md
+├── SPEC.md
+├── TASKS.md
+├── NOTES.md
+```
+
+Each folder should contain a `README.md` file describing:
+- The folder's purpose
+- Key files and what they do
+- How files interact with other modules
+- Expected inputs/outputs or side effects
+
+Cursor must update these README files incrementally as it creates or modifies core logic. If new files are added, they must be documented with a short summary of their function, dependencies, and the system components they interface with.
+
+---
+
+## Data Schema Overview
+
+Each record:
+```json
+{
+  "category": "Literature",
+  "year_awarded": 1984,
+  "laureates": [
+    {
+      "full_name": "Jaroslav Seifert",
+      "gender": "Male",
+      "country": "Czech Republic",
+      "date_of_birth": "1901-09-23",
+      "date_of_death": "1986-01-10",
+      "place_of_birth": "Žižkov, Austria-Hungary",
+      "prize_motivation": "for his poetry which endowed with freshness...",
+      "life_blurb": "...",
+      "work_blurb": "...",
+      "nobel_lecture_text": "...",
+      "ceremony_speech_text": "...",
+      "declined": false,
+      "specific_work_cited": false
+    }
+  ]
+}
+```
+
+---
+
+## Phases & Milestones
+
+### Phase 1 – Scraping & Structuring (M1)
+- Scrape Nobel Literature list
+- For each prize: scrape facts, lecture, and ceremony pages
+- Normalize metadata into structured JSON and CSV
+- Store lecture and ceremony text per laureate
+- **Output:** `/data/nobel_literature.json`, `/data/literature_speeches/*.txt`, `metadata.csv`
+
+### Phase 2 – Embedding & Indexing (M2)
+- Chunk speech text into 300–500 word blocks
+- Generate sentence embeddings (MiniLM)
+- Save embeddings as JSON
+- Build and persist FAISS index
+- **Output:** `/data/literature_embeddings.json`, `/data/faiss_index/`
+
+### Phase 3 – RAG Pipeline (M3)
+- Implement query-to-embedding conversion
+- Retrieve top-N passages from FAISS
+- Construct prompt and call OpenAI (text-davinci or GPT-3.5)
+- Return answer and source reference
+- **Output:** `query_engine.py`, returns JSON or text response
+
+### Phase 4 – UI & Deployment (M4)
+- Build Streamlit interface for input and output
+- Optional dropdown for category or metadata filtering (static for now)
+- Deploy app using Hugging Face Spaces (via GitHub repo)
+- **Output:** `app.py`, live public UI
+
+### Phase 5 – Post-MVP Foundations (M5)
+- Add MCP scaffolding: session memory via `st.session_state` or dict
+- Introduce `prompt_templates.json` for auto-suggested queries
+
+### Phase 5b – Expand to Other Categories
+- Extend scraper and schema normalization for Peace, Physics, etc.
+- Validate that RAG pipeline and metadata structure remains compatible
+
+### Phase 6 – Explore OpenAI Embedding Migration
+- Replace local MiniLM embeddings with OpenAI's `text-embedding-3-small`
+- Update chunk pipeline to stream token-efficient embedding calls
+
+---
+
+## Inputs / Outputs Reference
+
+| Phase | Input                | Output                                      |
+|-------|----------------------|---------------------------------------------|
+| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv |
+| M2    | Text files           | JSON embeddings, FAISS index                |
+| M3    | User query, index    | GPT-3.5 response, citation                  |
+| M4    | Streamlit app        | Live public UI on HF Spaces                 |
+| M5    | Session, prior query logs | Query suggestions, context filtering   |
+| M5b   | Additional category URLs | New JSON and embeddings for other prize types |
+| M6    | OpenAI model call    | Updated embedding flow                      |
+
+---
+
+## Cursor Guidance (Execution Principles)
+- Use `.cursorrules` as governing file for naming, style, structure
+- Always refer to `TASKS.md` for next step
+- Never duplicate existing utilities
+- Default to modular code split across scoped files (one concern per module)
+- All inputs/outputs of each function should be typed and documented
+- When creating or editing core functionality, update or create a `README.md` in that folder to describe:
+  - Purpose of the folder
+  - Description of newly added files or modules
+  - How the files interface with other modules
+  - Any reusable functions or exported utilities
+

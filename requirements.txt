@@ -1,0 +1,8 @@
+requests
+beautifulsoup4
+sentence-transformers
+faiss-cpu
+streamlit
+python-dotenv
+PyMuPDF
+pytest
