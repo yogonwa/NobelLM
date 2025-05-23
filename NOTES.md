@@ -82,3 +82,5 @@ This document tracks decisions, assumptions, and open questions that arise durin
 
 Update this file as new questions emerge or implementation decisions are made.
 
+- Extraction/parsing logic is now covered by unit tests in `/tests/test_scraper.py`.
+

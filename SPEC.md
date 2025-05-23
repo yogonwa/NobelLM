@@ -52,6 +52,7 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
       "work_blurb": "...",
       "nobel_lecture_text": "...",
       "ceremony_speech_text": "...",
+      "acceptance_speech_text": "...",
       "declined": false,
       "specific_work_cited": false
     }
@@ -64,7 +65,7 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
 ## Outputs
 
 - `nobel_laureates.json` – structured laureate data
-- `/speeches/{category}/` – plain text Nobel lecture files
+- `/acceptance_speeches/{category}/` – plain text Nobel acceptance (banquet) speech files
 - `/ceremony_speeches/{category}/` – ceremony speech files
 - `metadata.csv` – flattened, filterable metadata
 - *Optional:* embeddings, FAISS index, prompt templates
@@ -142,3 +143,56 @@ All source data is public and usage falls under fair use. This is an educational
 - Metadata schema includes rich fields like birth/death dates, motivation, blurbs
 - `share` field will be deferred for future inclusion
 
+# Testing
+Extraction logic (HTML parsing, gender inference, metadata extraction) is covered by unit tests in `/tests/test_scraper.py`.
+
+---
+
+## Nobel Lecture Extraction (New)
+
+Nobel lectures are a distinct content type from ceremony or banquet speeches and must be handled separately.
+
+- **URL Structure:**
+  - `https://www.nobelprize.org/prizes/literature/{year}/{lastname}/lecture/`
+
+- **DOM Extraction Strategy:**
+  - **Title:** Extract from `<h2 class="article-header__title">`
+  - **Transcript:** Found within `<div class="article-body">`
+  - Remove embedded video blocks (`.article-video`), social sharing tools (`.article-tools`), `footer`, and `nav`
+  - Clean trailing boilerplate or copyright
+
+- **Output Fields:**
+  ```json
+  {
+    "nobel_lecture_title": "The Nobel Lecture by Jon Fosse",
+    "nobel_lecture_text": "Full cleaned transcript here..."
+  }
+  ```
+
+- **Persistence:**
+  - Save transcript to `/data/nobel_lectures/{year}_{lastname}.txt`
+  - Include both fields in `nobel_literature.json` output
+
+---
+
+## Text Cleanup Utility (New)
+
+To ensure consistency and remove navigational clutter, all extracted text blocks (lecture, speech, press release) should be processed with a shared cleanup function.
+
+- **Function:**
+  ```python
+  def clean_speech_text(text: str) -> str
+  ```
+
+- **Cleanup Rules:**
+  - Strip whitespace from each line
+  - Remove UI or structural noise such as:
+    - "Back to top"
+    - "Explore prizes and laureates"
+    - Empty lines or redundant navigation text
+
+- **Purpose:**
+  - Improve clarity of saved `.txt` files
+  - Ensure consistency of JSON fields for LLM embedding and search
+
+---

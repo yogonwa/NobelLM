@@ -1,17 +1,48 @@
+"""
+Nobel Literature Laureate Scraper
+
+This script scrapes and normalizes metadata and speech text for Nobel Prize in Literature laureates.
+
+Inputs:
+- data/nobel_literature_facts_urls.json: List of laureate /facts/ page URLs (pre-curated)
+
+Outputs:
+- data/nobel_literature.json: Structured list of laureates and their metadata, including:
+    - full_name, gender, country, date_of_birth, date_of_death, place_of_birth, prize_motivation, life_blurb, work_blurb, language, nobel_lecture_title, nobel_lecture_text, ceremony_speech_text, acceptance_speech_text, declined, specific_work_cited, cited_work
+- data/literature_speeches/{year}_{lastname}.txt: Nobel lecture text files (one per laureate)
+- data/ceremony_speeches/{year}.txt: Ceremony speech text files (one per year)
+- data/nobel_lectures/{year}_{lastname}.txt: Nobel lecture title and transcript files (one per laureate)
+- data/acceptance_speeches/{year}_{lastname}.txt: Acceptance (banquet) speech text files (one per laureate)
+
+Main Logic:
+- Loads laureate URLs from the input JSON
+- For each laureate, scrapes metadata, life/work blurbs, and infers gender/country
+- Fetches and saves Nobel lecture, ceremony speech, and acceptance (banquet) speech text
+- Handles missing or 404 pages with logging and error handling
+- Writes all results to a structured JSON file and plain text files
+
+Extraction functions in this module are unit tested in /tests/test_scraper.py
+"""
 import os
 import json
 import requests
 from bs4 import BeautifulSoup
-from typing import Dict
+from typing import Dict, Optional
 import logging
+import re
+from scraper.speech_extraction import extract_nobel_lecture, clean_speech_text
 
 FACTS_INPUT_JSON = "data/nobel_literature_facts_urls.json"
 OUTPUT_JSON = "data/nobel_literature.json"
 SPEECH_DIR = "data/literature_speeches"
 CEREMONY_DIR = "data/ceremony_speeches"
+NOBEL_LECTURE_DIR = "data/nobel_lectures"
+ACCEPTANCE_SPEECH_DIR = "data/acceptance_speeches"
 
 os.makedirs(SPEECH_DIR, exist_ok=True)
 os.makedirs(CEREMONY_DIR, exist_ok=True)
+os.makedirs(NOBEL_LECTURE_DIR, exist_ok=True)
+os.makedirs(ACCEPTANCE_SPEECH_DIR, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,15 +59,16 @@ def extract_life_and_work_blurbs(soup: BeautifulSoup) -> Dict[str, str]:
                 )
     return blurbs
 
-def infer_gender_from_text(text: str) -> str | None:
+def infer_gender_from_text(text: str) -> Optional[str]:
+    """Infer gender from text by searching for male/female pronouns as whole words."""
     text = text.lower()
-    if " he " in text or " his " in text:
+    if re.search(r'\b(he|his)\b', text):
         return "Male"
-    elif " she " in text or " her " in text:
+    elif re.search(r'\b(she|her)\b', text):
         return "Female"
     return None
 
-def extract_metadata(soup: BeautifulSoup) -> Dict[str, str | None]:
+def extract_metadata(soup: BeautifulSoup) -> Dict[str, Optional[str]]:
     data = {
         "date_of_birth": None,
         "date_of_death": None,
@@ -49,18 +81,18 @@ def extract_metadata(soup: BeautifulSoup) -> Dict[str, str | None]:
     if dob_tag:
         dob_text = dob_tag.get_text(strip=True).replace("Born: ", "")
         parts = dob_text.split(", ", 1)
-        data["date_of_birth"] = parts[0]
+        data["date_of_birth"] = parts[0].strip()
         if len(parts) > 1:
-            data["place_of_birth"] = parts[1]
+            data["place_of_birth"] = parts[1].strip()
 
     dod_tag = soup.select_one("p.dead-date")
     if dod_tag:
-        data["date_of_death"] = dod_tag.get_text(strip=True).replace("Died: ", "")
+        data["date_of_death"] = dod_tag.get_text(strip=True).replace("Died: ", "").strip()
 
     for p in soup.select("div.content p"):
         text = p.get_text(strip=True)
         if "Prize motivation:" in text:
-            data["prize_motivation"] = text.replace("Prize motivation:", "").strip(' "')
+            data["prize_motivation"] = text.replace("Prize motivation:", "").strip(' "').strip()
         elif "Language:" in text:
             data["language"] = text.replace("Language:", "").strip()
 
@@ -83,6 +115,20 @@ def scrape_facts_page(url: str) -> Dict:
     country = infer_country(meta.get("place_of_birth"))
     return {**blurbs, **meta, "gender": gender, "country": country}
 
+def extract_speech_text(soup: BeautifulSoup) -> Optional[str]:
+    """Try multiple content blocks to extract meaningful speech text."""
+    candidates = [
+        soup.find("div", class_="article-body"),
+        soup.find("div", class_="content"),
+        soup.find("main"),
+    ]
+    for block in candidates:
+        if block:
+            text = block.get_text(separator="\n").strip()
+            if text and len(text.split()) > 50:  # avoid nav/footer junk
+                return text
+    return None
+
 def fetch_and_save_speech(url: str, save_path: str, label: str) -> str | None:
     try:
         response = requests.get(url, timeout=10)
@@ -90,20 +136,30 @@ def fetch_and_save_speech(url: str, save_path: str, label: str) -> str | None:
             logger.warning(f"{label} not found at {url} (status {response.status_code})")
             return None
         soup = BeautifulSoup(response.text, "html.parser")
-        article = soup.find("div", class_="article-body")
-        if not article:
-            logger.warning(f"{label} article-body not found at {url}")
-            return None
-        text = article.get_text(separator="\n").strip()
+        text = extract_speech_text(soup)
         if not text:
-            logger.warning(f"{label} text empty at {url}")
+            logger.warning(f"{label} text not found or too short at {url}")
+            return None
+        # Clean the text before saving or returning
+        cleaned_text = clean_speech_text(text)
+        if not cleaned_text or len(cleaned_text.split()) < 50:
+            logger.warning(f"{label} text missing or too short after cleaning at {url}")
             return None
         with open(save_path, "w", encoding="utf-8") as f:
-            f.write(text)
-        return text
+            f.write(cleaned_text)
+        return cleaned_text
     except Exception as e:
         logger.error(f"Exception fetching {label} at {url}: {e}")
         return None
+
+def fetch_and_save_acceptance_speech(year: int, lastname: str) -> str | None:
+    """
+    Fetches and saves the laureate's acceptance (banquet) speech if available.
+    Returns the cleaned text or None if not found.
+    """
+    url = f"https://www.nobelprize.org/prizes/literature/{year}/{lastname}/speech/"
+    save_path = os.path.join(ACCEPTANCE_SPEECH_DIR, f"{year}_{lastname}.txt")
+    return fetch_and_save_speech(url, save_path, label="Acceptance speech")
 
 def main():
     with open(FACTS_INPUT_JSON, "r", encoding="utf-8") as f:
@@ -147,15 +203,31 @@ def main():
             specific_work_cited = False
             cited_work = None
 
-        # Fetch Nobel lecture (speech)
-        speech_url = facts_url.replace("/facts/", "/speech/")
-        speech_path = os.path.join(SPEECH_DIR, f"{year}_{lastname}.txt")
-        nobel_lecture_text = fetch_and_save_speech(speech_url, speech_path, label="Nobel lecture")
+        # Fetch Nobel lecture (title + transcript)
+        lecture_url = f"https://www.nobelprize.org/prizes/literature/{year}/{lastname}/lecture/"
+        lecture_path = os.path.join(NOBEL_LECTURE_DIR, f"{year}_{lastname}.txt")
+        lecture_data = extract_nobel_lecture(lecture_url)
+        nobel_lecture_title = lecture_data.get("nobel_lecture_title")
+        nobel_lecture_text = lecture_data.get("nobel_lecture_text")
+        if nobel_lecture_text:
+            with open(lecture_path, "w", encoding="utf-8") as f:
+                f.write(nobel_lecture_text)
 
         # Fetch ceremony speech (announcement)
         ceremony_url = f"https://www.nobelprize.org/prizes/literature/{year}/ceremony-speech/"
         ceremony_path = os.path.join(CEREMONY_DIR, f"{year}.txt")
         ceremony_speech_text = fetch_and_save_speech(ceremony_url, ceremony_path, label="Ceremony speech")
+
+        # Fallback: Try press release if ceremony speech is missing
+        if not ceremony_speech_text:
+            press_release_url = f"https://www.nobelprize.org/prizes/literature/{year}/press-release/"
+            press_release_path = os.path.join(CEREMONY_DIR, f"{year}_pressrelease.txt")
+            ceremony_speech_text = fetch_and_save_speech(press_release_url, press_release_path, label="Press release fallback")
+            if ceremony_speech_text:
+                logger.info(f"Using press release as fallback for {year} award announcement")
+
+        # Fetch acceptance (banquet) speech
+        acceptance_speech_text = fetch_and_save_acceptance_speech(year, lastname)
 
         record = {
             "year_awarded": year,
@@ -172,8 +244,10 @@ def main():
                     "life_blurb": scraped.get("life_blurb"),
                     "work_blurb": scraped.get("work_blurb"),
                     "language": scraped.get("language"),
+                    "nobel_lecture_title": nobel_lecture_title,
                     "nobel_lecture_text": nobel_lecture_text,
                     "ceremony_speech_text": ceremony_speech_text,
+                    "acceptance_speech_text": acceptance_speech_text,
                     "declined": declined,
                     "specific_work_cited": specific_work_cited,
                     "cited_work": cited_work
