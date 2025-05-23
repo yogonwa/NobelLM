@@ -6,6 +6,8 @@ This module provides functions to extract and clean Nobel lecture titles and tra
 Functions:
 - clean_speech_text: Remove navigation/footer/UI noise from speech text
 - extract_nobel_lecture: Fetch and parse Nobel lecture page, returning title and cleaned transcript
+- find_english_pdf_url: Given a Nobel lecture page URL, return the full URL to the English-language PDF if available
+- download_pdf: Download a PDF from the given URL and save to save_path
 
 All outputs are cleaned and ready for saving or embedding.
 """
@@ -103,4 +105,55 @@ def extract_nobel_lecture(url: str, min_words: int = 50) -> Dict[str, Optional[s
         return {"nobel_lecture_title": title, "nobel_lecture_text": transcript}
     except Exception as e:
         logger.error(f"Exception extracting Nobel lecture at {url}: {e}")
-        return {"nobel_lecture_title": None, "nobel_lecture_text": None} 
+        return {"nobel_lecture_title": None, "nobel_lecture_text": None}
+
+
+def find_english_pdf_url(lecture_url: str) -> Optional[str]:
+    """
+    Given a Nobel lecture page URL, return the full URL to the English-language PDF if available.
+    Looks for <a> tags where:
+      - href ends with .pdf
+      - text includes 'english' (case-insensitive)
+      - href contains 'lecture'
+    Returns the absolute URL or None if not found.
+    """
+    try:
+        response = requests.get(lecture_url, timeout=10)
+        if response.status_code != 200:
+            logger.warning(f"Lecture page not found at {lecture_url} (status {response.status_code})")
+            return None
+        soup = BeautifulSoup(response.text, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            text = a.get_text(strip=True).lower()
+            if href.lower().endswith(".pdf") and "lecture" in href.lower() and "english" in text:
+                # Normalize relative URLs
+                if href.startswith("/"):
+                    return f"https://www.nobelprize.org{href}"
+                elif href.startswith("http"):
+                    return href
+        logger.info(f"No English PDF found at {lecture_url}")
+        return None
+    except Exception as e:
+        logger.error(f"Exception finding English PDF at {lecture_url}: {e}")
+        return None
+
+
+def download_pdf(url: str, save_path: str) -> bool:
+    """
+    Download a PDF from the given URL and save to save_path.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        response = requests.get(url, timeout=20)
+        if response.status_code == 200 and response.headers.get("content-type", "").startswith("application/pdf"):
+            with open(save_path, "wb") as f:
+                f.write(response.content)
+            logger.info(f"Downloaded PDF: {save_path}")
+            return True
+        else:
+            logger.warning(f"Failed to download PDF from {url} (status {response.status_code})")
+            return False
+    except Exception as e:
+        logger.error(f"Exception downloading PDF from {url}: {e}")
+        return False 

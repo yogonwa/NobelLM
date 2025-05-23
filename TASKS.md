@@ -31,22 +31,23 @@ Cursor must always:
 
 **Goal**: For each prize winner URL (`/facts/` page), scrape:
 1. Laureate metadata
-2. Nobel lecture transcript (`/speech/` page)
-3. Ceremony speech transcript (by year, from `/ceremony-speech/` page)
+2. Nobel lecture transcript (`/lecture/` page, save as .txt only)
+3. Ceremony speech transcript (by year, from `/ceremony-speech/` page, save as .txt only)
 
 **Target File**: `scraper/scrape_literature.py` (to be replaced/updated)  
 **Input**: `nobel_literature_facts_urls.json`  
 **Output**:
-- `data/nobel_literature.json` – structured list of laureates and metadata
+- `data/nobel_literature.json` – structured list of laureates and metadata (no speech text fields)
 - `data/acceptance_speeches/*.txt` – one file per laureate's acceptance (banquet) speech
 - `data/ceremony_speeches/*.txt` – one file per ceremony speech
+- `data/nobel_lectures/*.txt` – one file per laureate's lecture (from PDF extraction)
 
 ### Details:
 - Load laureate URLs from `nobel_literature_facts_urls.json` (not scraped dynamically)
 - For each `/facts/` page, extract all required fields
-- Fetch and save lecture and ceremony speech text as before
+- Fetch and save lecture and ceremony speech text as .txt files only
 - Include error handling for missing/404 pages
-- Write structured laureate dicts to `nobel_literature.json`
+- Write structured laureate dicts to `nobel_literature.json` (metadata only)
 - Write plain text speeches to file
 - Update `scraper/README.md` with schema description and file outputs
 
@@ -161,36 +162,32 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ## Task 11 – Scrape Nobel Lecture (Title + Transcript)
 
-- **File:** `scraper/scrape_literature.py`
-- **Goal:** For each laureate, fetch and extract their Nobel Lecture page
-- **Input:**  
+**Status**: Complete. Implemented in speech_extraction.py and scrape_literature.py.
+
+**File:** `scraper/scrape_literature.py`
+**Goal:** For each laureate, fetch and extract their Nobel Lecture page
+**Input:**  
   - URL: `https://www.nobelprize.org/prizes/literature/{year}/{lastname}/lecture/`
-- **Output:**  
+**Output:**  
   - **JSON fields:**  
     - `nobel_lecture_title` (from `<h2.article-header__title>`)
     - `nobel_lecture_text` (from `<div.article-body>`, cleaned)
   - **Plain text file:**  
     - `data/nobel_lectures/{year}_{lastname}.txt`
-- **Instructions:**
-  - Use `requests` + `BeautifulSoup` to fetch lecture page
-  - Extract lecture title and transcript using `scraper/speech_extraction.py`
-  - Skip embedded videos or navigation sections:
-    - Remove `.article-video`, `.article-tools`, `footer`, and `nav` before extracting text
-  - Store transcript only if length ≥ 50 words
-  - Log warnings if lecture is missing or content is too short
-  - Save transcript to `/data/nobel_lectures/` and include both fields in final JSON output
 
 ---
 
 ## Task 12 – Clean Up Navigation & Footer Noise in All Scraped Text
 
-- **File:** `scraper/speech_extraction.py`
-- **Goal:** Improve output quality by removing common page UI noise in scraped speech text
-- **Applies To:**  
+**Status**: Complete. Implemented as clean_speech_text in speech_extraction.py and used throughout scraping pipeline.
+
+**File:** `scraper/speech_extraction.py`
+**Goal:** Improve output quality by removing common page UI noise in scraped speech text
+**Applies To:**  
   - Nobel lectures
   - Ceremony speeches
   - Press releases
-- **Instructions:**
+**Instructions:**
   - Add a shared function:  
     ```python
     def clean_speech_text(text: str) -> str
@@ -207,3 +204,54 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
     ```
   - Apply this cleanup before saving any `.txt` speech file or inserting text into JSON
   - Ensure consistent formatting across outputs
+
+---
+
+## Task 13a – Download English Nobel Lecture PDFs
+- **File:** `scraper/scrape_literature.py`
+- **Helper:** `speech_extraction.find_english_pdf_url()`
+
+**Goal:**
+For each laureate, locate and download the English-language Nobel lecture PDF (if available). Do not extract text yet.
+
+**Directions:**
+- For each laureate's `/lecture/` page (e.g. https://www.nobelprize.org/prizes/literature/2017/ishiguro/lecture/):
+  - Parse the page HTML using BeautifulSoup
+  - Find `<a>` tag where:
+    - `href` ends in `.pdf`
+    - text includes "english" (case-insensitive)
+    - `href` contains "lecture"
+  - Normalize relative links to full URLs if necessary
+  - Save the PDF to: `data/nobel_lectures_pdfs/{year}_{lastname}.pdf`
+  - Log the download success or failure per file
+  - Skip text extraction in this step
+
+**Output:**
+- PDF files saved in: `data/nobel_lectures_pdfs/`
+- Log entries for each laureate (success, skipped, or not found)
+
+---
+
+## Task 13b – Extract Text from Nobel Lecture PDFs
+- **File:** `scripts/extract_pdf_lectures.py` (new standalone script)
+- **Tool:** pdfplumber
+
+**Goal:**
+Extract clean plaintext transcripts from previously downloaded Nobel lecture PDFs.
+
+**Directions:**
+- Iterate through `.pdf` files in `data/nobel_lectures_pdfs/`
+- Use pdfplumber to open each file and extract text (joined across pages)
+- Clean the text with `clean_speech_text()`
+- Save to: `data/nobel_lectures/{year}_{lastname}.txt`
+- (Optional) Delete the `.pdf` after successful extraction
+
+**Output:**
+- Text files in: `data/nobel_lectures/`
+- Optional cleanup of `data/nobel_lectures_pdfs/`
+- Console log of extracted file count and any errors
+
+**Test Guidance:**
+- Use a few known English PDFs (e.g. Glück, Ishiguro) as test fixtures
+- Validate line count, formatting, and presence of content
+- Log empty or unreadable pages for review

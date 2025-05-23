@@ -50,11 +50,12 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
       "prize_motivation": "for his poetry which endowed with freshness...",
       "life_blurb": "...",
       "work_blurb": "...",
-      "nobel_lecture_text": "...",
-      "ceremony_speech_text": "...",
-      "acceptance_speech_text": "...",
       "declined": false,
-      "specific_work_cited": false
+      "specific_work_cited": false,
+      "cited_work": null
+      // Optionally: "lecture_file": "data/nobel_lectures/1984_seifert.txt",
+      // Optionally: "ceremony_file": "data/ceremony_speeches/1984.txt",
+      // Optionally: "acceptance_file": "data/acceptance_speeches/1984_seifert.txt"
     }
   ]
 }
@@ -64,9 +65,10 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
 
 ## Outputs
 
-- `nobel_laureates.json` – structured laureate data
-- `/acceptance_speeches/{category}/` – plain text Nobel acceptance (banquet) speech files
-- `/ceremony_speeches/{category}/` – ceremony speech files
+- `nobel_laureates.json` – structured laureate data (metadata only, with optional file references)
+- `/nobel_lectures/{year}_{lastname}.txt` – plain text Nobel lecture transcript files (from PDF extraction)
+- `/ceremony_speeches/{year}.txt` – ceremony speech files
+- `/acceptance_speeches/{year}_{lastname}.txt` – acceptance (banquet) speech files
 - `metadata.csv` – flattened, filterable metadata
 - *Optional:* embeddings, FAISS index, prompt templates
 - Public-facing Streamlit UI (HF Spaces)

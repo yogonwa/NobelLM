@@ -24,17 +24,15 @@ This folder contains scripts for collecting and structuring Nobel Prize data fro
 - `life_blurb`: Life summary
 - `work_blurb`: Work summary
 - `language`: Primary language (from facts page)
-- `nobel_lecture_text`: Full Nobel lecture text (if available)
-- `ceremony_speech_text`: Full ceremony speech text (if available)
-- `acceptance_speech_text`: Full acceptance speech text (if available)
 - `declined`: Whether the prize was declined
 - `specific_work_cited`: Whether a specific work was cited
 - `cited_work`: Cited work (if specific_work_cited is true)
+- Optionally: `lecture_file`, `ceremony_file`, `acceptance_file` (paths to text files)
 
 ## Outputs
 - `data/nobel_literature.json`: Structured list of laureates and their metadata, including:
-  - full_name, gender, country, date_of_birth, date_of_death, place_of_birth, prize_motivation, life_blurb, work_blurb, language, nobel_lecture_title, nobel_lecture_text, ceremony_speech_text, acceptance_speech_text, declined, specific_work_cited, cited_work
-- `data/nobel_lectures/{year}_{lastname}.txt`: Nobel lecture transcript files (one per laureate)
+  - full_name, gender, country, date_of_birth, date_of_death, place_of_birth, prize_motivation, life_blurb, work_blurb, language, declined, specific_work_cited, cited_work, and (optionally) file references
+- `data/nobel_lectures/{year}_{lastname}.txt`: Nobel lecture transcript files (one per laureate, extracted from PDF)
 - `data/ceremony_speeches/{year}.txt`: Ceremony speech files (one per year)
 - `data/acceptance_speeches/{year}_{lastname}.txt`: Acceptance (banquet) speech files (one per laureate)
 
