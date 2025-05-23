@@ -104,10 +104,12 @@ Each record:
       "prize_motivation": "for his poetry which endowed with freshness...",
       "life_blurb": "...",
       "work_blurb": "...",
-      "nobel_lecture_text": "...",
-      "ceremony_speech_text": "...",
       "declined": false,
-      "specific_work_cited": false
+      "specific_work_cited": false,
+      "cited_work": null
+      // Optionally: "lecture_file": "data/nobel_lectures/1984_seifert.txt",
+      // Optionally: "ceremony_file": "data/ceremony_speeches/1984.txt",
+      // Optionally: "acceptance_file": "data/acceptance_speeches/1984_seifert.txt"
     }
   ]
 }
@@ -164,7 +166,7 @@ Each record:
 
 | Phase | Input                | Output                                      |
 |-------|----------------------|---------------------------------------------|
-| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv, **/data/nobel_lectures/{year}_{lastname}.txt** (plain text transcript of Nobel lecture), **nobel_lecture_title** (extracted from <h2>), **nobel_lecture_text** (extracted and cleaned from <div class="article-body">) |
+| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv, **/data/nobel_lectures/{year}_{lastname}.txt** (plain text transcript of Nobel lecture, extracted from PDF), **/data/ceremony_speeches/{year}.txt** (ceremony speech), **/data/acceptance_speeches/{year}_{lastname}.txt** (acceptance speech) |
 | M2    | Text files           | JSON embeddings, FAISS index                |
 | M3    | User query, index    | GPT-3.5 response, citation                  |
 | M4    | Streamlit app        | Live public UI on HF Spaces                 |
