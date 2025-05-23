@@ -43,6 +43,7 @@
 - RAG pipeline to answer natural language queries using OpenAI
 - Streamlit UI to enter questions and display answers
 - Public deployment of MVP demo via Hugging Face Spaces
+- **Extract and clean Nobel Lecture transcript and title for each laureate**
 
 ### Out-of-Scope (MVP)
 - All other Nobel categories (added in Phase 5b)
@@ -121,7 +122,9 @@ Each record:
 - For each prize: scrape facts, lecture, and ceremony pages
 - Normalize metadata into structured JSON and CSV
 - Store lecture and ceremony text per laureate
-- **Output:** `/data/nobel_literature.json`, `/data/literature_speeches/*.txt`, `metadata.csv`
+- **Fetch and extract lecture title and transcript from /lecture/ pages**
+- **Apply shared cleanup utility to remove navigation, footer, and UI noise from text fields**
+- **Output:** `/data/nobel_literature.json`, `/data/acceptance_speeches/*.txt`, `metadata.csv`
 
 ### Phase 2 – Embedding & Indexing (M2)
 - Chunk speech text into 300–500 word blocks
@@ -161,7 +164,7 @@ Each record:
 
 | Phase | Input                | Output                                      |
 |-------|----------------------|---------------------------------------------|
-| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv |
+| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv, **/data/nobel_lectures/{year}_{lastname}.txt** (plain text transcript of Nobel lecture), **nobel_lecture_title** (extracted from <h2>), **nobel_lecture_text** (extracted and cleaned from <div class="article-body">) |
 | M2    | Text files           | JSON embeddings, FAISS index                |
 | M3    | User query, index    | GPT-3.5 response, citation                  |
 | M4    | Streamlit app        | Live public UI on HF Spaces                 |
@@ -182,4 +185,13 @@ Each record:
   - Description of newly added files or modules
   - How the files interface with other modules
   - Any reusable functions or exported utilities
+- **When scraping lecture or speech content:**
+  - Use fallback-aware DOM logic from `speech_extraction.py`
+  - Always clean the output using `clean_speech_text()` before writing to file or saving in JSON
+  - Do not rely solely on class-based selectors like `.article-body` — include fallbacks like `main`, `div.content`
 
+## Unit Testing Extraction Functions
+- Add unit tests for `extract_life_and_work_blurbs`, `infer_gender_from_text`, and `extract_metadata` in `scraper/scrape_literature.py`.
+- Place tests in `/tests/test_scraper.py`.
+- Use static HTML snippets as fixtures.
+- Cover normal and edge cases for each function.

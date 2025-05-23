@@ -11,7 +11,7 @@ NobelLM is a modular, full-stack GenAI project that:
 
 - Scrapes and normalizes NobelPrize.org metadata and speeches (starting with the Literature category)
 - Embeds speech content using sentence-transformers (MiniLM)
-- Supports natural language Q&A via RAG using OpenAI’s GPT-3.5
+- Supports natural language Q&A via RAG using OpenAI's GPT-3.5
 - Exposes a simple interactive UI powered by Streamlit
 - Deploys publicly via Hugging Face Spaces
 
@@ -112,3 +112,6 @@ This project is for educational and exploratory purposes only. Source data is pu
 ✍️ Author
 Built by Joe Gonwa as a structured learning project in GenAI and RAG systems.
 Feedback, PRs, and suggestions are always welcome!
+
+## Testing
+Unit tests for extraction/parsing logic (e.g., HTML parsing, gender inference) are in `/tests/test_scraper.py`. Run `pytest` from the project root.

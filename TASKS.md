@@ -38,7 +38,7 @@ Cursor must always:
 **Input**: `nobel_literature_facts_urls.json`  
 **Output**:
 - `data/nobel_literature.json` – structured list of laureates and metadata
-- `data/literature_speeches/*.txt` – one file per lecture
+- `data/acceptance_speeches/*.txt` – one file per laureate's acceptance (banquet) speech
 - `data/ceremony_speeches/*.txt` – one file per ceremony speech
 
 ### Details:
@@ -71,7 +71,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 ## Task 4 – Chunk Speech Text
 - **File:** `embeddings/chunk_text.py`
 - **Goal:** Load text files and break into paragraph-based or token-size chunks (300–500 words)
-- **Input:** `/data/literature_speeches/*.txt`
+- **Input:** `/data/acceptance_speeches/*.txt`
 - **Output:** JSON structure with chunk IDs, text, metadata
 - **Instructions:**
   - Design for future compatibility with multiple categories
@@ -137,6 +137,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 ---
 
 ## Task 9 – Write Tests for Scraper
+
 - **File:** `tests/test_scraper.py`
 - **Goal:** Unit tests for Tasks 1–3
 - **Input:** Scraper functions
@@ -150,4 +151,59 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 ---
 
 ## Task 10 – Write README for /scraper
+
 - **File:** `scraper/README.md`
+- **Goal:** Add documentation for extraction function unit tests
+- **Instructions:**
+  - Add unit tests for extraction functions in `scraper/scrape_literature.py` (see `/tests/test_scraper.py`)
+
+---
+
+## Task 11 – Scrape Nobel Lecture (Title + Transcript)
+
+- **File:** `scraper/scrape_literature.py`
+- **Goal:** For each laureate, fetch and extract their Nobel Lecture page
+- **Input:**  
+  - URL: `https://www.nobelprize.org/prizes/literature/{year}/{lastname}/lecture/`
+- **Output:**  
+  - **JSON fields:**  
+    - `nobel_lecture_title` (from `<h2.article-header__title>`)
+    - `nobel_lecture_text` (from `<div.article-body>`, cleaned)
+  - **Plain text file:**  
+    - `data/nobel_lectures/{year}_{lastname}.txt`
+- **Instructions:**
+  - Use `requests` + `BeautifulSoup` to fetch lecture page
+  - Extract lecture title and transcript using `scraper/speech_extraction.py`
+  - Skip embedded videos or navigation sections:
+    - Remove `.article-video`, `.article-tools`, `footer`, and `nav` before extracting text
+  - Store transcript only if length ≥ 50 words
+  - Log warnings if lecture is missing or content is too short
+  - Save transcript to `/data/nobel_lectures/` and include both fields in final JSON output
+
+---
+
+## Task 12 – Clean Up Navigation & Footer Noise in All Scraped Text
+
+- **File:** `scraper/speech_extraction.py`
+- **Goal:** Improve output quality by removing common page UI noise in scraped speech text
+- **Applies To:**  
+  - Nobel lectures
+  - Ceremony speeches
+  - Press releases
+- **Instructions:**
+  - Add a shared function:  
+    ```python
+    def clean_speech_text(text: str) -> str
+    ```
+  - Filter out lines like:
+    - "Back to top"
+    - "Explore prizes and laureates"
+    - Empty lines or repeated boilerplate
+  - **Example logic:**
+    ```python
+    lines = [line.strip() for line in text.splitlines()]
+    lines = [line for line in lines if line and not line.lower().startswith("back to top")]
+    return "\n".join(lines).strip()
+    ```
+  - Apply this cleanup before saving any `.txt` speech file or inserting text into JSON
+  - Ensure consistent formatting across outputs
