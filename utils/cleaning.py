@@ -41,3 +41,19 @@ def clean_speech_text(raw_text: str) -> str:
 
     # Trim any remaining leading/trailing newlines
     return text.strip()
+
+
+def normalize_whitespace(text: str) -> str:
+    """
+    Normalize whitespace in text: collapse runs of spaces/tabs, normalize newlines, and trim lines.
+    Also remove space before punctuation (comma, period, colon, semicolon).
+    """
+    # Replace all runs of whitespace with a single space
+    text = re.sub(r'[ \t]+', ' ', text)
+    # Replace multiple newlines with double newlines (for paragraphs)
+    text = re.sub(r'\n{2,}', '\n\n', text)
+    # Remove spaces at start/end of lines
+    text = re.sub(r' *\n *', '\n', text)
+    # Remove space before punctuation
+    text = re.sub(r' ([,.:;])', r'\1', text)
+    return text.strip()
