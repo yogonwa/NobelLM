@@ -31,7 +31,7 @@ from typing import Dict, Optional
 import logging
 import re
 from scraper.speech_extraction import extract_nobel_lecture, find_english_pdf_url, download_pdf
-from utils.cleaning import clean_speech_text
+from utils.cleaning import clean_speech_text, normalize_whitespace
 import argparse
 from datetime import datetime
 
@@ -224,13 +224,108 @@ def extract_html_lecture_text(html: str) -> str:
     filtered_p_tags = p_tags[1:]
 
     paragraphs = [
-        p.get_text(strip=True)
+        p.get_text(separator=" ", strip=True)
         for p in filtered_p_tags
         if (not p.get("class") or "smalltext" not in p.get("class", []))
-        and not p.get_text(strip=True).startswith("To cite this section")
+        and not p.get_text(separator=" ", strip=True).startswith("To cite this section")
     ]
 
-    return f"{title}\n\n" + "\n\n".join(paragraphs)
+    text = f"{title}\n\n" + "\n\n".join(paragraphs)
+    return normalize_whitespace(text)
+
+def extract_acceptance_speech_text(html: str) -> str:
+    """
+    Extract the acceptance (banquet) speech from the Nobel Prize page HTML.
+    Returns only the actual speech, skipping navigation, citation, and unrelated content.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    article = soup.find("article") or soup.find("main") or soup
+    p_tags = article.find_all("p")
+
+    # Heuristic: find the first <p> that looks like the start of the speech
+    start_idx = None
+    for i, p in enumerate(p_tags):
+        text = p.get_text(separator=" ", strip=True)
+        if (
+            "speech at the Nobel Banquet" in text.lower()
+            or text.lower().startswith("your majesties")
+            or text.lower().startswith("eure majest")
+            or text.lower().startswith("honoured members")
+            or text.lower().startswith("ladies and gentlemen")
+        ):
+            start_idx = i
+            break
+    if start_idx is None:
+        # fallback: use the first non-empty <p>
+        for i, p in enumerate(p_tags):
+            if p.get_text(separator=" ", strip=True):
+                start_idx = i
+                break
+    if start_idx is None:
+        return ""
+
+    # Collect <p> tags until a citation, copyright, or navigation block
+    speech_paragraphs = []
+    for p in p_tags[start_idx:]:
+        text = p.get_text(separator=" ", strip=True)
+        if (
+            text.startswith("To cite this section")
+            or text.startswith("Copyright")
+            or text.lower().startswith("back to top")
+            or not text
+        ):
+            break
+        speech_paragraphs.append(text)
+
+    text = "\n\n".join(speech_paragraphs)
+    return normalize_whitespace(text)
+
+def extract_ceremony_speech_text(html: str) -> str:
+    """
+    Extract the award ceremony speech from the Nobel Prize page HTML.
+    Returns only the actual speech, skipping navigation, citation, and unrelated content.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    article = soup.find("article") or soup.find("main") or soup
+    p_tags = article.find_all("p")
+
+    # Heuristic: find the first <p> that looks like the start of the speech
+    start_idx = None
+    for i, p in enumerate(p_tags):
+        text = p.get_text(separator=" ", strip=True)
+        if (
+            "presentation speech by" in text.lower()
+            or text.lower().startswith("your majesties")
+            or text.lower().startswith("ladies and gentlemen")
+            or text.lower().startswith("honoured members")
+            or text.lower().startswith("members of the academy")
+        ):
+            start_idx = i
+            break
+    if start_idx is None:
+        # fallback: use the first non-empty <p>
+        for i, p in enumerate(p_tags):
+            if p.get_text(separator=" ", strip=True):
+                start_idx = i
+                break
+    if start_idx is None:
+        return ""
+
+    # Collect <p> tags until a citation, copyright, or navigation block
+    speech_paragraphs = []
+    for p in p_tags[start_idx:]:
+        text = p.get_text(separator=" ", strip=True)
+        if (
+            text.startswith("To cite this section")
+            or text.startswith("Copyright")
+            or text.lower().startswith("back to top")
+            or not text
+        ):
+            break
+        speech_paragraphs.append(text)
+
+    text = "\n\n".join(speech_paragraphs)
+    return normalize_whitespace(text)
 
 def main(input_json: str = FACTS_INPUT_JSON, year: int | None = None):
     with open(input_json, "r", encoding="utf-8") as f:
@@ -308,28 +403,44 @@ def main(input_json: str = FACTS_INPUT_JSON, year: int | None = None):
             with open(lecture_file_path, "w", encoding="utf-8") as f:
                 f.write("")
 
-        # Fetch ceremony speech (announcement)
+        # Fetch ceremony speech (announcement) using robust extraction
         ceremony_url = f"https://www.nobelprize.org/prizes/literature/{year}/ceremony-speech/"
         ceremony_path = os.path.join(CEREMONY_DIR, f"{year}.txt")
-        ceremony_speech_text = fetch_and_save_speech(ceremony_url, ceremony_path, label="Ceremony speech")
-        if ceremony_speech_text:
-            ceremony_file = ceremony_path
-        else:
-            # Fallback: Try press release if ceremony speech is missing
-            press_release_url = f"https://www.nobelprize.org/prizes/literature/{year}/press-release/"
-            press_release_path = os.path.join(CEREMONY_DIR, f"{year}_pressrelease.txt")
-            ceremony_speech_text = fetch_and_save_speech(press_release_url, press_release_path, label="Press release fallback")
-            if ceremony_speech_text:
-                logger.info(f"Using press release as fallback for {year} award announcement")
-                ceremony_file = press_release_path
+        ceremony_speech_text = None
+        try:
+            resp = requests.get(ceremony_url, timeout=10)
+            if resp.status_code == 200:
+                ceremony_speech_text = extract_ceremony_speech_text(resp.text)
+                if ceremony_speech_text and len(ceremony_speech_text.split()) > 10:
+                    with open(ceremony_path, "w", encoding="utf-8") as f:
+                        f.write(ceremony_speech_text)
+                    ceremony_file = ceremony_path
+                else:
+                    ceremony_file = None
             else:
                 ceremony_file = None
+        except Exception as e:
+            logger.warning(f"Failed to extract ceremony speech for {year}: {e}")
+            ceremony_file = None
 
-        # Fetch acceptance (banquet) speech
-        acceptance_speech_text = fetch_and_save_acceptance_speech(year, lastname)
-        if acceptance_speech_text:
-            acceptance_file = os.path.join(ACCEPTANCE_SPEECH_DIR, f"{year}_{lastname}.txt")
-        else:
+        # Fetch acceptance (banquet) speech using robust extraction
+        acceptance_url = f"https://www.nobelprize.org/prizes/literature/{year}/{lastname}/speech/"
+        acceptance_path = os.path.join(ACCEPTANCE_SPEECH_DIR, f"{year}_{lastname}.txt")
+        acceptance_speech_text = None
+        try:
+            resp = requests.get(acceptance_url, timeout=10)
+            if resp.status_code == 200:
+                acceptance_speech_text = extract_acceptance_speech_text(resp.text)
+                if acceptance_speech_text and len(acceptance_speech_text.split()) > 10:
+                    with open(acceptance_path, "w", encoding="utf-8") as f:
+                        f.write(acceptance_speech_text)
+                    acceptance_file = acceptance_path
+                else:
+                    acceptance_file = None
+            else:
+                acceptance_file = None
+        except Exception as e:
+            logger.warning(f"Failed to extract acceptance speech for {fullname} ({year}): {e}")
             acceptance_file = None
 
         # Store the file path in the JSON output
@@ -379,5 +490,20 @@ if __name__ == "__main__":
         default=None,
         help="If set, only process laureates for this year. (default: all years)",
     )
+    parser.add_argument(
+        "--test-acceptance-url",
+        type=str,
+        default=None,
+        help="If set, fetch this URL and run extract_acceptance_speech_text for debug.",
+    )
     args = parser.parse_args()
-    main(args.input, args.year)
+    if args.test_acceptance_url:
+        import requests
+        print(f"[TEST] Fetching {args.test_acceptance_url}")
+        resp = requests.get(args.test_acceptance_url)
+        html = resp.text
+        speech = extract_acceptance_speech_text(html)
+        print("\n--- Extracted Speech ---\n")
+        print(speech)
+    else:
+        main(args.input, args.year)
