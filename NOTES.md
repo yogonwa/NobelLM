@@ -83,4 +83,91 @@ This document tracks decisions, assumptions, and open questions that arise durin
 Update this file as new questions emerge or implementation decisions are made.
 
 - Extraction/parsing logic is now covered by unit tests in `/tests/test_scraper.py`.
+- Whitespace and punctuation normalization is handled by `normalize_whitespace`.
+- All debug prints have been removed from the extraction pipeline.
+- Outputs are clean, robust, and ready for downstream use.
 
+## RAG Chunking Strategy – Text + Metadata
+We extract three types of unstructured text per laureate:
+
+nobel_lecture: Full lecture text (primary source)
+
+acceptance_speech: Brief remarks upon accepting the prize
+
+ceremony_speech: The committee's justification for the award
+
+✅ Inclusion in RAG
+All 3 should be embedded, but:
+
+Keep them tagged with a source_type field for context control.
+
+Chunk independently using paragraph-aware logic.
+
+Embed only the cleaned version, but store raw_text separately for audit/debug purposes.
+
+🔍 Chunk Structure
+Each chunk should be a JSON object like:
+{
+  "laureate": "Jaroslav Seifert",
+  "year_awarded": 1984,
+  "category": "Literature",
+  "source_type": "nobel_lecture",
+  "text": "Excerpt from the lecture…",
+  "chunk_id": "1984_seifert_nobel_lecture_3"
+}
+🧹 Preprocessing Checklist
+Step	Action
+HTML stripping	Remove tags from all text sources
+Whitespace fix	Normalize line breaks, tabs, spacing
+Sentence integrity	Avoid mid-sentence breaks while chunking
+Store raw version	Keep raw_text alongside clean_text
+
+🔢 Structured Metadata Usage
+Metadata like gender, birthplace, or declined should:
+
+Be stored as separate fields per chunk
+
+Power future filtering and faceted search
+
+Be used in prompt scaffolding (e.g., "From the Czech poet...")
+
+❌ Do not embed metadata inside the unstructured text string.
+
+---
+
+## Data Overwrite vs. Incremental Update (Metadata Integrity)
+
+**Problem:**
+Currently, each run of the scraper overwrites the entire `nobel_literature.json` file. This is risky for production/embedding workflows because:
+- Any manual corrections or additional metadata are lost.
+- Partial re-scrapes (e.g., for a single year) wipe out the rest of the data.
+- No history or backup is maintained.
+
+**Solution Idea:**
+- Implement an incremental update/merge approach:
+  - Load existing JSON if present.
+  - Update or add only the records for laureates being scraped.
+  - Write back the merged result, preserving all other data.
+- Optionally, backup the old file before writing.
+- Add a `last_updated` timestamp to each record for traceability.
+
+**Benefits:**
+- Robustness for embedding and search pipelines.
+- Safe for partial or repeated scrapes.
+- Preserves manual edits and metadata.
+- Enables future features like versioning or audit trails.
+
+---
+
+## Recent Updates (June 2025)
+
+- **Schema Extended:**
+  - Each laureate now includes `lecture_delivered` (bool) and `lecture_absence_reason` (string/null) in `nobel_literature.json`.
+  - This enables downstream filtering and robust metadata for embedding/search.
+- **Noisy File Cleanup:**
+  - Utility script `utils/find_noisy_lectures.py` detects and (optionally) deletes noisy/empty/placeholder lecture files.
+  - Scraper logic now prevents creation of such files and records absence reasons in the JSON.
+- **Incremental Update Plan:**
+  - See below for the plan to merge new/updated records into the JSON instead of overwriting (Task 14, in progress).
+- **Pipeline Robustness:**
+  - The scraping pipeline is now robust to missing, empty, or non-existent lectures. All outputs are clean, deduplicated, and ready for downstream use.

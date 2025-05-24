@@ -106,10 +106,9 @@ Each record:
       "work_blurb": "...",
       "declined": false,
       "specific_work_cited": false,
-      "cited_work": null
-      // Optionally: "lecture_file": "data/nobel_lectures/1984_seifert.txt",
-      // Optionally: "ceremony_file": "data/ceremony_speeches/1984.txt",
-      // Optionally: "acceptance_file": "data/acceptance_speeches/1984_seifert.txt"
+      "cited_work": null,
+      "lecture_delivered": true,
+      "lecture_absence_reason": null
     }
   ]
 }
@@ -147,6 +146,22 @@ Each record:
 - Optional dropdown for category or metadata filtering (static for now)
 - Deploy app using Hugging Face Spaces (via GitHub repo)
 - **Output:** `app.py`, live public UI
+
+#### Phase 4b – Chunking & Embedding Prep Strategy
+
+- Prepare chunking logic for all three speech types:
+  - `nobel_lecture` (full lecture text)
+  - `acceptance_speech` (banquet/acceptance remarks)
+  - `ceremony_speech` (committee's justification)
+- Tag each chunk with:
+  - `source_type` (e.g., nobel_lecture, acceptance_speech, ceremony_speech)
+  - `category`
+  - `laureate`
+  - `year_awarded`
+- Store both `raw_text` (original, minimally processed) and `clean_text` (for embedding/audit).
+- Keep structured metadata fields (e.g., gender, country, declined) as top-level properties for each chunk.
+- **Do not embed metadata inside the unstructured text string.**
+- **Output:** Chunked `.jsonl` or `.json` file with tagged, cleaned segments
 
 ### Phase 5 – Post-MVP Foundations (M5)
 - Add MCP scaffolding: session memory via `st.session_state` or dict
@@ -197,3 +212,19 @@ Each record:
 - Place tests in `/tests/test_scraper.py`.
 - Use static HTML snippets as fixtures.
 - Cover normal and edge cases for each function.
+
+- All extraction and cleaning logic is finalized and robust. All debug prints have been removed.
+- `normalize_whitespace` is used for punctuation and whitespace normalization on all extracted text.
+- Outputs are clean, production-ready, and suitable for embedding, search, and UI display.
+
+---
+
+## June 2025 Update
+- Schema now includes `lecture_delivered` and `lecture_absence_reason` fields per laureate.
+- Scraping pipeline avoids noisy files and records absence reasons in the JSON.
+- Utility script for noisy file cleanup is implemented (`utils/find_noisy_lectures.py`).
+- All scraping and cleaning tasks (Tasks 1–13b) are complete and robust.
+- Task 14 (incremental update/merge for `nobel_literature.json`) is planned and referenced in TASKS.md and NOTES.md.
+- Codebase and documentation are current as of June 2025.
+
+---

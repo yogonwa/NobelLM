@@ -177,24 +177,22 @@ Nobel lectures are a distinct content type from ceremony or banquet speeches and
 
 ---
 
-## Text Cleanup Utility (New)
+## Text Cleanup Utility (Updated)
 
-To ensure consistency and remove navigational clutter, all extracted text blocks (lecture, speech, press release) should be processed with a shared cleanup function.
+All extracted text blocks (lecture, speech, press release) are processed with:
+- `clean_speech_text(text: str) -> str`: Removes navigation, UI, and boilerplate noise.
+- `normalize_whitespace(text: str) -> str`: Collapses whitespace, removes extra spaces before punctuation, and normalizes newlines for clean, readable output.
 
-- **Function:**
-  ```python
-  def clean_speech_text(text: str) -> str
-  ```
+All outputs are now robust, debug-free, and suitable for embedding and search.
 
-- **Cleanup Rules:**
-  - Strip whitespace from each line
-  - Remove UI or structural noise such as:
-    - "Back to top"
-    - "Explore prizes and laureates"
-    - Empty lines or redundant navigation text
+---
 
-- **Purpose:**
-  - Improve clarity of saved `.txt` files
-  - Ensure consistency of JSON fields for LLM embedding and search
+## June 2025 Update
+- The schema now includes `lecture_delivered` (bool) and `lecture_absence_reason` (string/null) per laureate.
+- The scraping pipeline is robust to missing/empty lectures and does not create noisy files.
+- Utility script `utils/find_noisy_lectures.py` is available for cleanup and maintenance.
+- Incremental update/merge for `nobel_literature.json` is planned (see NOTES.md and TASKS.md).
+- All outputs are clean, deduplicated, and ready for embedding/search.
+- Codebase and documentation are up to date as of June 2025.
 
 ---
