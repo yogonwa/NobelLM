@@ -159,6 +159,18 @@ Currently, each run of the scraper overwrites the entire `nobel_literature.json`
 
 ---
 
+## Incremental Update/Merge for Nobel Literature JSON (June 2025)
+
+- The scraper now merges new/updated records into `nobel_literature.json` by `(year_awarded, full_name)`.
+- Old values are preserved for any fields missing in the new scrape (no overwrite with null).
+- A warning is logged if a non-null field is overwritten.
+- Each laureate record gets a `last_updated` ISO 8601 timestamp.
+- Before writing, the old file is backed up with a timestamp (e.g., `nobel_literature.json.2025-06-10T12-00-00Z.bak`).
+- This logic is implemented in `scraper/scrape_literature.py` as of June 2025.
+- Ensures safe, idempotent, and robust updates for downstream workflows and manual corrections.
+
+---
+
 ## Recent Updates (June 2025)
 
 - **Schema Extended:**
@@ -171,3 +183,20 @@ Currently, each run of the scraper overwrites the entire `nobel_literature.json`
   - See below for the plan to merge new/updated records into the JSON instead of overwriting (Task 14, in progress).
 - **Pipeline Robustness:**
   - The scraping pipeline is now robust to missing, empty, or non-existent lectures. All outputs are clean, deduplicated, and ready for downstream use.
+
+---
+
+## Task 13b – PDF Lecture Extraction & JSON Update (Implementation Notes)
+
+- Iterate over all PDFs in `data/nobel_lectures_pdfs/`.
+- Use heuristics to skip noise/fluff pages (copyright, title, very short pages). Do not always skip the first N pages.
+- Extract the lecture title using patterns (e.g., `Name: Title`, or a short, capitalized line on a content page).
+- Concatenate and clean the main essay content from the first signal page onward.
+- Write the title as the first line of the `.txt` file in `data/nobel_lectures/{year}_{lastname}.txt`.
+- Load `nobel_literature.json`, find the matching laureate by `year_awarded` and `full_name`, and update/add the `nobel_lecture_title` field only (merge, do not overwrite other fields). Optionally update `last_updated`.
+- Back up the old JSON file with a timestamp before writing.
+- Log extraction results, skipped pages, detected titles, and any issues.
+- Allow a `--force` flag to overwrite existing `.txt` files. Optionally allow deletion of PDFs after extraction.
+- Use known PDFs as test fixtures for validation. Log empty or unreadable pages for review.
+
+This ensures robust, idempotent, and production-ready extraction and metadata update for Nobel lecture PDFs.
