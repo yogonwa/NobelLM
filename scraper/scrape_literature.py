@@ -380,28 +380,66 @@ def main(input_json: str = FACTS_INPUT_JSON, year: int | None = None):
         os.makedirs(NOBEL_LECTURE_DIR, exist_ok=True)
         lecture_text = None
         success = False  # Ensure this is always defined
+        lecture_delivered = None
+        lecture_absence_reason = None
 
         if lecture_pdf_url:
             pdf_save_path = os.path.join(NOBEL_LECTURE_PDF_DIR, f"{year}_{lastname}.pdf")
             success = download_pdf(lecture_pdf_url, pdf_save_path)
             if success:
+                lecture_delivered = True
+                lecture_absence_reason = None
                 lecture_text = None  # No text extraction from PDF in this step
             else:
                 logger.warning(f"Failed to download PDF for {fullname} ({year}), falling back to HTML.")
         if not lecture_pdf_url or not success:
             # Fallback to HTML extraction
             try:
-                html = requests.get(lecture_url, timeout=10).text
-                lecture_text = extract_html_lecture_text(html)
-                with open(lecture_file_path, "w", encoding="utf-8") as f:
-                    f.write(lecture_text)
+                resp = requests.get(lecture_url, timeout=10)
+                html = resp.text
+                soup = BeautifulSoup(html, "html.parser")
+                # Check for <h1>Page Not Found</h1>
+                h1 = soup.find("h1")
+                if resp.status_code == 404 or (h1 and h1.get_text(strip=True) == "Page Not Found"):
+                    lecture_delivered = False
+                    lecture_absence_reason = "No lecture page"
+                    lecture_file_path = None
+                else:
+                    # Check for <em>did not deliver a Nobel Lecture</em>
+                    ems = soup.find_all("em")
+                    found_no_lecture = False
+                    for em in ems:
+                        if "did not deliver a Nobel Lecture" in em.get_text(strip=True):
+                            found_no_lecture = True
+                            break
+                    if found_no_lecture:
+                        lecture_delivered = False
+                        lecture_absence_reason = "Explicit message: did not deliver a Nobel Lecture"
+                        lecture_file_path = None
+                    else:
+                        # Try to extract lecture text
+                        lecture_text = extract_html_lecture_text(html)
+                        # If the text is empty or just a noisy header, treat as not delivered
+                        if not lecture_text or lecture_text.strip() == "Nobel Prizes 2024":
+                            lecture_delivered = False
+                            lecture_absence_reason = "No lecture text found"
+                            lecture_file_path = None
+                        else:
+                            lecture_delivered = True
+                            lecture_absence_reason = None
+                            with open(lecture_file_path, "w", encoding="utf-8") as f:
+                                f.write(lecture_text)
             except Exception as e:
                 logger.warning(f"Failed to extract HTML lecture for {fullname} ({year}): {e}")
                 lecture_file_path = None
+                lecture_delivered = False
+                lecture_absence_reason = f"Exception: {e}"
         else:
             # If PDF was downloaded, still create an empty file to keep the path reference
             with open(lecture_file_path, "w", encoding="utf-8") as f:
                 f.write("")
+            lecture_delivered = True
+            lecture_absence_reason = None
 
         # Fetch ceremony speech (announcement) using robust extraction
         ceremony_url = f"https://www.nobelprize.org/prizes/literature/{year}/ceremony-speech/"
@@ -444,7 +482,7 @@ def main(input_json: str = FACTS_INPUT_JSON, year: int | None = None):
             acceptance_file = None
 
         # Store the file path in the JSON output
-        nobel_lecture_file = lecture_file_path if os.path.exists(lecture_file_path) else None
+        nobel_lecture_file = lecture_file_path if lecture_file_path and os.path.exists(lecture_file_path) else None
 
         record = {
             "year_awarded": year,
@@ -465,6 +503,8 @@ def main(input_json: str = FACTS_INPUT_JSON, year: int | None = None):
                     "specific_work_cited": specific_work_cited,
                     "cited_work": cited_work,
                     "nobel_lecture_file": nobel_lecture_file,
+                    "lecture_delivered": lecture_delivered,
+                    "lecture_absence_reason": lecture_absence_reason,
                     "ceremony_file": ceremony_file,
                     "acceptance_file": acceptance_file
                 }
