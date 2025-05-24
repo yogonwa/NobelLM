@@ -27,7 +27,7 @@ Cursor must always:
 
 ---
 
-## Task 2 – Scrape Laureate Metadata, Lecture, and Ceremony Speech
+## Task 2 – Scrape Laureate Metadata, Lecture, and Ceremony Speech **[COMPLETE]**
 
 **Goal**: For each prize winner URL (`/facts/` page), scrape:
 1. Laureate metadata
@@ -177,7 +177,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 11 – Scrape Nobel Lecture (Title + Transcript)
+## Task 11 – Scrape Nobel Lecture (Title + Transcript) **[COMPLETE]**
 
 **Status**: Complete. Implemented in speech_extraction.py and scrape_literature.py.
 
@@ -194,7 +194,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 12 – Clean Up Navigation & Footer Noise in All Scraped Text
+## Task 12 – Clean Up Navigation & Footer Noise in All Scraped Text **[COMPLETE]**
 
 **Status**: Complete. Implemented as clean_speech_text in speech_extraction.py and used throughout scraping pipeline.
 
@@ -232,51 +232,43 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 13b – Extract Text from Nobel Lecture PDFs
-- **File:** `scripts/extract_pdf_lectures.py` (new standalone script)
-- **Tool:** pdfplumber
+## Task 13b – Extract Text from Nobel Lecture PDFs (Detailed Implementation Plan)
 
 **Goal:**
-Extract clean plaintext transcripts from previously downloaded Nobel lecture PDFs.
+Extract clean plaintext transcripts and lecture titles from previously downloaded Nobel lecture PDFs, and update the corresponding laureate entry in `nobel_literature.json` with the extracted title (merge, not overwrite).
 
-**Directions:**
-- Iterate through `.pdf` files in `data/nobel_lectures_pdfs/`
-- Use pdfplumber to open each file and extract text (joined across pages)
-- Clean the text with `clean_speech_text()`
-- Save to: `data/nobel_lectures/{year}_{lastname}.txt`
-- (Optional) Delete the `.pdf` after successful extraction
+**Implementation Steps:**
+1. **Iterate over PDFs:** For each `.pdf` in `data/nobel_lectures_pdfs/`, extract `year` and `lastname` from the filename.
+2. **Heuristic Page Filtering:** Use content heuristics to skip noise/fluff pages (e.g., copyright, title, very short pages). Do not always skip the first N pages.
+3. **Title Extraction:** Detect the lecture title using patterns (e.g., `Name: Title`, or a short, capitalized line). Extract the title as a separate field.
+4. **Text Extraction:** Concatenate the main essay content from the first signal page onward. Clean the text with `clean_speech_text()`.
+5. **Write .txt File:** Write the title as the first line of the `.txt` file in `data/nobel_lectures/{year}_{lastname}.txt`, followed by the essay content.
+6. **Update JSON:** Load `nobel_literature.json`, find the matching laureate by `year_awarded` and `full_name`, and update/add the `nobel_lecture_title` field only. Do not overwrite or touch other fields. Optionally update `last_updated`.
+7. **Backup and Logging:** Before writing, back up the old JSON file with a timestamp. Log extraction results, skipped pages, detected titles, and any issues.
+8. **Optional Flags:** Allow a `--force` flag to overwrite existing `.txt` files. Optionally allow deletion of PDFs after extraction.
+9. **Testing:** Use known PDFs (e.g., Glück, Ishiguro, Han) as test fixtures. Validate line count, formatting, and presence of content. Log empty or unreadable pages for review.
 
-**Output:**
-- Text files in: `data/nobel_lectures/`
-- Optional cleanup of `data/nobel_lectures_pdfs/`
-- Console log of extracted file count and any errors
-
-**Test Guidance:**
-- Use a few known English PDFs (e.g. Glück, Ishiguro) as test fixtures
-- Validate line count, formatting, and presence of content
-- Log empty or unreadable pages for review
+This ensures robust, idempotent, and production-ready extraction and metadata update for Nobel lecture PDFs.
 
 ---
 
-## Task 14 – Incremental Update for Nobel Literature JSON
+## Task 14 – Incremental Update for Nobel Literature JSON **[COMPLETE]**
 
 **Goal:**
 Prevent full overwrite of `nobel_literature.json` on each scrape. Instead, merge new/updated records into the existing file.
 
-**Motivation:**
-- See NOTES.md section on Data Overwrite vs. Incremental Update.
-- Avoids loss of manual corrections or additional metadata.
-- Supports partial re-scrapes and robust downstream workflows.
+**Status:** Complete. Implemented in `scraper/scrape_literature.py` as of June 2025.
 
-**Implementation Outline:**
-- On scrape, load existing JSON if present.
-- For each new record, update or add to the existing data (by year and laureate name).
-- Write back the merged result.
-- Optionally, backup the old file before writing.
-- Add/update a `last_updated` timestamp per record.
+**Implementation:**
+- Loads existing JSON if present
+- Merges new/updated records by `(year_awarded, full_name)`
+- Preserves old values for any fields missing in the new scrape (does not overwrite with null)
+- Logs a warning if a non-null field is overwritten
+- Adds/updates a `last_updated` ISO 8601 timestamp per laureate
+- Backs up the old file with a timestamp before writing (e.g., `nobel_literature.json.2025-06-10T12-00-00Z.bak`)
+- Writes the merged result
 
-**Target File:** `scraper/scrape_literature.py`
-**Status:** TODO
+This ensures that manual corrections and additional metadata are preserved, and that partial or repeated scrapes are safe and idempotent.
 
 ---
 

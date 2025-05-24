@@ -33,7 +33,8 @@ import re
 from scraper.speech_extraction import extract_nobel_lecture, find_english_pdf_url, download_pdf
 from utils.cleaning import clean_speech_text, normalize_whitespace
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
+import shutil
 
 FACTS_INPUT_JSON = "data/nobel_literature_facts_urls.json"
 OUTPUT_JSON = "data/nobel_literature.json"
@@ -513,8 +514,83 @@ def main(input_json: str = FACTS_INPUT_JSON, year: int | None = None):
 
         results.append(record)
 
-    with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+    # Instead of writing results directly, use merge_nobel_literature_json
+    merge_nobel_literature_json(results, OUTPUT_JSON)
+
+def merge_nobel_literature_json(new_records: list, output_json: str) -> None:
+    """
+    Incrementally update/merge nobel_literature.json:
+    - Loads existing file if present
+    - Merges new/updated records by (year_awarded, full_name)
+    - Preserves old values for missing fields
+    - Logs a warning if a non-null field is overwritten
+    - Adds/updates a last_updated ISO 8601 timestamp per laureate
+    - Backs up the old file with a timestamp before writing
+    - Writes the merged result
+    """
+    import copy
+    from datetime import datetime, timezone
+
+    # Helper: build key for each laureate (year_awarded, full_name)
+    def record_key(rec):
+        return (rec["year_awarded"], rec["laureates"][0]["full_name"].strip().lower())
+
+    # Load existing data if present
+    if os.path.exists(output_json):
+        with open(output_json, "r", encoding="utf-8") as f:
+            try:
+                existing = json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load existing {output_json}: {e}")
+                existing = []
+    else:
+        existing = []
+
+    # Build lookup for existing records
+    existing_map = {record_key(rec): rec for rec in existing}
+    now_iso = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+    for new_rec in new_records:
+        key = record_key(new_rec)
+        if key in existing_map:
+            old_rec = existing_map[key]
+            merged = copy.deepcopy(old_rec)
+            # Merge top-level fields
+            for field in ["year_awarded", "category"]:
+                merged[field] = new_rec.get(field, old_rec.get(field))
+            # Merge laureate fields (assume single laureate per record)
+            old_l = old_rec["laureates"][0]
+            new_l = new_rec["laureates"][0]
+            merged_l = copy.deepcopy(old_l)
+            for k, v in new_l.items():
+                if v is not None:
+                    if k in old_l and old_l[k] != v:
+                        logger.warning(f"Overwriting field '{k}' for {key}: '{old_l[k]}' -> '{v}'")
+                    merged_l[k] = v
+                else:
+                    # Preserve old value if new is None
+                    merged_l[k] = old_l.get(k)
+            merged_l["last_updated"] = now_iso
+            merged["laureates"] = [merged_l]
+            existing_map[key] = merged
+        else:
+            # New record
+            new_rec = copy.deepcopy(new_rec)
+            new_rec["laureates"][0]["last_updated"] = now_iso
+            existing_map[key] = new_rec
+
+    # Backup old file with timestamp
+    if os.path.exists(output_json):
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+        backup_path = f"{output_json}.{ts}.bak"
+        shutil.copy2(output_json, backup_path)
+        logger.info(f"Backed up old {output_json} to {backup_path}")
+
+    # Write merged result
+    merged_list = list(existing_map.values())
+    with open(output_json, "w", encoding="utf-8") as f:
+        json.dump(merged_list, f, indent=2, ensure_ascii=False)
+    logger.info(f"Wrote merged results to {output_json}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Scrape Nobel Literature laureate data.")

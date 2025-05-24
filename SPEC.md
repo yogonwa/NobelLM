@@ -196,3 +196,12 @@ All outputs are now robust, debug-free, and suitable for embedding and search.
 - Codebase and documentation are up to date as of June 2025.
 
 ---
+
+## June 2025 Update – Incremental Update/Merge for Nobel Literature JSON
+
+- The scraper now merges new/updated records into `nobel_literature.json` by `(year_awarded, full_name)`.
+- Old values are preserved for missing fields; no overwrite with null.
+- Logs a warning if a non-null field is overwritten.
+- Each laureate record gets a `last_updated` ISO 8601 timestamp.
+- Old file is backed up with a timestamp before writing.
+- Implemented in `scraper/scrape_literature.py` as of June 2025.

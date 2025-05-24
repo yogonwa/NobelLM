@@ -112,4 +112,17 @@ To run the noisy file cleanup utility:
 ```
 python -m utils.find_noisy_lectures
 python -m utils.find_noisy_lectures --delete
-``` 
+```
+
+## Incremental Update & Merge for nobel_literature.json (June 2025)
+
+The scraper now performs robust incremental updates to `nobel_literature.json`:
+- Loads existing JSON if present
+- Merges new/updated records by `(year_awarded, full_name)`
+- Preserves old values for any fields missing in the new scrape (does not overwrite with null)
+- Logs a warning if a non-null field is overwritten
+- Adds/updates a `last_updated` ISO 8601 timestamp per laureate
+- Backs up the old file with a timestamp before writing (e.g., `nobel_literature.json.2025-06-10T12-00-00Z.bak`)
+- Writes the merged result
+
+This ensures that manual corrections and additional metadata are preserved, and that partial or repeated scrapes are safe and idempotent. 
