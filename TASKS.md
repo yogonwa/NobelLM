@@ -50,6 +50,9 @@ Cursor must always:
 - Write structured laureate dicts to `nobel_literature.json` (metadata only)
 - Write plain text speeches to file
 - Update `scraper/README.md` with schema description and file outputs
+- Whitespace and punctuation normalization is handled by `normalize_whitespace`.
+- All debug prints have been removed from the extraction pipeline.
+- Outputs are robust and production-ready.
 
 ---
 
@@ -69,17 +72,31 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 4 – Chunk Speech Text
-- **File:** `embeddings/chunk_text.py`
-- **Goal:** Load text files and break into paragraph-based or token-size chunks (300–500 words)
-- **Input:** `/data/acceptance_speeches/*.txt`
-- **Output:** JSON structure with chunk IDs, text, metadata
-- **Instructions:**
-  - Design for future compatibility with multiple categories
-  - Include source filename and chunk index in each entry
-  - Prefer paragraph boundaries when possible
-  - Optionally support overlapping chunks (sliding window) for better context retention
-  - Update `embeddings/README.md` with a description of this chunking logic
+## Task 4 – Chunk and Tag Speech Text for Embedding
+
+- Parse all three text types for each laureate:
+  - `nobel_lecture` (full lecture text)
+  - `acceptance_speech` (banquet/acceptance remarks)
+  - `ceremony_speech` (committee's justification)
+- Chunk each text into ~300–500 word blocks, using paragraph boundaries.
+  - Ensure no mid-sentence cuts.
+- For each chunk, tag with:
+  - `source_type` (nobel_lecture, acceptance_speech, ceremony_speech)
+  - `laureate`
+  - `year_awarded`
+  - `category`
+- Include structured metadata fields as top-level properties (e.g., `gender`, `country`, etc.).
+- Store both `raw_text` (original) and `clean_text` (for embedding/audit) for each chunk.
+- **Output:** `data/chunks_literature_labeled.jsonl` (primary, newline-delimited) and optionally `data/chunks_literature_labeled.json` (array version)
+  - *Best practice:* Use explicit, consistent, and scope-aware naming that aligns with your modular system.
+  - **Preferred Naming Convention:**
+    - `data/chunks_literature_labeled.jsonl`
+      - `chunks` → prepped text for embedding
+      - `literature` → category scope (future-proofing for other categories)
+      - `labeled` → includes metadata tags (e.g., source_type, gender)
+      - `.jsonl` → newline-delimited, standard for embeddings/streaming
+- **Implementation:** Extend the existing chunk logic in `embeddings/`.
+- **Update:** `embeddings/README.md` to document the chunking and tagging process.
 
 ---
 
@@ -207,28 +224,11 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 13a – Download English Nobel Lecture PDFs
-- **File:** `scraper/scrape_literature.py`
-- **Helper:** `speech_extraction.find_english_pdf_url()`
+## Task 13a – Download English Nobel Lecture PDFs **[COMPLETE]**
 
-**Goal:**
-For each laureate, locate and download the English-language Nobel lecture PDF (if available). Do not extract text yet.
+**Goal:** For each laureate, locate and download the English-language Nobel lecture PDF (if available). Save to `data/nobel_lectures_pdfs/{year}_{lastname}.pdf`. Log success or failure. No text extraction at this stage.
 
-**Directions:**
-- For each laureate's `/lecture/` page (e.g. https://www.nobelprize.org/prizes/literature/2017/ishiguro/lecture/):
-  - Parse the page HTML using BeautifulSoup
-  - Find `<a>` tag where:
-    - `href` ends in `.pdf`
-    - text includes "english" (case-insensitive)
-    - `href` contains "lecture"
-  - Normalize relative links to full URLs if necessary
-  - Save the PDF to: `data/nobel_lectures_pdfs/{year}_{lastname}.pdf`
-  - Log the download success or failure per file
-  - Skip text extraction in this step
-
-**Output:**
-- PDF files saved in: `data/nobel_lectures_pdfs/`
-- Log entries for each laureate (success, skipped, or not found)
+**Status:** Complete. The pipeline attempts to find and download the English PDF for each laureate's lecture page. If not found, logs the absence and falls back to HTML extraction. No text extraction from PDF is performed at this stage.
 
 ---
 
@@ -255,3 +255,33 @@ Extract clean plaintext transcripts from previously downloaded Nobel lecture PDF
 - Use a few known English PDFs (e.g. Glück, Ishiguro) as test fixtures
 - Validate line count, formatting, and presence of content
 - Log empty or unreadable pages for review
+
+---
+
+## Task 14 – Incremental Update for Nobel Literature JSON
+
+**Goal:**
+Prevent full overwrite of `nobel_literature.json` on each scrape. Instead, merge new/updated records into the existing file.
+
+**Motivation:**
+- See NOTES.md section on Data Overwrite vs. Incremental Update.
+- Avoids loss of manual corrections or additional metadata.
+- Supports partial re-scrapes and robust downstream workflows.
+
+**Implementation Outline:**
+- On scrape, load existing JSON if present.
+- For each new record, update or add to the existing data (by year and laureate name).
+- Write back the merged result.
+- Optionally, backup the old file before writing.
+- Add/update a `last_updated` timestamp per record.
+
+**Target File:** `scraper/scrape_literature.py`
+**Status:** TODO
+
+---
+
+# Progress Update (June 2025)
+- Tasks 1–13b are COMPLETE. The codebase now robustly handles missing/empty lectures, and the utility script for noisy file cleanup is in place.
+- Task 14 (incremental update/merge for nobel_literature.json) is the next major improvement (TODO).
+
+---
