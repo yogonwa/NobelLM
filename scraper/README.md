@@ -1,5 +1,16 @@
 # Scraper Module – Nobel Laureate Speech Explorer
 
+---
+
+## June 2025 Update
+- Schema now includes `lecture_delivered` (bool) and `lecture_absence_reason` (string/null) per laureate.
+- Scraping pipeline avoids noisy files and records absence reasons in the JSON.
+- Utility script for noisy file cleanup is implemented (`utils/find_noisy_lectures.py`).
+- All scraping and cleaning tasks are complete and robust.
+- See TASKS.md and NOTES.md for incremental update/merge plan (in progress).
+
+---
+
 # Extraction functions in this module are tested in /tests/test_scraper.py
 
 This folder contains scripts for collecting and structuring Nobel Prize data from NobelPrize.org. All scraping logic for metadata, speeches, and facts is organized here.
@@ -27,12 +38,13 @@ This folder contains scripts for collecting and structuring Nobel Prize data fro
 - `declined`: Whether the prize was declined
 - `specific_work_cited`: Whether a specific work was cited
 - `cited_work`: Cited work (if specific_work_cited is true)
-- Optionally: `lecture_file`, `ceremony_file`, `acceptance_file` (paths to text files)
+- `lecture_delivered`: Whether a Nobel lecture was delivered (bool)
+- `lecture_absence_reason`: Reason if no lecture was delivered (string/null)
+- Optionally: `nobel_lecture_file`, `ceremony_file`, `acceptance_file` (paths to text files)
 
 ## Outputs
-- `data/nobel_literature.json`: Structured list of laureates and their metadata, including:
-  - full_name, gender, country, date_of_birth, date_of_death, place_of_birth, prize_motivation, life_blurb, work_blurb, language, declined, specific_work_cited, cited_work, and (optionally) file references
-- `data/nobel_lectures/{year}_{lastname}.txt`: Nobel lecture transcript files (one per laureate, extracted from PDF)
+- `data/nobel_literature.json`: Structured list of laureates and their metadata, including all fields above
+- `data/nobel_lectures/{year}_{lastname}.txt`: Nobel lecture transcript files (one per laureate, extracted from PDF or HTML)
 - `data/ceremony_speeches/{year}.txt`: Ceremony speech files (one per year)
 - `data/acceptance_speeches/{year}_{lastname}.txt`: Acceptance (banquet) speech files (one per laureate)
 
@@ -53,7 +65,12 @@ All scripts in this folder follow project conventions for modularity, logging, a
 - **Acceptance Speech:** Laureate's own banquet/acceptance speech (by laureate)
 - **Nobel Lecture:** Laureate's formal lecture (by laureate)
 
-All text is cleaned using the shared `clean_speech_text()` utility.
+## Text Cleanup
+All extracted text (lecture, ceremony, acceptance) is processed with a shared utility:
+- `clean_speech_text()` removes navigation, UI, and boilerplate noise.
+- `normalize_whitespace()` ensures no extra spaces before punctuation, collapses whitespace, and normalizes newlines for clean, readable output.
+
+All debug prints have been removed from the extraction pipeline. Outputs are now robust, production-ready, and suitable for downstream embedding and search.
 
 ## Schema Example
 ```
@@ -71,17 +88,28 @@ All text is cleaned using the shared `clean_speech_text()` utility.
       "prize_motivation": "for his poetry which endowed with freshness...",
       "life_blurb": "...",
       "work_blurb": "...",
-      "nobel_lecture_title": "...",
-      "nobel_lecture_text": "...",
-      "ceremony_speech_text": "...",
-      "acceptance_speech_text": "...",
+      "language": "Czech",
       "declined": false,
       "specific_work_cited": false,
-      "cited_work": null
+      "cited_work": null,
+      "lecture_delivered": true,
+      "lecture_absence_reason": null,
+      "nobel_lecture_file": "data/nobel_lectures/1984_seifert.txt",
+      "ceremony_file": "data/ceremony_speeches/1984.txt",
+      "acceptance_file": "data/acceptance_speeches/1984_seifert.txt"
     }
   ]
 }
 ```
 
 ## How to Run
-Run `python scraper/scrape_literature.py` from the project root. All outputs will be written to the `data/` directory. 
+Run the scraper from the project root using:
+```
+python -m scraper.scrape_literature
+```
+
+To run the noisy file cleanup utility:
+```
+python -m utils.find_noisy_lectures
+python -m utils.find_noisy_lectures --delete
+``` 
