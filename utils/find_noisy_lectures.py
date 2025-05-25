@@ -26,8 +26,14 @@ def check_noisy_file(filepath: str) -> Tuple[bool, str]:
         content = ''.join(lines).strip()
         if len(lines) == 0 or content == '':
             return True, "Empty file"
-        if lines == NOT_FOUND_TEMPLATE:
-            return True, "Not found template"
+        # Robustly check for the 'not found' template, ignoring line endings and whitespace
+        stripped_lines = [line.strip() for line in lines if line.strip()]
+        stripped_template = [line.strip() for line in NOT_FOUND_TEMPLATE if line.strip()]
+        if stripped_lines == stripped_template:
+            return True, "Not found template (robust match)"
+        # Alternatively, check for key phrases in the content
+        if HEADER_ONLY in content and "You can also use the Search" in content:
+            return True, "Not found template (content match)"
         if content == HEADER_ONLY:
             return True, "Header only ('Nobel Prizes 2024')"
     return False, ""
