@@ -158,10 +158,14 @@ Each record:
   - `category`
   - `laureate`
   - `year_awarded`
-- Store both `raw_text` (original, minimally processed) and `clean_text` (for embedding/audit).
-- Keep structured metadata fields (e.g., gender, country, declined) as top-level properties for each chunk.
-- **Do not embed metadata inside the unstructured text string.**
-- **Output:** Chunked `.jsonl` or `.json` file with tagged, cleaned segments
+  - `chunk_index`
+  - Structured fields: `gender`, `country`, `specific_work_cited`, `prize_motivation` (as tag and/or its own chunk)
+- Store a single `text` field per chunk (input files are already cleaned; no raw/clean distinction).
+- Remove `language` and `declined` from the schema (not relevant for this project).
+- Chunking logic: Accumulate paragraphs into blocks of ~300–500 words, respecting paragraph boundaries and avoiding mid-sentence splits. If a paragraph is very long, split at sentence boundaries. If the last chunk is very short, merge with the previous chunk if appropriate.
+- For short fields (`prize_motivation`, `life_blurb`, `work_blurb`), treat each as a single chunk.
+- **Output:** Chunked `.jsonl` file with tagged, cleaned segments: `data/chunks_literature_labeled.jsonl`
+- **Implementation:** See `embeddings/chunk_literature_speeches.py` for the implemented script.
 
 ### Phase 5 – Post-MVP Foundations (M5)
 - Add MCP scaffolding: session memory via `st.session_state` or dict

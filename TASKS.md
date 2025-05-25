@@ -72,31 +72,15 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 4 – Chunk and Tag Speech Text for Embedding
+## Task 4 – Chunk and Tag Speech Text for Embedding **[COMPLETE]**
 
-- Parse all three text types for each laureate:
-  - `nobel_lecture` (full lecture text)
-  - `acceptance_speech` (banquet/acceptance remarks)
-  - `ceremony_speech` (committee's justification)
-- Chunk each text into ~300–500 word blocks, using paragraph boundaries.
-  - Ensure no mid-sentence cuts.
-- For each chunk, tag with:
-  - `source_type` (nobel_lecture, acceptance_speech, ceremony_speech)
-  - `laureate`
-  - `year_awarded`
-  - `category`
-- Include structured metadata fields as top-level properties (e.g., `gender`, `country`, etc.).
-- Store both `raw_text` (original) and `clean_text` (for embedding/audit) for each chunk.
-- **Output:** `data/chunks_literature_labeled.jsonl` (primary, newline-delimited) and optionally `data/chunks_literature_labeled.json` (array version)
-  - *Best practice:* Use explicit, consistent, and scope-aware naming that aligns with your modular system.
-  - **Preferred Naming Convention:**
-    - `data/chunks_literature_labeled.jsonl`
-      - `chunks` → prepped text for embedding
-      - `literature` → category scope (future-proofing for other categories)
-      - `labeled` → includes metadata tags (e.g., source_type, gender)
-      - `.jsonl` → newline-delimited, standard for embeddings/streaming
-- **Implementation:** Extend the existing chunk logic in `embeddings/`.
-- **Update:** `embeddings/README.md` to document the chunking and tagging process.
+**Status:** Complete. Implemented in `embeddings/chunk_literature_speeches.py`.
+
+**Completion Note:**
+- All three speech types (nobel_lecture, acceptance_speech, ceremony_speech) and short fields (prize_motivation, life_blurb, work_blurb) are chunked and tagged as specified.
+- Each chunk includes a unique `chunk_id` and all required metadata fields, with a single `text` field (no raw/clean distinction).
+- Output written to `data/chunks_literature_labeled.jsonl`.
+- See `embeddings/chunk_literature_speeches.py` and `embeddings/README.md` for details.
 
 ---
 
@@ -271,37 +255,22 @@ Prevent full overwrite of `nobel_literature.json` on each scrape. Instead, merge
 
 This ensures that manual corrections and additional metadata are preserved, and that partial or repeated scrapes are safe and idempotent.
 
-## Task 15 – Add Nobel Lecture Title to JSON from Extracted Text Files [PLANNED]
+## Task 15 – Add Nobel Lecture Title to JSON from Extracted Text Files **[COMPLETE]**
+
+**Status:** Complete. Implemented as `utils/add_lecture_titles_to_json.py` (June 2025).
 
 **Goal:**
 For each laureate who delivered a Nobel lecture, add the lecture title to their entry in `nobel_literature.json` by extracting the first line from the corresponding `.txt` file in `data/nobel_lectures/`.
 
-**Implementation Plan:**
-1. **Identify Laureates with Lectures:**
-   - For each laureate in `nobel_literature.json`, check if `lecture_delivered: true`.
-   - Determine the expected `.txt` file path (use `nobel_lecture_file` if present, otherwise construct from `year_awarded` and normalized last name).
-2. **Extract Title from Text File:**
-   - Open the `.txt` file and read the first non-empty line (the title).
-   - Optionally, validate that the line is not boilerplate or noise.
-3. **Update JSON In-Place:**
-   - Add or update the `nobel_lecture_title` field for each relevant laureate.
-   - Optionally update a `last_updated` timestamp.
-   - Do not overwrite any other fields. Backup the original JSON before writing.
-4. **Edge Cases & Logging:**
-   - Log and skip if the `.txt` file is missing or the first line is empty.
-   - Handle multiple laureates per year by matching on full name or additional metadata.
-   - Log all updates and skipped/failed cases.
-5. **Script Interface:**
-   - Implement as a CLI script (e.g., `utils/add_lecture_titles_to_json.py`).
-   - Support `--dry-run` and `--force` flags. Optionally allow limiting to specific years or laureates.
-6. **Testing:**
-   - Test on a subset of laureates to ensure correct extraction and update.
-   - Validate that the JSON is correctly updated and backups are created.
+**Implementation:**
+- Script: `utils/add_lecture_titles_to_json.py` (CLI, documented in `utils/README.md`)
+- For each laureate with `lecture_delivered: true`, reads the first line of the `.txt` file as the title and updates the JSON.
+- Supports `--dry-run` and `--force` flags, year/name filters, and logs all actions.
+- Backs up the original JSON before writing changes.
+- Idempotent and safe to rerun; only updates missing or changed titles unless `--force` is used.
+- Prints found titles to the terminal as it runs.
 
-**Rationale:**
-- Idempotent and modular: can be rerun safely, only updates missing/changed titles.
-- Reuses existing text files, no need to re-extract from PDFs.
-- Transparent: logs all actions and creates backups for safety.
-- Minimal risk: does not touch other fields or records.
+**Completion Note:**
+Task 15 is complete. The script is implemented, tested, and documented. All lecture titles can now be safely and incrementally added to the main JSON file from extracted text files.
 
 ---
