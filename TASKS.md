@@ -232,10 +232,10 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 13b – Extract Text from Nobel Lecture PDFs (Detailed Implementation Plan)
+## Task 13b – Extract Text from Nobel Lecture PDFs **[COMPLETE]**
 
 **Goal:**
-Extract clean plaintext transcripts and lecture titles from previously downloaded Nobel lecture PDFs, and update the corresponding laureate entry in `nobel_literature.json` with the extracted title (merge, not overwrite).
+Extract clean plaintext transcripts and lecture titles from previously downloaded Nobel lecture PDFs, and write the cleaned text to `.txt` files. **The script does not update the corresponding laureate entry in `nobel_literature.json` with the extracted title. This is the intended and confirmed behavior.**
 
 **Implementation Steps:**
 1. **Iterate over PDFs:** For each `.pdf` in `data/nobel_lectures_pdfs/`, extract `year` and `lastname` from the filename.
@@ -243,12 +243,13 @@ Extract clean plaintext transcripts and lecture titles from previously downloade
 3. **Title Extraction:** Detect the lecture title using patterns (e.g., `Name: Title`, or a short, capitalized line). Extract the title as a separate field.
 4. **Text Extraction:** Concatenate the main essay content from the first signal page onward. Clean the text with `clean_speech_text()`.
 5. **Write .txt File:** Write the title as the first line of the `.txt` file in `data/nobel_lectures/{year}_{lastname}.txt`, followed by the essay content.
-6. **Update JSON:** Load `nobel_literature.json`, find the matching laureate by `year_awarded` and `full_name`, and update/add the `nobel_lecture_title` field only. Do not overwrite or touch other fields. Optionally update `last_updated`.
-7. **Backup and Logging:** Before writing, back up the old JSON file with a timestamp. Log extraction results, skipped pages, detected titles, and any issues.
-8. **Optional Flags:** Allow a `--force` flag to overwrite existing `.txt` files. Optionally allow deletion of PDFs after extraction.
-9. **Testing:** Use known PDFs (e.g., Glück, Ishiguro, Han) as test fixtures. Validate line count, formatting, and presence of content. Log empty or unreadable pages for review.
+6. **Logging:** Log extraction results, skipped pages, detected titles, and any issues.
+7. **Optional Flags:** Allow a `--force` flag to overwrite existing `.txt` files. Optionally allow deletion of PDFs after extraction.
+8. **Testing:** Use known PDFs (e.g., Glück, Ishiguro, Han) as test fixtures. Validate line count, formatting, and presence of content. Log empty or unreadable pages for review.
 
-This ensures robust, idempotent, and production-ready extraction and metadata update for Nobel lecture PDFs.
+**Note:** The script does **not** update `nobel_literature.json` with the lecture title. This is the intended and confirmed behavior as of June 2025.
+
+This ensures robust, idempotent, and production-ready extraction and plaintext output for Nobel lecture PDFs.
 
 ---
 
@@ -270,10 +271,37 @@ Prevent full overwrite of `nobel_literature.json` on each scrape. Instead, merge
 
 This ensures that manual corrections and additional metadata are preserved, and that partial or repeated scrapes are safe and idempotent.
 
----
+## Task 15 – Add Nobel Lecture Title to JSON from Extracted Text Files [PLANNED]
 
-# Progress Update (June 2025)
-- Tasks 1–13b are COMPLETE. The codebase now robustly handles missing/empty lectures, and the utility script for noisy file cleanup is in place.
-- Task 14 (incremental update/merge for nobel_literature.json) is the next major improvement (TODO).
+**Goal:**
+For each laureate who delivered a Nobel lecture, add the lecture title to their entry in `nobel_literature.json` by extracting the first line from the corresponding `.txt` file in `data/nobel_lectures/`.
+
+**Implementation Plan:**
+1. **Identify Laureates with Lectures:**
+   - For each laureate in `nobel_literature.json`, check if `lecture_delivered: true`.
+   - Determine the expected `.txt` file path (use `nobel_lecture_file` if present, otherwise construct from `year_awarded` and normalized last name).
+2. **Extract Title from Text File:**
+   - Open the `.txt` file and read the first non-empty line (the title).
+   - Optionally, validate that the line is not boilerplate or noise.
+3. **Update JSON In-Place:**
+   - Add or update the `nobel_lecture_title` field for each relevant laureate.
+   - Optionally update a `last_updated` timestamp.
+   - Do not overwrite any other fields. Backup the original JSON before writing.
+4. **Edge Cases & Logging:**
+   - Log and skip if the `.txt` file is missing or the first line is empty.
+   - Handle multiple laureates per year by matching on full name or additional metadata.
+   - Log all updates and skipped/failed cases.
+5. **Script Interface:**
+   - Implement as a CLI script (e.g., `utils/add_lecture_titles_to_json.py`).
+   - Support `--dry-run` and `--force` flags. Optionally allow limiting to specific years or laureates.
+6. **Testing:**
+   - Test on a subset of laureates to ensure correct extraction and update.
+   - Validate that the JSON is correctly updated and backups are created.
+
+**Rationale:**
+- Idempotent and modular: can be rerun safely, only updates missing/changed titles.
+- Reuses existing text files, no need to re-extract from PDFs.
+- Transparent: logs all actions and creates backups for safety.
+- Minimal risk: does not touch other fields or records.
 
 ---

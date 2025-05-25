@@ -64,6 +64,7 @@ All scripts in this folder follow project conventions for modularity, logging, a
 - **Ceremony Speech:** Official presentation speech by the Swedish Academy (by year)
 - **Acceptance Speech:** Laureate's own banquet/acceptance speech (by laureate)
 - **Nobel Lecture:** Laureate's formal lecture (by laureate)
+- **PDF Extraction:** The script `utils/extract_pdf_lectures.py` extracts the lecture title and main text from each PDF in `data/nobel_lectures_pdfs/` and writes the result to `data/nobel_lectures/{year}_{lastname}.txt`. **It does not update `nobel_literature.json` with the lecture title.**
 
 ## Text Cleanup
 All extracted text (lecture, ceremony, acceptance) is processed with a shared utility:

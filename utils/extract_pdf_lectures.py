@@ -1,13 +1,12 @@
 """
-Extract Nobel Lecture Titles and Main Text from PDFs, Update JSON Metadata
+Extract Nobel Lecture Titles and Main Text from PDFs
 
 CLI script for Nobel Laureate Speech Explorer.
 
 - Extracts title and main text from PDFs in data/nobel_lectures_pdfs/
 - Writes cleaned text to data/nobel_lectures/{year}_{lastname}.txt (title as first line)
-- Updates nobel_literature.json with the extracted title (merge, not overwrite)
 - Supports --limit, --files, --force, and --dry-run flags
-- Logs all actions and backs up JSON before writing
+- Logs all actions
 
 Usage:
     python -m utils.extract_pdf_lectures [--limit N] [--files file1.pdf ...] [--force] [--dry-run]
@@ -16,7 +15,6 @@ import os
 import sys
 import argparse
 import logging
-import json
 import shutil
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -25,19 +23,9 @@ import re
 
 PDF_DIR = "data/nobel_lectures_pdfs"
 TXT_DIR = "data/nobel_lectures"
-JSON_PATH = "data/nobel_literature.json"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("extract_pdf_lectures")
-
-def backup_json(json_path: str) -> Optional[str]:
-    if not os.path.exists(json_path):
-        return None
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-    backup_path = f"{json_path}.{ts}.bak"
-    shutil.copy2(json_path, backup_path)
-    logger.info(f"Backed up {json_path} to {backup_path}")
-    return backup_path
 
 def extract_title_and_text_from_pdf(pdf_path: str, lastname: str = None) -> (Optional[str], Optional[str]):
     try:
@@ -95,28 +83,6 @@ def extract_title_and_text_from_pdf(pdf_path: str, lastname: str = None) -> (Opt
         logger.error(f"Error extracting from {pdf_path}: {e}")
         return None, None
 
-def update_json_with_title(json_path: str, year: str, lastname: str, title: str, dry_run: bool = False) -> bool:
-    if not os.path.exists(json_path):
-        logger.error(f"JSON file not found: {json_path}")
-        return False
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    updated = False
-    for rec in data:
-        if str(rec.get("year_awarded")) == str(year) and lastname.lower() in rec.get("full_name", "").lower():
-            old_title = rec.get("nobel_lecture_title")
-            if old_title != title:
-                logger.info(f"Updating title for {rec['full_name']} ({year}): '{old_title}' -> '{title}'")
-                rec["nobel_lecture_title"] = title
-                rec["last_updated"] = datetime.now(timezone.utc).isoformat()
-                updated = True
-            break
-    if updated and not dry_run:
-        backup_json(json_path)
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    return updated
-
 def write_txt_file(txt_path: str, title: str, text: str, force: bool = False, dry_run: bool = False) -> bool:
     if os.path.exists(txt_path) and not force:
         logger.info(f"File exists, skipping (use --force to overwrite): {txt_path}")
@@ -168,9 +134,6 @@ def main():
             logger.warning(f"Extraction failed or too short for {pdf_file}")
             continue
         write_txt_file(txt_path, title, text, force=args.force, dry_run=args.dry_run)
-        updated = update_json_with_title(JSON_PATH, year, lastname, title, dry_run=args.dry_run)
-        if updated:
-            logger.info(f"Updated JSON for {year}_{lastname}")
     logger.info("Done.")
 
 if __name__ == "__main__":
