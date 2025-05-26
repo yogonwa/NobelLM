@@ -1,6 +1,6 @@
 # Design Notes and Open Questions – Nobel Laureate Speech Explorer
 
-*Last Edited: 5/22/25*
+*Last Edited: 6/13/25*
 
 This document tracks decisions, assumptions, and open questions that arise during implementation. Use it as a living reference to align future tasks, architectural choices, and stretch goals.
 
@@ -10,6 +10,7 @@ This document tracks decisions, assumptions, and open questions that arise durin
 - **Decision:** Use minimal wrapping — retrieved chunks will be inserted directly into prompt.
 - No strict citation format in MVP (e.g., no footnote linking). Keep answers readable.
 - **Chunks retrieved:** Top 3 based on cosine similarity.
+- **Query engine is complete and robust as of June 2025.**
 - **Optional Later:** Add quote-level references or sentence-level source mapping.
 
 ---
@@ -171,8 +172,6 @@ Currently, each run of the scraper overwrites the entire `nobel_literature.json`
 - This logic is implemented in `scraper/scrape_literature.py` as of June 2025.
 - Ensures safe, idempotent, and robust updates for downstream workflows and manual corrections.
 
----
-
 ## Recent Updates (June 2025)
 
 - **Schema Extended:**
@@ -186,8 +185,6 @@ Currently, each run of the scraper overwrites the entire `nobel_literature.json`
 - **Pipeline Robustness:**
   - The scraping pipeline is now robust to missing, empty, or non-existent lectures. All outputs are clean, deduplicated, and ready for downstream use.
 - **macOS Note:** The FAISS/embedding pipeline sets `OMP_NUM_THREADS=1` at startup to prevent segfaults with FAISS and PyTorch. This is handled automatically as of June 2025.
-
----
 
 ## Task 13b – PDF Lecture Extraction & JSON Update (Implementation Notes)
 

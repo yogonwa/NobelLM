@@ -16,3 +16,4 @@ transformers<=4.39.3
 # pandas
 # Optional: if you want to pin transformers
 # transformers>=4.41.0
+openai

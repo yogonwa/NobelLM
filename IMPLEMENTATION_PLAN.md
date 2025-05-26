@@ -2,7 +2,7 @@
 
 *This document defines the concrete build phases, technical approach, and modular execution plan for the Nobel Laureate Speech Explorer. It supports development via Cursor and tracks modular milestone execution.*
 
-*Last Edited: 5/22/25*
+*Last Edited: 6/13/25*
 
 ---
 
@@ -40,7 +40,7 @@
 - Metadata normalization + JSON/CSV export (including rich metadata fields)
 - Sentence embedding using sentence-transformers (MiniLM)
 - Vector search via FAISS
-- RAG pipeline to answer natural language queries using OpenAI
+- **RAG pipeline to answer natural language queries using OpenAI (COMPLETE)**
 - Streamlit UI to enter questions and display answers
 - Public deployment of MVP demo via Hugging Face Spaces
 - **Extract and clean Nobel Lecture transcript and title for each laureate**
@@ -140,6 +140,7 @@ Each record:
 - Retrieve top-N passages from FAISS
 - Construct prompt and call OpenAI (text-davinci or GPT-3.5)
 - Return answer and source reference
+- **Status:** COMPLETE. The query engine is implemented, tested, and documented. See `rag/query_engine.py` and `rag/README.md` for details.
 - **Output:** `query_engine.py`, returns JSON or text response
 
 ### Phase 4 – UI & Deployment (M4)
