@@ -112,17 +112,14 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 7 – Implement Query Engine
-- **File:** `rag/query_engine.py`
-- **Goal:** Given a question, return GPT-based answer using retrieved chunks
-- **Input:** User query, FAISS index
-- **Output:** JSON with answer, sources
-- **Instructions:**
-  - Retrieve top 3 chunks from FAISS
-  - Format a prompt string using those chunks (include a comment with template)
-  - Call OpenAI GPT-3.5 using API key in `.env`
-  - Handle empty or failed responses gracefully
-  - Update `rag/README.md` to document the interface and behavior of `query_engine.py`
+## Task 7 – Implement Query Engine **[COMPLETE]**
+
+**Goal:** Given a user question, return a GPT-based answer using retrieved chunks from the Nobel Literature corpus.
+
+**Status:** Complete. The query engine is implemented, tested, and documented. It supports dry run mode, metadata filtering, and robust error handling. See `rag/query_engine.py` and `rag/README.md` for usage and API details.
+
+**Input:** User query, FAISS index
+**Output:** JSON with answer and sources
 
 ---
 

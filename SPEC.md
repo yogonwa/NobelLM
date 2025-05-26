@@ -1,6 +1,6 @@
 # Project Specification – Nobel Laureate Speech Explorer
 
-*Last Edited: 5/22/25*
+*Last Edited: 6/13/25*
 
 ---
 
@@ -14,7 +14,7 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
 
 - Build modular, extensible, and maintainable code following best practices
 - Scrape and normalize NobelPrize.org metadata and speech text
-- Power semantic search and LLM-based Q&A with embeddings and RAG
+- Power semantic search and LLM-based Q&A with embeddings and RAG (COMPLETE)
 - Enable user exploration through a simple public UI
 - Lay foundations for post-MVP features (filtering, charts, memory)
 
@@ -98,7 +98,7 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
      ↓
 [Chunker + Embedding Model (MiniLM)]
      ↓
-[FAISS Index] ←→ [Query → GPT-3.5 with retrieved context]
+[FAISS Index] ←→ [Query → GPT-3.5 with retrieved context] (COMPLETE)
      ↓
 [Streamlit UI]
 ```
