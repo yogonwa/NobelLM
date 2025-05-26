@@ -99,4 +99,109 @@ Run the following command from the project root (ensure your virtual environment
 python -m embeddings.embed_texts
 ```
 
-This will read the chunked JSONL file, generate embeddings for each chunk, and write the output JSON file. Progress and errors are logged to the console. 
+This will read the chunked JSONL file, generate embeddings for each chunk, and write the output JSON file. Progress and errors are logged to the console.
+
+## Building and Querying the FAISS Index
+
+### Purpose
+This step builds a FAISS vector index for fast semantic search over Nobel Literature speech embeddings. The index enables efficient retrieval of the most relevant text chunks for a given query embedding, supporting downstream RAG and search tasks.
+
+### Input Files
+- `data/literature_embeddings.json` (output from embedding step; list of dicts with `embedding` and metadata)
+
+### Output Files
+- `data/faiss_index/index.faiss` (FAISS index file)
+- `data/faiss_index/chunk_metadata.json` (list of metadata dicts, one per chunk, excluding the embedding vector)
+
+### How to Build the Index
+Run the following command from the project root (ensure your virtual environment is active):
+
+```sh
+python -m embeddings.build_index
+```
+
+This will:
+- Load all embeddings from `data/literature_embeddings.json`
+- Normalize vectors for cosine similarity
+- Build a FAISS index (`IndexFlatIP`)
+- Save the index and metadata mapping to `data/faiss_index/`
+- Log progress and errors to the console
+
+### API: Index Build and Query Functions
+
+#### `build_index`
+```python
+def build_index(
+    embeddings_path: str = "data/literature_embeddings.json",
+    index_dir: str = "data/faiss_index/"
+) -> None:
+    """
+    Build a FAISS cosine similarity index from embedding vectors and save index + metadata mapping.
+    """
+```
+
+#### `load_index`
+```python
+def load_index(
+    index_dir: str = "data/faiss_index/"
+) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
+    """
+    Load the FAISS index and metadata mapping from disk.
+    Returns:
+        index: FAISS index object
+        metadata: List of chunk metadata dicts (excluding embeddings)
+    """
+```
+
+#### `query_index`
+```python
+def query_index(
+    index: faiss.Index,
+    metadata: List[Dict[str, Any]],
+    query_embedding: np.ndarray,
+    top_k: int = 3
+) -> List[Dict[str, Any]]:
+    """
+    Query the FAISS index and return top_k most similar chunks with metadata.
+    Args:
+        index: FAISS index object
+        metadata: List of chunk metadata dicts
+        query_embedding: 1D numpy array (should be normalized)
+        top_k: Number of results to return
+    Returns:
+        List of metadata dicts for top_k results, each with a 'score' field
+    """
+```
+
+### Example Usage
+```python
+import numpy as np
+from embeddings.build_index import load_index, query_index
+
+# Load the index and metadata
+index, metadata = load_index()
+
+# Prepare a query embedding (must be a 1D np.ndarray, normalized)
+query_embedding = np.random.rand(index.d)
+
+# Query the index for top 3 most similar chunks
+results = query_index(index, metadata, query_embedding, top_k=3)
+for r in results:
+    print(r["chunk_id"], r["score"], r["text"][:100])
+```
+
+### Notes
+- All vectors are normalized to unit length for cosine similarity.
+- The index and metadata mapping must be kept in sync; do not modify one without the other.
+- For production or multi-user scenarios, consider file locks or atomic writes.
+- All logging is handled via the `logging` module.
+
+## FAISS Index Build & Test – Task Complete
+
+The FAISS index build and test harness are now robust to macOS threading issues. The script sets OMP_NUM_THREADS=1 at startup to prevent segmentation faults when using FAISS and PyTorch together. If you encounter segfaults, this is handled automatically, but you can also set this variable manually:
+
+```sh
+export OMP_NUM_THREADS=1
+```
+
+This is only needed on macOS. On Linux, no action is required. 

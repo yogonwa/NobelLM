@@ -30,6 +30,8 @@ This document tracks decisions, assumptions, and open questions that arise durin
 - **LLM/OpenAI:**
   - Raise error with meaningful message if OpenAI API call fails.
   - Consider exponential backoff/retry strategy later.
+- **FAISS/PyTorch (macOS):**
+  - The embedding/indexing pipeline sets `OMP_NUM_THREADS=1` at startup to prevent segmentation faults due to threading conflicts. This is handled automatically as of June 2025.
 
 ---
 
@@ -183,6 +185,7 @@ Currently, each run of the scraper overwrites the entire `nobel_literature.json`
   - See below for the plan to merge new/updated records into the JSON instead of overwriting (Task 14, in progress).
 - **Pipeline Robustness:**
   - The scraping pipeline is now robust to missing, empty, or non-existent lectures. All outputs are clean, deduplicated, and ready for downstream use.
+- **macOS Note:** The FAISS/embedding pipeline sets `OMP_NUM_THREADS=1` at startup to prevent segfaults with FAISS and PyTorch. This is handled automatically as of June 2025.
 
 ---
 

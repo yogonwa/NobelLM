@@ -111,6 +111,7 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
 - Optional upgrade to `text-embedding-3-small` via OpenAI in Phase 6
 - Chunks: 300–500 words, normalized by paragraph boundaries
 - Indexed with FAISS (cosine similarity)
+- **macOS Note:** The codebase sets `OMP_NUM_THREADS=1` at startup to prevent segmentation faults when using FAISS and PyTorch together. This is handled automatically as of June 2025.
 
 ---
 

@@ -84,7 +84,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 5 – Generate Embeddings
+## Task 5 – Generate Embeddings  **[COMPLETE]**
 - **File:** `embeddings/embed_texts.py`
 - **Goal:** Generate sentence embeddings using sentence-transformers (MiniLM)
 - **Input:** Output from Task 4
@@ -98,7 +98,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 6 – Build FAISS Index
+## Task 6 – Build FAISS Index **[COMPLETE]**
 - **File:** `embeddings/build_index.py`
 - **Goal:** Build and persist FAISS vector store
 - **Input:** `literature_embeddings.json`
@@ -108,6 +108,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
   - Write reusable `load_index()` and `query_index()` functions
   - Ensure `build_index()` is CLI-runnable
   - Update `embeddings/README.md` to describe indexing and search API
+  - **Note:** The script sets `OMP_NUM_THREADS=1` at startup for macOS stability (prevents segfaults with FAISS/PyTorch). See README for troubleshooting.
 
 ---
 

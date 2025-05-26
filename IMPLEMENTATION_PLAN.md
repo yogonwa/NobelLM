@@ -132,6 +132,7 @@ Each record:
 - Generate sentence embeddings (MiniLM)
 - Save embeddings as JSON
 - Build and persist FAISS index
+- **macOS Note:** The codebase sets `OMP_NUM_THREADS=1` at startup to prevent segmentation faults when using FAISS and PyTorch together. This is handled automatically as of June 2025.
 - **Output:** `/data/literature_embeddings.json`, `/data/faiss_index/`
 
 ### Phase 3 – RAG Pipeline (M3)
