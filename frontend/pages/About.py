@@ -33,13 +33,13 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.title("About Nobel Laureate Speech Explorer")
+st.title("About NobelLM")
 
 st.markdown("""
-The **Nobel Laureate Speech Explorer** is a data-driven tool for exploring, searching, and analyzing speeches and metadata from Nobel Prize laureates, with an initial focus on Literature.
+The **NobelLM** is a data-driven tool for exploring, searching, and analyzing speeches and metadata from Nobel Prize laureates, with an initial focus on Literature.
 
 **Features:**
-- Semantic search and Q&A over a century of Nobel lectures and speeches
+- Semantic search and Q&A over a century of Nobel Laureate lectures and speeches
 - Rich metadata and source citations
 - Modern, minimalist UI
 - Powered by local embeddings, FAISS, and OpenAI (RAG)
@@ -51,9 +51,9 @@ The **Nobel Laureate Speech Explorer** is a data-driven tool for exploring, sear
 
 **Source & License:**
 - All data is public and used under fair use for educational purposes.
-- [GitHub Repository](https://github.com/your-repo) <!-- Replace with your actual repo link -->
+- [GitHub Repository](https://github.com/yogonwa/nobellm)
 
 **Contact:**
-- Maintained by the NobelLM Team
+- Maintained by Joe Gonwa
 - For questions or contributions, open an issue on GitHub.
 """) 
