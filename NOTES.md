@@ -200,3 +200,88 @@ Currently, each run of the scraper overwrites the entire `nobel_literature.json`
 - Use known PDFs as test fixtures for validation. Log empty or unreadable pages for review.
 
 This ensures robust, idempotent, and production-ready extraction and metadata update for Nobel lecture PDFs.
+
+🔍 Chunk Retrieval Strategy for RAG
+By default, the system retrieves the top 3 most similar chunks from FAISS to answer a user query. This is generally sufficient for direct or factual questions, such as:
+
+"What did [name] say about justice in their lecture?"
+
+However, it is not sufficient for broader or analytical questions like:
+
+"What are common themes in Nobel Literature lectures?"
+
+In these cases, we need to expand the context to allow GPT to reason across a wider set of voices.
+
+✅ Retrieval Strategy Guidelines
+Query Type	Recommended top_k
+Specific, factual lookup	3–5
+Comparative or thematic	10–15
+Exploratory patterns	15–20 (or summarize)
+
+🧠 Strategy Enhancements (Post-MVP)
+Dynamically infer top_k based on query intent (e.g., if it includes "themes," "patterns," "typical")
+
+Sample across demographic or metadata tags for better coverage
+
+Summarize larger sets using LLM instead of passing full context directly
+
+Implement a fallback when top results have low similarity scores
+
+---
+
+## Decision: Query/Cost Log Analytics Approach (June 2025)
+
+- **Current Approach:**
+  - All query/cost events are logged as structured JSON, one per line, to a log file or stdout.
+  - Each entry includes timestamp, user_query, model, token counts, chunk count, and estimated cost.
+- **Analysis Method:**
+  - For most needs, a simple Python script can parse the log, filter by timestamp, and aggregate counts/costs (e.g., queries in last 7d, total cost).
+  - Example: Iterate over log lines, parse JSON, filter by timestamp, sum `estimated_cost_usd`.
+- **Scalability/Future:**
+  - If analytics needs grow, import the log into SQLite or use pandas for more complex queries (e.g., breakdowns by model, time window, user, etc.).
+  - No need for a full SQL database or external analytics stack unless log volume or dashboarding needs increase significantly.
+- **Rationale:**
+  - Keeps infrastructure simple and portable for research/academic use.
+  - Easy to adapt as needs evolve.
+
+---
+
+## Source Card Expansion: Text Snippet and Full Text (Planned)
+
+### Rationale
+To improve user experience when displaying source cards in search results, we want to show a short text snippet by default, with a "Read more" option to expand and reveal the full text. This keeps the UI clean and lets users focus on relevant details.
+
+### Backend Requirements
+- The RAG system (e.g., answer_query in rag/query_engine.py) should return both a short preview and the full text for each chunk/source:
+  ```json
+  {
+    "chunk_id": "2001_naipaul_nobel_lecture_0",
+    "text_snippet": "In the beginning...",
+    "text_full": "In the beginning... (full paragraph here)",
+    ...
+  }
+  ```
+- The snippet can be the first N words/chars or a summary. The full text is the entire chunk/paragraph.
+- This requires updating the make_source function to include both fields.
+
+### Frontend Implementation
+- In the Streamlit app, display text_snippet by default for each source card.
+- If the user clicks "Read more", show text_full for that card only.
+- Use st.session_state with chunk_id to track which cards are expanded.
+- Example logic:
+  ```python
+  text_snippet = s.get("text_snippet", "").strip()
+  text_full = s.get("text_full", "").strip()
+  is_expanded = st.session_state.get(chunk_id, False)
+
+  if not is_expanded:
+      st.markdown(text_snippet)
+      if st.button(f"🔎 Read more", key=f"read_{chunk_id}"):
+          st.session_state[chunk_id] = True
+          st.rerun()
+  else:
+      st.markdown(text_full)
+  ```
+- This approach avoids nested expanders and provides a clean, scalable UX for any number of sources.
+
+---

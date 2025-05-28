@@ -123,7 +123,7 @@ _Next: See Tasks 3–10 for embedding, indexing, querying, and UI development._
 
 ---
 
-## Task 8 – Build Streamlit UI
+## Task 8 – Build Streamlit UI **[COMPLETE]**
 - **File:** `frontend/app.py`
 - **Goal:** Simple form to enter query and show answer + source citations
 - **Input:** User query
@@ -272,3 +272,29 @@ For each laureate who delivered a Nobel lecture, add the lecture title to their 
 Task 15 is complete. The script is implemented, tested, and documented. All lecture titles can now be safely and incrementally added to the main JSON file from extracted text files.
 
 ---
+
+## Task 16 – Cost Monitoring **[COMPLETE]**
+
+**Status:** Complete.
+
+**Goal:**
+Track and log token usage and estimated cost for each OpenAI API call.
+
+**File:**
+`rag/query_engine.py`
+
+**Input:**
+User query, retrieved chunks, prompt, OpenAI response
+
+**Output:**
+Logged JSON per query with token count and cost estimate
+
+**Instructions:**
+- Use `tiktoken` to estimate prompt token count before the API call.
+- Read `completion_tokens` from the OpenAI response for output count.
+- Calculate estimated cost using a model-based rate table (e.g., $0.0015/1K for gpt-3.5).
+- Log total tokens, breakdown (prompt vs completion), model, and estimated $USD.
+- Include user query and chunk count in the log output.
+- Write logs in structured JSON (to stdout or a rotating file).
+- Guard against missing `OPENAI_API_KEY` and handle errors cleanly.
+- Support dry_run mode with mocked token and cost values.
