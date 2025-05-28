@@ -1,0 +1,190 @@
+# Enhanced Retrieval & Prompting Strategy
+_Nobel Laureate Speech Explorer – Strategy Module_
+
+This document defines advanced strategies for query handling, retrieval, prompt formulation, and multi-dimensional scoring to support meta-analysis and thematic search.
+
+## Overview
+
+Current retrieval uses top-k cosine similarity search from a FAISS index of embedded speech chunks. While this works well for factual lookups, it needs refinement for analytical, thematic, and generative queries.
+
+## Query Typology & Strategy Routing
+
+A **Query Strategy Router** determines how to handle each query:
+
+| Query Type         | Description                        | Retrieval Strategy                | Prompt Strategy                        |
+|--------------------|------------------------------------|------------------------------------|----------------------------------------|
+| Factual            | Direct fact lookup                 | top_k = 5, score threshold        | Insert raw chunks                      |
+| Thematic/Analytical| Patterns, comparisons, themes      | top_k = 10–15, filter by type     | Insert more chunks or summarize them   |
+| Generative/Stylistic| Writing, mimicry, tone            | No retrieval or sample curated     | Use as stylistic primers, not anchors  |
+
+Detection methods:
+- **Rule-based:** Keywords like "theme", "style", "typical", "patterns"
+- **LLM-inferred:** (planned for post-MVP)
+
+## Retrieval Strategy
+
+### Dynamic Retrieval Configuration
+
+- **Infer `top_k` dynamically** based on query intent
+- **Optional filters:** `source_type`, `country`, `gender`, `category`
+- **Similarity score behavior:**
+  ```python
+  if intent == 'thematic':
+      use_top_k = 15
+      ignore_score_threshold = True
+  elif intent == 'factual':
+      use_top_k = 5
+      apply_score_threshold = 0.25
+  ```
+
+### Fallback Mechanisms
+- If < N chunks retrieved: relax filters or threshold
+- For thematic queries: ignore low scores to allow diverse input
+- For factual queries: maintain higher similarity threshold (e.g., > 0.3)
+
+## Prompt Engineering
+
+### Base Structure
+```
+Answer the question using only the context below...
+[Context Chunks]
+Question: [User Query]
+Answer:
+```
+
+### Query-Specific Prompting
+- **Factual Queries:** Direct insertion of most relevant chunks
+- **Thematic Queries:** 
+  - Summarize 15+ chunks before prompt
+  - Example: "Based on the following speeches, what themes emerge?"
+- **Generative Queries:**
+  - Use curated chunks as style examples
+  - Focus on tone and structure, not content
+
+## Generative & Stylistic Analysis
+
+For creative prompts (e.g., "Write in the style of a Nobel laureate"), use:
+
+### Chunk Selection Criteria
+- High sentiment scores (awe, reverence, depth)
+- Rich vocabulary and complex phrasing
+- Preferably from `source_type = nobel_lecture`
+- Sample 5–10 chunks as style primers
+
+### Implementation Notes
+- Tag chunks with style markers during preprocessing
+- Consider caching "exemplar" chunks for common style requests
+- Use embeddings to find stylistically similar passages
+
+## Multi-Dimensional Scoring
+
+Reference table for chunk analysis and filtering:
+
+| Dimension         | Description                    | Tools / Libraries                |
+|-------------------|-------------------------------|----------------------------------|
+| Sentiment         | Positive/Negative/Neutral     | transformers, nltk, VADER        |
+| Emotion           | Joy, sadness, trust, anger    | go-emotions, roberta-base        |
+| Lexical Richness  | Vocabulary diversity          | spacy, textstat                  |
+| Readability       | Grade level, complexity       | textstat                         |
+| Style Similarity  | Compare to Nobel corpus       | Vector clustering, fine-tuning   |
+| Topic Modeling    | Dominant themes               | BERTopic, KeyBERT                |
+
+These scores enable:
+- Intelligent chunk sampling
+- Style-aware retrieval
+- Theme clustering
+
+## Implementation Tasks
+
+```json
+{
+  "id": "13b",
+  "title": "Enhanced Query Routing + Prompt Framing",
+  "description": "Implement rule-based Query Strategy Router and retrieval tuning behavior based on query type. Refine prompt construction for each path.",
+  "steps": [
+    "Add rule-based intent classifier (keywords: theme, pattern, typical, style, write like)",
+    "Route query to: Factual, Thematic, or Generative paths",
+    "For Factual: Use top_k=5, apply score threshold",
+    "For Thematic: Use top_k=15, ignore threshold, optionally summarize",
+    "For Generative: Sample stylistic chunks, use as examples",
+    "Update prompt templates for each type",
+    "Expose inferred path and top_k choice in logs",
+    "Document in `rag/README.md`"
+  ],
+  "status": "Complete",
+  "priority": "High"
+}
+```
+
+---
+
+## Metadata Handler & Registry-Based Factual QA (**Complete**)
+
+### Overview
+To efficiently answer direct factual queries (e.g., "Who won in 2017?", "What country is Toni Morrison from?"), the system uses a registry-based metadata handler before invoking RAG or LLM logic.
+
+### Implementation Approach
+- **Registry Pattern:**
+  - Each factual query type is represented as a `QueryRule` with a regex pattern and a handler function.
+  - The registry (`FACTUAL_QUERY_REGISTRY`) is extensible—new rules can be added for new query types.
+- **Handlers:**
+  - Each handler extracts entities from the query, searches the metadata, and returns a formatted answer or fallback.
+  - Examples include: year of award, country, first/last laureate by gender or country, birth/death dates, prize motivation, years with no award, and more.
+- **Integration:**
+  - The main handler (`handle_metadata_query`) uses `match_query_to_handler` to find and execute the right handler for a query.
+  - If no handler matches, the system falls back to RAG.
+- **Testing:**
+  - Comprehensive unit tests cover all registry patterns, including edge cases and negative cases.
+
+### Benefits
+- **Efficiency:** Direct answers from metadata are fast and accurate, avoiding unnecessary LLM calls.
+- **Extensibility:** New factual query types can be added with minimal code changes.
+- **Transparency:** Each answer includes the rule used, aiding debugging and explainability.
+
+### Status
+- **Complete:** All planned factual patterns (A–F and more) are implemented, tested, and passing.
+- **Ready for integration:** The handler is ready to be used in the query router pipeline.
+
+---
+
+## Progress Summary
+- **Rule-based query router:** Complete and unit tested
+- **Metadata handler/registry:** Complete and unit tested
+- **Prompt template selector:** Factual template implemented; ready for thematic/generative
+- **All core factual QA logic is robust, extensible, and ready for integration**
+
+---
+
+## Next Steps
+- Integrate metadata handler into the router pipeline
+- Expand prompt templates for thematic/generative queries
+- Add logging and observability for routing decisions
+- Continue to expand registry as new factual query types are identified
+
+---
+
+## References
+
+- See `NOTES.md` for chunk retrieval strategy details
+- See `rag/query_engine.py` for current implementation
+- See project documentation for overall architecture
+
+---
+
+## Frontend Display Note: Metadata vs RAG Responses
+
+As the system now supports both direct metadata answers and RAG/LLM-generated responses, the frontend results page may need to adapt its display logic:
+- **Metadata answers** are structured, direct, and often include explicit source fields (e.g., laureate, year, country).
+- **RAG/LLM answers** are contextual, may include cited text chunks, and are generated from retrieved passages.
+
+**Recommendation:**
+- The frontend should detect the response type and display metadata answers in a concise, fact-focused card, while RAG/LLM answers may include context snippets, citations, or expandable details.
+- This distinction improves user clarity and supports future UI/UX enhancements as the system evolves.
+
+---
+
+## JSON Response: Include Answer Type
+
+To support frontend display logic and downstream analytics, the JSON answer response should include a field indicating the answer type, such as:
+- `'answer_type'`: `'factual'`, `'thematic'`, `'generative'`, `'metadata'`, or `'rag'`
+- This enables the frontend to render the appropriate UI and allows for easy tracking of which pipeline path was used for each answer.
