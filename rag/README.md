@@ -98,4 +98,63 @@ TOKENIZERS_PARALLELISM=false
 ---
 
 ## Example CLI Test
-See `rag/test_query_engine.py` for a ready-to-run test script demonstrating dry run, filtering, and real OpenAI queries. 
+See `rag/test_query_engine.py` for a ready-to-run test script demonstrating dry run, filtering, and real OpenAI queries.
+
+# Nobel Laureate Speech Explorer – RAG Module
+
+## Query Router & Intent Classification
+
+### Overview
+The query router uses a modular, extensible intent classification system to determine how to handle user queries. The first implementation is a rule-based `IntentClassifier` that assigns each query to one of three types: **factual**, **thematic/analytical**, or **generative/stylistic**. This classification determines retrieval parameters, prompt templates, and downstream logic.
+
+### Rule-Based IntentClassifier
+
+#### Query Types & Routing Logic
+
+**1. Factual Queries**
+- **Definition:** Direct, specific questions seeking a fact, quote, or short summary from one or few sources.
+- **Examples:**
+  - "What did Toni Morrison say about justice?"
+  - "When did Kazuo Ishiguro win the Nobel Prize?"
+  - "Where was Camilo José Cela born?"
+  - "Summarize the 1989 acceptance speech."
+- **Trigger Keywords:** what, when, who, where, how many, quote, summarize, give me the speech
+- **Rule:** If the query contains question words and does not include thematic or stylistic keywords → classify as factual
+- **Routing:** Search metadata store or query RAG with `top_k = 5`
+
+**2. Thematic / Analytical Queries**
+- **Definition:** Queries looking for patterns, themes, or comparisons across time, demographics, or source types.
+- **Examples:**
+  - "What are common themes in Nobel lectures?"
+  - "How have topics changed over time?"
+  - "Compare speeches from U.S. vs. European laureates."
+  - "What motifs are recurring across decades?"
+- **Trigger Keywords:** theme, themes, pattern, patterns, motif, motifs, compare, comparison, differences, similarities, trend, trends, common, typical, recurring, across, evolution
+- **Rule:** If the query includes any thematic/analytical keyword → classify as thematic
+- **Routing:** Use RAG with `top_k = 15`; optionally summarize top-k results before answering
+
+**3. Generative / Stylistic Queries**
+- **Definition:** Requests for the LLM to generate or rewrite content in the tone, voice, or style of a Nobel laureate.
+- **Examples:**
+  - "Write a speech in the style of Toni Morrison."
+  - "Compose a Nobel acceptance for a teacher."
+  - "Paraphrase this text as if written by a laureate."
+  - "Generate a motivational quote like a Nobel winner."
+- **Trigger Keywords:** in the style of, like a laureate, write me, compose, mimic, generate, paraphrase, rewrite, as if you were, as a Nobel laureate, draft, emulate
+- **Rule:** If the query includes generative or stylistic phrasing → classify as generative
+- **Routing:** Retrieve relevant high-tone chunks (manually scored or tagged); format prompt to include samples + instruction; use GPT to generate output
+
+#### Precedence
+- If a query matches multiple types, **generative** takes precedence, then **thematic**, then **factual**.
+
+#### Example Implementation
+See `IntentClassifier` in `query_router.py` for the current rule-based logic. The classifier can be extended by adding new keywords, new query types, or swapping in an LLM-based classifier for more nuanced intent detection.
+
+#### Extensibility
+- Add new keywords as user patterns emerge
+- Add new query types as needed
+- Swap in an LLM-based classifier for ambiguous or complex queries (post-MVP)
+
+---
+
+For more details, see the docstrings in `rag/query_router.py` and the [META_ANALYSIS.md](../META_ANALYSIS.md) strategy document. 
