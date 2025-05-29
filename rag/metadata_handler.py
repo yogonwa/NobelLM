@@ -120,75 +120,92 @@ def handle_first_last_country_laureate(match: re.Match, metadata: List[Dict[str,
 @dataclass
 class QueryRule:
     name: str
-    pattern: Pattern
+    patterns: List[Pattern]  # Now supports multiple patterns
     handler: Callable[[re.Match, List[Dict[str, Any]]], str]
 
-# --- Rule Registry ---
+# --- Rule Registry (multi-pattern) ---
 FACTUAL_QUERY_REGISTRY: List[QueryRule] = [
     QueryRule(
         name="award_year_by_name",
-        pattern=re.compile(r"what year did (.+?) win", re.IGNORECASE),
+        patterns=[
+            re.compile(r"what year did (.+?) win", re.IGNORECASE),
+            re.compile(r"when did (.+?) win", re.IGNORECASE),
+            re.compile(r"when was (.+?) awarded", re.IGNORECASE),
+        ],
         handler=handle_award_year
     ),
     QueryRule(
-        name="count_women_since_year",
-        pattern=re.compile(r"how many women won since (\d{4})", re.IGNORECASE),
-        handler=handle_count_women_since
-    ),
-    QueryRule(
         name="winner_in_year",
-        pattern=re.compile(r"who won (?:the )?nobel (?:prize )?(?:in literature )?in (\d{4})", re.IGNORECASE),
+        patterns=[
+            # Loosened and multi-variant patterns
+            re.compile(r"who won(?: the)?(?: nobel)?(?: prize)?(?: in literature)? in (\d{4})", re.IGNORECASE),
+            re.compile(r"who was the winner in (\d{4})", re.IGNORECASE),
+            re.compile(r"who received(?: the)?(?: nobel)?(?: prize)?(?: in literature)? in (\d{4})", re.IGNORECASE),
+            re.compile(r"winner in (\d{4})", re.IGNORECASE),
+        ],
         handler=handle_winner_in_year
     ),
     QueryRule(
-        name="most_awarded_country",
-        pattern=re.compile(r"which country has (?:won|received) the most", re.IGNORECASE),
-        handler=handle_most_awarded_country
-    ),
-    QueryRule(
         name="country_of_laureate",
-        pattern=re.compile(r"what country is ([\w .'-]+) from", re.IGNORECASE),
+        patterns=[
+            re.compile(r"what country is ([\w .'-]+) from", re.IGNORECASE),
+            re.compile(r"where is ([\w .'-]+) from", re.IGNORECASE),
+            re.compile(r"country of ([\w .'-]+)", re.IGNORECASE),
+        ],
         handler=handle_country_of_laureate
     ),
     QueryRule(
+        name="count_women_since_year",
+        patterns=[
+            re.compile(r"how many women won since (\d{4})", re.IGNORECASE),
+        ],
+        handler=handle_count_women_since
+    ),
+    QueryRule(
+        name="most_awarded_country",
+        patterns=[re.compile(r"which country has (?:won|received) the most", re.IGNORECASE)],
+        handler=handle_most_awarded_country
+    ),
+    QueryRule(
         name="first_last_gender_laureate",
-        pattern=re.compile(r"who was the (first|last) (male|female|woman|man) (?:winner|laureate)", re.IGNORECASE),
+        patterns=[re.compile(r"who was the (first|last) (male|female|woman|man) (?:winner|laureate)", re.IGNORECASE)],
         handler=handle_first_last_gender_laureate
     ),
     QueryRule(
         name="count_laureates_from_country",
-        pattern=re.compile(r"how many (?:laureates|winners) (?:are|were)? from ([\w .'-]+)", re.IGNORECASE),
+        patterns=[re.compile(r"how many (?:laureates|winners) (?:are|were)? from ([\w .'-]+)", re.IGNORECASE)],
         handler=handle_count_laureates_from_country
     ),
     QueryRule(
         name="prize_motivation_by_name",
-        pattern=re.compile(r"what (?:was|is) the (?:prize )?motivation for ([\w .'-]+)", re.IGNORECASE),
+        patterns=[re.compile(r"what (?:was|is) the (?:prize )?motivation for ([\w .'-]+)", re.IGNORECASE)],
         handler=handle_prize_motivation
     ),
     QueryRule(
         name="birth_death_date_by_name",
-        pattern=re.compile(r"when was ([\w .'-]+) (born|died)", re.IGNORECASE),
+        patterns=[re.compile(r"when was ([\w .'-]+) (born|died)", re.IGNORECASE)],
         handler=handle_birth_death_date
     ),
     QueryRule(
         name="years_with_no_award",
-        pattern=re.compile(r"(which years|years) (was|were)? (the )?nobel prize in literature (not awarded|no award)", re.IGNORECASE),
+        patterns=[re.compile(r"(which years|years) (was|were)? (the )?nobel prize in literature (not awarded|no award)", re.IGNORECASE)],
         handler=handle_years_with_no_award
     ),
     QueryRule(
         name="first_last_country_laureate",
-        pattern=re.compile(r"who was the (first|last) ([\w .'-]+) laureate", re.IGNORECASE),
+        patterns=[re.compile(r"who was the (first|last) ([\w .'-]+) laureate", re.IGNORECASE)],
         handler=handle_first_last_country_laureate
     ),
     # Add more rules here as needed
 ]
 
-# --- Query Matcher ---
+# --- Query Matcher (multi-pattern) ---
 def match_query_to_handler(query: str) -> Optional[Tuple[QueryRule, re.Match]]:
     for rule in FACTUAL_QUERY_REGISTRY:
-        match = rule.pattern.search(query)
-        if match:
-            return rule, match
+        for pattern in rule.patterns:
+            match = pattern.search(query)
+            if match:
+                return rule, match
     return None
 
 # --- Main Metadata Handler ---

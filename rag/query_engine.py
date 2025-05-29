@@ -26,6 +26,8 @@ try:
     import tiktoken
 except ImportError:
     tiktoken = None
+from rag.query_router import QueryRouter
+import json
 
 dotenv.load_dotenv()
 
@@ -319,12 +321,94 @@ def query(
         }
 
 
-def answer_query(query_string: str) -> tuple:
+# --- Load laureate metadata for QueryRouter ---
+def flatten_laureate_metadata(raw_metadata):
     """
-    Wrapper for the main query() function, returning (answer, sources) tuple for FE compatibility.
+    Flattens the nested laureate metadata into a flat list of laureate dicts.
+    Each laureate dict will include all original laureate fields plus year_awarded, category, and any other top-level fields needed for factual queries.
     """
-    result = query(query_string)
-    return result.get("answer", ""), result.get("sources", [])
+    flat = []
+    for entry in raw_metadata:
+        year = entry.get("year_awarded")
+        category = entry.get("category")
+        for laureate in entry.get("laureates", []):
+            laureate_flat = dict(laureate)
+            laureate_flat["year_awarded"] = year
+            laureate_flat["category"] = category
+            # Optionally add other top-level fields if needed
+            flat.append(laureate_flat)
+    return flat
+
+def load_laureate_metadata():
+    # Use the canonical metadata file for all laureates
+    metadata_path = os.path.join(os.path.dirname(__file__), '../data/nobel_literature.json')
+    if os.path.exists(metadata_path):
+        with open(metadata_path, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+            return flatten_laureate_metadata(raw)
+    return None
+
+
+# Initialize QueryRouter with metadata (singleton)
+LAUREATE_METADATA = load_laureate_metadata()
+if LAUREATE_METADATA is None:
+    logger.warning("Laureate metadata file not found or could not be loaded. Factual queries will fall back to RAG.")
+elif not LAUREATE_METADATA:
+    logger.warning("Laureate metadata file is empty. Factual queries will fall back to RAG.")
+else:
+    logger.info(f"Loaded laureate metadata with {len(LAUREATE_METADATA)} records.")
+QUERY_ROUTER = QueryRouter(metadata=LAUREATE_METADATA)
+
+
+def answer_query(query_string: str) -> dict:
+    """
+    Unified entry point for the frontend. Routes query via QueryRouter.
+    Returns a dict with 'answer_type', 'answer', 'metadata_answer', and 'sources'.
+    """
+    # Route the query
+    route_result = QUERY_ROUTER.route_query(query_string)
+    if route_result.answer_type == "metadata":
+        # Direct factual answer from metadata
+        return {
+            "answer_type": "metadata",
+            "answer": route_result.metadata_answer["answer"],
+            "metadata_answer": route_result.metadata_answer,
+            "sources": []
+        }
+    # Otherwise, run RAG pipeline as before
+    # (You may want to refactor this logic into a function)
+    # --- RAG retrieval ---
+    # Use retrieval_config from route_result
+    retrieval_config = route_result.retrieval_config
+    query_emb = embed_query(query_string)
+    chunks = retrieve_chunks(
+        query_emb,
+        k=retrieval_config.top_k,
+        filters=retrieval_config.filters,
+        score_threshold=retrieval_config.score_threshold or 0.0,
+        min_k=5
+    )
+    if not chunks:
+        return {
+            "answer_type": "rag",
+            "answer": "No relevant information found in the corpus.",
+            "metadata_answer": None,
+            "sources": []
+        }
+    prompt = build_prompt(chunks, query_string)
+    result = call_openai(prompt, model="gpt-3.5-turbo")
+    answer = result["answer"]
+    def make_source(chunk):
+        snippet = " ".join(chunk["text"].split()[:15]) + ("..." if len(chunk["text"].split()) > 15 else "")
+        return {
+            k: v for k, v in chunk.items() if k in ("laureate", "year_awarded", "source_type", "score", "chunk_id")
+        } | {"text_snippet": snippet}
+    return {
+        "answer_type": "rag",
+        "answer": answer,
+        "metadata_answer": None,
+        "sources": [make_source(chunk) for chunk in chunks]
+    }
 
 
 # ... existing code ... 

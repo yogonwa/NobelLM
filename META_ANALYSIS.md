@@ -188,3 +188,21 @@ As the system now supports both direct metadata answers and RAG/LLM-generated re
 To support frontend display logic and downstream analytics, the JSON answer response should include a field indicating the answer type, such as:
 - `'answer_type'`: `'factual'`, `'thematic'`, `'generative'`, `'metadata'`, or `'rag'`
 - This enables the frontend to render the appropriate UI and allows for easy tracking of which pipeline path was used for each answer.
+
+## June 2025 Update – Integration and Robustness
+
+- The metadata handler and registry are now fully integrated into the query router pipeline.
+- Laureate metadata is flattened at load time (see `flatten_laureate_metadata` in `rag/query_engine.py`), so all factual query handlers receive a flat list of laureate dicts (each with `full_name`, `year_awarded`, `country`, `category`, etc.).
+- This design ensures all factual queries are robust and prevents KeyError bugs due to schema mismatches.
+- The registry bug (mixing `pattern` and `patterns`) is fixed; all rules now use `patterns=[...]`.
+- The backend always includes an `answer_type` field in responses, allowing the frontend to distinguish between metadata and RAG answers and render them appropriately.
+- Unit tests for the metadata handler should use the flat structure; integration tests should cover both factual and RAG queries.
+- If analytics or data scripts require the original nested structure, use a separate loader or document the difference.
+
+### Remaining Work
+- Expand prompt templates for thematic and generative queries.
+- Add more logging and observability for routing decisions.
+- Ensure analytics/data scripts use the correct metadata loader for their needs.
+- Continue to expand the factual query registry as new types are identified.
+- update tests for metadata flattening function and integration test with patterns registry
+- UI tweaks to factual responses- clear input, add try again button, consider including prize motivation
