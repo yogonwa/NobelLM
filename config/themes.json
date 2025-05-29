@@ -1,0 +1,14 @@
+{
+  "justice": ["justice", "fairness", "law", "morality", "rights", "equality", "injustice"],
+  "freedom": ["freedom", "liberty", "autonomy", "oppression", "slavery"],
+  "creativity": ["creativity", "imagination", "innovation", "invention"],
+  "writing": ["writing", "author", "storytelling", "literature", "fiction", "prose"],
+  "reading": ["reading", "audience", "reader", "interpretation"],
+  "fame": ["fame", "recognition", "celebrity", "popularity"],
+  "wealth": ["wealth", "money", "materialism", "rich", "poverty", "economy"],
+  "science": ["science", "discovery", "knowledge", "curiosity", "research"],
+  "peace": ["peace", "war", "conflict", "violence", "diplomacy", "reconciliation"],
+  "truth": ["truth", "honesty", "deception", "facts", "clarity", "lies"],
+  "identity": ["identity", "self", "culture", "heritage", "roots", "history"],
+  "language": ["language", "communication", "expression", "translation", "speech"]
+} 

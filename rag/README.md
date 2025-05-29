@@ -157,4 +157,29 @@ See `IntentClassifier` in `query_router.py` for the current rule-based logic. Th
 
 ---
 
-For more details, see the docstrings in `rag/query_router.py` and the [META_ANALYSIS.md](../META_ANALYSIS.md) strategy document. 
+For more details, see the docstrings in `rag/query_router.py` and the [META_ANALYSIS.md](../META_ANALYSIS.md) strategy document.
+
+## Hybrid Thematic + Laureate-Scoped Queries (NEW)
+
+The query router now supports hybrid queries that combine a thematic concept with a specific laureate, e.g.:
+
+> "What did Toni Morrison say about justice?"
+
+- If a query contains both a thematic keyword and a Nobel laureate's name, the intent classifier returns:
+  ```python
+  {"intent": "thematic", "scoped_entity": "Toni Morrison"}
+  ```
+- The query router sets `retrieval_config.filters = {"laureate": scoped_entity}` and uses the thematic prompt template.
+- Only chunks authored by the specified laureate are retrieved and analyzed.
+- The output remains thematically formatted, but is scoped to the laureate.
+
+**Example queries:**
+- "What did Gabriel García Márquez say about solitude?"
+- "What did Bob Dylan say about music?"
+
+**Notes:**
+- Thematic queries without a laureate name still retrieve across all laureates.
+- The laureate name list is loaded from `data/nobel_literature.json`.
+- All chunk metadata includes a `laureate` field for filtering.
+
+--- 

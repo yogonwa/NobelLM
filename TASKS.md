@@ -298,3 +298,69 @@ Logged JSON per query with token count and cost estimate
 - Write logs in structured JSON (to stdout or a rotating file).
 - Guard against missing `OPENAI_API_KEY` and handle errors cleanly.
 - Support dry_run mode with mocked token and cost values.
+
+
+added 5.29.25
+### Task NN – Support Scoped Thematic Queries
+
+**File(s)**:  
+- `rag/intent_classifier.py`  
+- `rag/query_router.py`  
+- `embeddings/chunk_text.py` (if chunk metadata needs adjustment)
+
+**Goal**:  
+Handle hybrid queries where a thematic concept is asked **within the scope of a specific laureate**, e.g.:
+
+> "What did Toni Morrison say about justice?"
+
+This should retrieve only chunks authored by **Toni Morrison**, while still using the **thematic prompt template**.
+
+---
+
+**Inputs**:  
+- User query (e.g., `"What did Toni Morrison say about justice?"`)
+
+**Outputs**:  
+- Uses thematic prompt template  
+- Retrieves top-k chunks **only from the scoped laureate**
+
+---
+
+**Steps**:
+
+1. **Update Intent Classifier**
+   - If a query includes both a thematic keyword **and** a known laureate name, add a new key:
+     ```python
+     {
+       "intent": "thematic",
+       "scoped_entity": "Toni Morrison"
+     }
+     ```
+   - Use laureate name list from `nobel_literature.json` or metadata schema.
+
+2. **Update Query Router**
+   - If `intent == "thematic"` and `"scoped_entity"` is present:
+     - Set `retrieval_config.filters = {"laureate": scoped_entity}`
+     - Use thematic prompt template (no change)
+
+3. **Verify Retrieval Layer**
+   - Ensure that chunk metadata includes `"laureate"` name (full or normalized)
+   - If missing, update `chunk_text.py` to embed this field in every chunk
+
+4. **Testing**
+   - Add test queries like:
+     - `"What did Gabriel García Márquez say about solitude?"`
+     - `"What did Bob Dylan say about music?"`
+   - Confirm that:
+     - Retrieval is limited to that laureate
+     - Output remains thematically formatted
+
+5. **Docs**
+   - Update `rag/README.md` to describe the new hybrid routing behavior.
+
+---
+
+**Cursor Instructions**:  
+- Do **not** alter other routing logic or metadata unless needed.  
+- Avoid adding a new intent type unless required; prefer flag approach.  
+- Keep modules modular and follow CursorRules for metadata and naming.

@@ -60,6 +60,30 @@ st.markdown("""
         width: auto;
         display: inline-flex;
         align-items: center;
+        transition: background 0.18s;
+    }
+    .stButton > button:hover,
+    .stButton > button:active,
+    .stButton > button:focus {
+        background-color: #f4be19 !important;
+        color: #222 !important;
+        outline: none;
+    }
+    /* Style for the form submit button (Search) */
+    .stFormSubmitButton button {
+        background-color: #fff !important;
+        color: #222 !important;
+        border: 1px solid #222 !important;
+        outline: none;
+        transition: background 0.18s;
+    }
+    .stFormSubmitButton button:hover,
+    .stFormSubmitButton button:active,
+    .stFormSubmitButton button:focus {
+        background-color: #f4be19 !important;
+        color: #222 !important;
+        border: none;
+        outline: none;
     }
     .css-1v0mbdj.ef3psqc12 {
         display: flex;
@@ -179,6 +203,11 @@ if submit and query and "results_shown" not in st.session_state:
             except Exception as e:
                 st.error(f"Sorry, something went wrong. ({type(e).__name__}: {e})")
 
+# --- Helper: Reset app state ---
+def reset_app_state():
+    st.session_state.clear()
+    st.rerun()
+
 # --- Helper: Render metadata (factual) answer card ---
 def render_metadata_card(answer, metadata_answer):
     """Display a visually distinct card for factual/metadata answers."""
@@ -223,10 +252,7 @@ def render_metadata_card(answer, metadata_answer):
 
     # Clear button
     if st.button("Clear", key="clear_button"):
-        st.session_state["query"] = ""
-        st.session_state.pop("results_shown", None)
-        st.session_state.pop("response", None)
-        st.rerun()
+        reset_app_state()
 
 # --- Show results ---
 if st.session_state.get("results_shown"):
@@ -280,9 +306,7 @@ if st.session_state.get("results_shown"):
 
         # Try Again button
         if st.button("🔄 Try Again"):
-            st.session_state.clear()
-            st.session_state["query"] = ""
-            st.rerun()
+            reset_app_state()
 
 # --- Example prompts ---
 if not st.session_state.get("results_shown"):
@@ -301,10 +325,17 @@ if not st.session_state.get("results_shown"):
             "text-align: left; padding-top: 0.2em; padding-bottom: 0.2em;"
         )
         if st.button(prompt_with_emoji, key=f"suggestion_{i}", help=None, type="secondary"):
-            st.session_state.clear()
+            # Do NOT call reset_app_state() here; just set the prompt and trigger search
             st.session_state["query"] = prompt
             response = answer_query(prompt)
             st.session_state["response"] = response
             st.session_state["results_shown"] = True
             st.rerun()
         st.markdown(f"<style>div[data-testid='stButton'] > button{{ {button_style} }}</style>", unsafe_allow_html=True)
+
+# --- Home button logic ---
+query_params = st.query_params
+if query_params.get("reset", [None])[0] == "1":
+    reset_app_state()
+
+# Optionally, in your nav.py or wherever you render the Home button, link to app.py?reset=1

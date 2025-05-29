@@ -29,6 +29,8 @@ except ImportError:
 from rag.query_router import QueryRouter
 import json
 from rag.metadata_utils import flatten_laureate_metadata, load_laureate_metadata
+from rag.thematic_retriever import ThematicRetriever
+from rag.utils import format_chunks_for_prompt
 
 dotenv.load_dotenv()
 
@@ -150,8 +152,9 @@ def filter_top_chunks(chunks, score_threshold=0.25, min_return=3):
 def build_prompt(chunks: List[Dict[str, Any]], query: str) -> str:
     """
     Build a prompt for GPT-3.5 using the retrieved chunks and user query.
+    Includes chunk metadata for all query types.
     """
-    context = "\n\n".join(chunk["text"] for chunk in chunks)
+    context = format_chunks_for_prompt(chunks)
     prompt = (
         "Answer the question using only the content below. If the answer is not found, say so.\n\n"
         f"Context:\n{context}\n\n"
@@ -353,19 +356,27 @@ def answer_query(query_string: str) -> dict:
             "metadata_answer": route_result.metadata_answer,
             "sources": []
         }
-    # Otherwise, run RAG pipeline as before
-    # (You may want to refactor this logic into a function)
-    # --- RAG retrieval ---
-    # Use retrieval_config from route_result
+    # --- Modular Thematic Retrieval ---
     retrieval_config = route_result.retrieval_config
-    query_emb = embed_query(query_string)
-    chunks = retrieve_chunks(
-        query_emb,
-        k=retrieval_config.top_k,
-        filters=retrieval_config.filters,
-        score_threshold=retrieval_config.score_threshold or 0.0,
-        min_k=5
-    )
+    if route_result.intent == "thematic":
+        # Use ThematicRetriever for modular, testable logic
+        thematic_retriever = ThematicRetriever(
+            embedder=type('Embedder', (), {'get_embedding': staticmethod(embed_query)}),
+            retriever=type('Retriever', (), {'get_top_k_chunks': staticmethod(lambda emb, top_k, threshold=None, filters=None: retrieve_chunks(emb, k=top_k, filters=filters, score_threshold=0.0, min_k=5))})
+        )
+        # Pass filters if present (for scoped thematic queries)
+        chunks = thematic_retriever.retrieve(query_string, top_k=retrieval_config.top_k, filters=retrieval_config.filters)
+    else:
+        # Factual/generative: use original logic
+        embedding_input = query_string
+        query_emb = embed_query(embedding_input)
+        chunks = retrieve_chunks(
+            query_emb,
+            k=retrieval_config.top_k,
+            filters=retrieval_config.filters,
+            score_threshold=retrieval_config.score_threshold or 0.0,
+            min_k=5
+        )
     if not chunks:
         return {
             "answer_type": "rag",

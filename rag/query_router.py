@@ -18,6 +18,9 @@ from typing import Any, Dict, Optional, List
 import logging
 import re
 from rag.metadata_handler import handle_metadata_query  # Import the metadata handler
+from config.theme_reformulator import ThemeReformulator
+import json
+from rag.intent_classifier import IntentClassifier
 
 # --- RetrievalConfig ---
 @dataclass
@@ -42,74 +45,11 @@ class QueryRouteResult:
     answer_type: str  # 'metadata', 'rag', etc.
     metadata_answer: Optional[Dict[str, Any]] = None  # Only for metadata answers
 
-# --- IntentClassifier ---
-class IntentClassifier:
-    """
-    Classifies the intent of a user query (e.g., factual, thematic, generative).
-    Rule-based logic with clear keyword triggers and routing notes for each type.
-    Uses word-boundary matching for single-word keywords and substring for multi-word phrases.
-    All matching is case-insensitive.
-    """
-    # Trigger keywords for each intent type
-    FACTUAL_KEYWORDS = [
-        "what", "when", "who", "where", "how many", "quote", "summarize", "give me the speech"
-    ]
-    THEMATIC_KEYWORDS = [
-        # Single words
-        "theme", "themes", "pattern", "patterns", "motif", "motifs", "compare", "comparison",
-        "differences", "similarities", "trend", "trends", "common", "typical", "recurring", "across", "evolution",
-        "topic", "topics", "change", "changed", "changes", "over time"
-    ]
-    GENERATIVE_KEYWORDS = [
-        # Single words
-        "write", "compose", "mimic", "generate", "paraphrase", "rewrite", "draft", "emulate",
-        # Multi-word phrases
-        "in the style of", "like a laureate", "write me", "as if you were", "as a nobel laureate"
-    ]
-
-    def __init__(self):
-        # Precompile regex for single-word keywords (case-insensitive)
-        self.factual_patterns = [re.compile(rf'\b{kw}\b', re.IGNORECASE) for kw in self.FACTUAL_KEYWORDS if ' ' not in kw]
-        self.factual_phrases = [kw.lower() for kw in self.FACTUAL_KEYWORDS if ' ' in kw]
-        self.thematic_patterns = [re.compile(rf'\b{kw}\b', re.IGNORECASE) for kw in self.THEMATIC_KEYWORDS if ' ' not in kw]
-        self.thematic_phrases = [kw.lower() for kw in self.THEMATIC_KEYWORDS if ' ' in kw]
-        self.generative_patterns = [re.compile(rf'\b{kw}\b', re.IGNORECASE) for kw in self.GENERATIVE_KEYWORDS if ' ' not in kw]
-        self.generative_phrases = [kw.lower() for kw in self.GENERATIVE_KEYWORDS if ' ' in kw]
-
-    def _matches(self, query: str, patterns, phrases):
-        # Check regex patterns (single-word keywords)
-        for pat in patterns:
-            if pat.search(query):
-                return True
-        # Check multi-word phrases using simple case-insensitive substring
-        for phrase in phrases:
-            if phrase in query:
-                return True
-        return False
-
-    def classify(self, query: str) -> str:
-        """
-        Classify the query as 'generative', 'thematic', or 'factual' based on keyword rules.
-        Precedence: generative > thematic > factual.
-        """
-        q = query.lower()
-        # Generative/stylistic takes precedence
-        if self._matches(q, self.generative_patterns, self.generative_phrases):
-            return "generative"
-        # Thematic/analytical next
-        if self._matches(q, self.thematic_patterns, self.thematic_phrases):
-            return "thematic"
-        # Factual (default if question words present and not thematic/generative)
-        if self._matches(q, self.factual_patterns, self.factual_phrases):
-            return "factual"
-        # Fallback: treat as factual
-        return "factual"
-
 # --- PromptTemplateSelector ---
 class PromptTemplateSelector:
     """
     Selects the appropriate prompt template based on query intent/type.
-    Currently supports 'factual' intent. Scaffolded for future intents.
+    Supports 'factual', 'thematic', and 'generative' intents.
     """
     FACTUAL_TEMPLATE = (
         "Answer the question using only the information in the context. "
@@ -118,6 +58,40 @@ class PromptTemplateSelector:
         "{context}\n\n"
         "Question: {query}\n"
         "Answer:"
+    )
+
+    THEMATIC_TEMPLATE = (
+        """
+You are a literary analyst with expertise in thematic interpretation across historical texts.
+
+The user has asked a high-level question about Nobel Prize lectures. Your task is to analyze the excerpts below and synthesize key ideas, values, or recurring motifs across authors, time periods, and genres.
+
+User question:
+{query}
+
+Excerpts:
+{context}
+
+Instructions:
+- Identify prominent or recurring themes that appear across multiple excerpts.
+- Highlight contrasting ideas or how certain concepts evolve over time or differ by speaker.
+- Reference the speaker and year when relevant, but do not quote directly.
+- Write in clear, analytical prose — not a list or bullet points.
+"""
+    )
+
+    GENERATIVE_TEMPLATE = (
+        """
+You are a Nobel laureate speech generator. Write a creative, original response in the style of a Nobel laureate, using the context below if relevant.
+
+Context:
+{context}
+
+User request:
+{query}
+
+Response:
+"""
     )
 
     def __init__(self):
@@ -129,11 +103,10 @@ class PromptTemplateSelector:
         """
         if intent == "factual":
             return self.FACTUAL_TEMPLATE
-        # Scaffold for future intents
-        # elif intent == "thematic":
-        #     return self.THEMATIC_TEMPLATE
-        # elif intent == "generative":
-        #     return self.GENERATIVE_TEMPLATE
+        elif intent == "thematic":
+            return self.THEMATIC_TEMPLATE
+        elif intent == "generative":
+            return self.GENERATIVE_TEMPLATE
         raise ValueError(f"Unknown intent: {intent}")
 
 # --- Context Formatting Helper ---
@@ -145,6 +118,9 @@ def format_factual_context(chunks):
         f"- {c['text']} ({c['laureate']}, {c['year_awarded']})"
         for c in chunks
     )
+
+# --- Add ThemeReformulator for thematic queries ---
+THEME_REFORMULATOR = ThemeReformulator("config/themes.json")
 
 # --- QueryRouter ---
 class QueryRouter:
@@ -174,8 +150,24 @@ class QueryRouter:
         Returns a QueryRouteResult with all routing decisions and answer type.
         """
         logs = {}
-        intent = self.intent_classifier.classify(query)
+        classified = self.intent_classifier.classify(query)
+        # Support both string and dict return from classifier
+        if isinstance(classified, dict):
+            intent = classified.get("intent")
+            scoped_entity = classified.get("scoped_entity")
+        else:
+            intent = classified
+            scoped_entity = None
         logs['intent'] = intent
+        if scoped_entity:
+            logs['scoped_entity'] = scoped_entity
+
+        # --- Thematic query: extract canonical themes and expanded terms ---
+        if intent == "thematic":
+            canonical_themes = THEME_REFORMULATOR.extract_theme_keywords(query)
+            expanded_terms = THEME_REFORMULATOR.expand_query_terms(query)
+            logs['thematic_canonical_themes'] = list(canonical_themes)
+            logs['thematic_expanded_terms'] = list(expanded_terms)
 
         # Factual: Try metadata handler first if metadata is available
         if intent == "factual" and self.metadata is not None:
@@ -198,7 +190,9 @@ class QueryRouter:
         if intent == "factual":
             retrieval_config = RetrievalConfig(top_k=5, score_threshold=0.25)
         elif intent == "thematic":
-            retrieval_config = RetrievalConfig(top_k=15, score_threshold=None)
+            # If scoped_entity, filter by laureate
+            filters = {"laureate": scoped_entity} if scoped_entity else None
+            retrieval_config = RetrievalConfig(top_k=15, filters=filters, score_threshold=None)
         else:  # generative
             retrieval_config = RetrievalConfig(top_k=10, score_threshold=None)
 
