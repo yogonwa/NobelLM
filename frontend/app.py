@@ -129,62 +129,79 @@ with st.form("main_query_form", clear_on_submit=False):
 if submit and query and "results_shown" not in st.session_state:
     with st.spinner("Thinking..."):
         try:
-            answer, sources = answer_query(query)  # returns (str, List[Dict])
-            st.session_state["answer"] = answer
-            st.session_state["sources"] = sources
+            # Expect answer_query to return a dict with answer_type, answer, metadata_answer, sources
+            response = answer_query(query)
+            # Clear any old answer/sources to prevent stale display
+            st.session_state.pop("answer", None)
+            st.session_state.pop("sources", None)
+            st.session_state["response"] = response
             st.session_state["results_shown"] = True
         except Exception as e:
             st.error(f"Sorry, something went wrong. ({type(e).__name__}: {e})")
 
+# --- Helper: Render metadata (factual) answer card ---
+def render_metadata_card(answer, rule=None):
+    """Display a compact card for factual/metadata answers."""
+    st.success(answer)
+    if rule:
+        st.caption(f"Answered from Nobel metadata (Rule: {rule})")
+
 # --- Show results ---
 if st.session_state.get("results_shown"):
-    st.markdown("### Answer")
-    st.markdown(st.session_state["answer"])
+    response = st.session_state["response"]
+    if response["answer_type"] == "metadata":
+        # Render factual/metadata answer card only (no sources)
+        rule = response.get("metadata_answer", {}).get("source", {}).get("rule")
+        render_metadata_card(response["answer"], rule)
+    else:
+        # --- Existing RAG/LLM rendering (to be refactored later) ---
+        st.markdown("### Answer")
+        st.markdown(response["answer"])
 
-    st.markdown("### Sources")
-    def get_chip(source_type):
-        if source_type == "nobel_lecture":
-            return "🎓 Lecture"
-        elif source_type == "ceremony_speech":
-            return "🏅 Ceremony"
-        elif source_type == "acceptance_speech":
-            return "🗯 Speech"
-        return ""
+        st.markdown("### Sources")
+        def get_chip(source_type):
+            if source_type == "nobel_lecture":
+                return "🎓 Lecture"
+            elif source_type == "ceremony_speech":
+                return "🏅 Ceremony"
+            elif source_type == "acceptance_speech":
+                return "🗯 Speech"
+            return ""
 
-    st.markdown("""
-    <style>
-        button[kind='secondary'] {
-            font-size: 0.85rem;
-            margin-top: 0.25rem;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+            button[kind='secondary'] {
+                font-size: 0.85rem;
+                margin-top: 0.25rem;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
-    for i, s in enumerate(st.session_state["sources"]):
-        year = s.get("year_awarded", "?")
-        name = s.get("laureate", "?")
-        text = s.get("text_snippet", "").strip()
-        source_type = s.get("source_type", "")
-        chip = get_chip(source_type)
+        for i, s in enumerate(response.get("sources", [])):
+            year = s.get("year_awarded", "?")
+            name = s.get("laureate", "?")
+            text = s.get("text_snippet", "").strip()
+            source_type = s.get("source_type", "")
+            chip = get_chip(source_type)
 
-        # --- Header formatting ---
-        header_html = f"""
-        <div style='display: flex; justify-content: space-between; align-items: center;'>
-            <div><strong>{year} – {name}</strong> &nbsp;
-                <span style='background:#f0f0f0;border-radius:6px;padding:2px 6px;font-size:0.8rem;'>{chip}</span>
+            # --- Header formatting ---
+            header_html = f"""
+            <div style='display: flex; justify-content: space-between; align-items: center;'>
+                <div><strong>{year} – {name}</strong> &nbsp;
+                    <span style='background:#f0f0f0;border-radius:6px;padding:2px 6px;font-size:0.8rem;'>{chip}</span>
+                </div>
             </div>
-        </div>
-        """
+            """
 
-        with st.expander("", expanded=True):
-            st.markdown(header_html, unsafe_allow_html=True)
-            st.markdown(text)
+            with st.expander("", expanded=True):
+                st.markdown(header_html, unsafe_allow_html=True)
+                st.markdown(text)
 
-    # Try Again button
-    if st.button("🔄 Try Again"):
-        st.session_state.clear()
-        st.session_state["query"] = ""
-        st.rerun()
+        # Try Again button
+        if st.button("🔄 Try Again"):
+            st.session_state.clear()
+            st.session_state["query"] = ""
+            st.rerun()
 
 # --- Example prompts ---
 if not st.session_state.get("results_shown"):
@@ -203,9 +220,8 @@ if not st.session_state.get("results_shown"):
                 if st.button(prompt, key=f"suggestion_{i}"):
                     st.session_state.clear()
                     st.session_state["query"] = prompt
-                    answer, sources = answer_query(prompt)
-                    st.session_state["answer"] = answer
-                    st.session_state["sources"] = sources
+                    response = answer_query(prompt)
+                    st.session_state["response"] = response
                     st.session_state["results_shown"] = True
                     st.rerun()
         else:
@@ -213,8 +229,7 @@ if not st.session_state.get("results_shown"):
                 if st.button(prompt, key=f"suggestion_{i}"):
                     st.session_state.clear()
                     st.session_state["query"] = prompt
-                    answer, sources = answer_query(prompt)
-                    st.session_state["answer"] = answer
-                    st.session_state["sources"] = sources
+                    response = answer_query(prompt)
+                    st.session_state["response"] = response
                     st.session_state["results_shown"] = True
                     st.rerun()

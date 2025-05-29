@@ -24,6 +24,7 @@ This project is designed for learning, modularity, and extensibility.
 - 🗂 Structured metadata and full-text speech extraction
 - 🔎 Local embedding + FAISS vector search
 - 🤖 RAG-powered question answering with GPT-3.5
+- ⚡️ Fast, robust factual Q&A from a flat laureate metadata structure (see below)
 - 🖥 Streamlit interface for live semantic search
 - 🚀 Public deployment via Hugging Face Spaces
 
@@ -115,3 +116,8 @@ Feedback, PRs, and suggestions are always welcome!
 
 ## Testing
 Unit tests for extraction/parsing logic (e.g., HTML parsing, gender inference) are in `/tests/test_scraper.py`. Run `pytest` from the project root.
+
+- Unit tests for the metadata handler should use the flat laureate structure.
+- Integration tests should cover both factual (metadata) and RAG queries.
+
+**Backend responses now always include an `answer_type` field, which the frontend uses to render metadata vs RAG answers appropriately.**

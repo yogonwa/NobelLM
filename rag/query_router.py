@@ -14,9 +14,10 @@ All components are designed for unit and integration testing.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import logging
 import re
+from rag.metadata_handler import handle_metadata_query  # Import the metadata handler
 
 # --- RetrievalConfig ---
 @dataclass
@@ -32,12 +33,14 @@ class RetrievalConfig:
 @dataclass
 class QueryRouteResult:
     """
-    Result of routing a query, including intent, retrieval config, prompt template, and logs.
+    Result of routing a query, including intent, retrieval config, prompt template, logs, answer type, and optional metadata answer.
     """
     intent: str
     retrieval_config: RetrievalConfig
     prompt_template: str
     logs: Dict[str, Any]
+    answer_type: str  # 'metadata', 'rag', etc.
+    metadata_answer: Optional[Dict[str, Any]] = None  # Only for metadata answers
 
 # --- IntentClassifier ---
 class IntentClassifier:
@@ -146,17 +149,64 @@ def format_factual_context(chunks):
 # --- QueryRouter ---
 class QueryRouter:
     """
-    Orchestrates query classification, retrieval config selection, and prompt template selection.
+    Orchestrates query classification, retrieval config selection, prompt template selection, and metadata handler integration.
+    For factual queries, attempts to answer using metadata before falling back to RAG.
     """
     def __init__(self, 
                  intent_classifier: Optional[IntentClassifier] = None,
-                 prompt_template_selector: Optional[PromptTemplateSelector] = None):
+                 prompt_template_selector: Optional[PromptTemplateSelector] = None,
+                 metadata: Optional[List[Dict[str, Any]]] = None):
+        """
+        Initialize the QueryRouter.
+        Args:
+            intent_classifier: Optional custom intent classifier.
+            prompt_template_selector: Optional custom prompt template selector.
+            metadata: List of laureate metadata dicts for direct factual QA.
+        """
         self.intent_classifier = intent_classifier or IntentClassifier()
         self.prompt_template_selector = prompt_template_selector or PromptTemplateSelector()
+        self.metadata = metadata  # Should be set to laureate metadata externally
         # Config sources, logging, etc. can be injected here
 
     def route_query(self, query: str) -> QueryRouteResult:
         """
-        Classify the query, select retrieval config and prompt template, and return routing result.
+        Classify the query, attempt metadata answer if factual, else route to RAG.
+        Returns a QueryRouteResult with all routing decisions and answer type.
         """
-        raise NotImplementedError 
+        logs = {}
+        intent = self.intent_classifier.classify(query)
+        logs['intent'] = intent
+
+        # Factual: Try metadata handler first if metadata is available
+        if intent == "factual" and self.metadata is not None:
+            metadata_result = handle_metadata_query(query, self.metadata)
+            if metadata_result is not None:
+                logs['metadata_handler'] = 'matched'
+                logs['metadata_rule'] = metadata_result.get('source', {}).get('rule', 'unknown')
+                return QueryRouteResult(
+                    intent=intent,
+                    retrieval_config=RetrievalConfig(top_k=0),  # No retrieval needed
+                    prompt_template="",  # Not used for metadata
+                    logs=logs,
+                    answer_type="metadata",
+                    metadata_answer=metadata_result
+                )
+            else:
+                logs['metadata_handler'] = 'no_match'
+
+        # Fallback: RAG retrieval
+        if intent == "factual":
+            retrieval_config = RetrievalConfig(top_k=5, score_threshold=0.25)
+        elif intent == "thematic":
+            retrieval_config = RetrievalConfig(top_k=15, score_threshold=None)
+        else:  # generative
+            retrieval_config = RetrievalConfig(top_k=10, score_threshold=None)
+
+        prompt_template = self.prompt_template_selector.select(intent)
+        return QueryRouteResult(
+            intent=intent,
+            retrieval_config=retrieval_config,
+            prompt_template=prompt_template,
+            logs=logs,
+            answer_type="rag"
+        ) 
