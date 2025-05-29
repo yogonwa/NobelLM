@@ -16,6 +16,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import streamlit as st
 from rag.query_engine import answer_query  # You must implement this module
 import textwrap
+from PIL import Image
+from nav import render_nav
+
+# Import the country_to_flag utility
+try:
+    from utils.country_utils import country_to_flag
+except ImportError:
+    def country_to_flag(country):
+        return ""
 
 # Debug prints to diagnose import issues
 print("sys.path:", sys.path)
@@ -24,11 +33,17 @@ print("answer_query repr:", repr(answer_query))
 print("answer_query type:", type(answer_query))
 print("answer_query module:", getattr(answer_query, '__module__', None))
 
+# Load logo for favicon
+favicon_img = Image.open(os.path.join(os.path.dirname(__file__), "assets", "nobel_logo.png"))
+
 st.set_page_config(
     page_title="NobelLM",
+    page_icon=favicon_img,
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+render_nav()
 
 # --- Custom CSS to style buttons and layout ---
 st.markdown("""
@@ -37,9 +52,14 @@ st.markdown("""
         background-color: #f5f5f5;
         border: none;
         border-radius: 10px;
-        padding: 0.6rem 1.2rem;
+        padding: 0.4rem 1.2rem 0.4rem 1.2rem;
         margin: 0.2rem;
-        font-size: 0.95rem;
+        font-size: 1rem;
+        height: 2.2rem;
+        min-width: 110px;
+        width: auto;
+        display: inline-flex;
+        align-items: center;
     }
     .css-1v0mbdj.ef3psqc12 {
         display: flex;
@@ -87,19 +107,36 @@ st.markdown("""
         font-size: 0.85rem;
         margin-top: 0.25rem;
     }
+    .stPageLinkButton {
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 0.5em;
+        margin-left: 0.5em;
+        font-size: 1.05rem;
+        color: #3366cc;
+        font-weight: 400;
+        text-decoration: none;
+        transition: color 0.15s;
+        cursor: pointer;
+    }
+    .stPageLinkButton:hover {
+        color: #f7c825 !important;
+        font-weight: 400;
+        text-decoration: none;
+    }
+    .stPageLinkButton.selected, .stPageLinkButton[aria-current="page"] {
+        color: #f7c825 !important;
+        font-weight: bold !important;
+        text-decoration: underline !important;
+        background: none !important;
+        box-shadow: none !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # --- Top-right navigation links ---
-def nav_link(label, page):
-    st.markdown(f"<a href='/{page}' target='_self' class='nav-link'>{label}</a>", unsafe_allow_html=True)
-
-st.markdown("""
-    <div class='top-nav'>
-        <a href='/' target='_self' class='home-link'>Home</a>
-        <a href='/About' target='_self' class='about-link'>About</a>
-    </div>
-""", unsafe_allow_html=True)
+# Remove custom HTML/CSS nav and related CSS
 
 # --- Centered logo and title ---
 # The logo is 1024x1024, so it will be sharp at 200x200.
@@ -116,6 +153,7 @@ if "query" not in st.session_state:
     st.session_state["query"] = ""
 
 # --- Input box and search form ---
+result_placeholder = st.empty()
 with st.form("main_query_form", clear_on_submit=False):
     query = st.text_input(
         "Ask a question about Nobel Prize laureates...",
@@ -123,36 +161,79 @@ with st.form("main_query_form", clear_on_submit=False):
         label_visibility="collapsed",
         key="main_query_input"
     )
-    submit = st.form_submit_button("🔍 Search")
+    # Button aligned right using columns
+    cols = st.columns([5, 1])
+    with cols[1]:
+        submit = st.form_submit_button("🔍 Search")
 
 # --- Main query logic ---
 if submit and query and "results_shown" not in st.session_state:
-    with st.spinner("Thinking..."):
-        try:
-            # Expect answer_query to return a dict with answer_type, answer, metadata_answer, sources
-            response = answer_query(query)
-            # Clear any old answer/sources to prevent stale display
-            st.session_state.pop("answer", None)
-            st.session_state.pop("sources", None)
-            st.session_state["response"] = response
-            st.session_state["results_shown"] = True
-        except Exception as e:
-            st.error(f"Sorry, something went wrong. ({type(e).__name__}: {e})")
+    with result_placeholder.container():
+        with st.spinner("Analyzing Nobel archives..."):
+            try:
+                response = answer_query(query)
+                st.session_state.pop("answer", None)
+                st.session_state.pop("sources", None)
+                st.session_state["response"] = response
+                st.session_state["results_shown"] = True
+            except Exception as e:
+                st.error(f"Sorry, something went wrong. ({type(e).__name__}: {e})")
 
 # --- Helper: Render metadata (factual) answer card ---
-def render_metadata_card(answer, rule=None):
-    """Display a compact card for factual/metadata answers."""
-    st.success(answer)
-    if rule:
-        st.caption(f"Answered from Nobel metadata (Rule: {rule})")
+def render_metadata_card(answer, metadata_answer):
+    """Display a visually distinct card for factual/metadata answers."""
+    laureate = metadata_answer.get("laureate")
+    year = metadata_answer.get("year_awarded")
+    country = metadata_answer.get("country")
+    category = metadata_answer.get("category")
+    motivation = metadata_answer.get("prize_motivation") or None
+
+    # Remove motivation from the answer string if present
+    answer_main = answer
+    if motivation and "The laureate was recognized for:" in answer:
+        answer_main = answer.split("The laureate was recognized for:")[0].strip()
+        # Remove trailing punctuation or whitespace
+        answer_main = answer_main.rstrip('. ')
+        if answer_main:
+            answer_main += "."
+
+    flag = country_to_flag(country) if country else ""
+
+    # Build the card lines
+    lines = [
+        f"<div style='font-size:1.1em; margin-bottom:0.3em;'>🔍 {answer_main}</div>",
+    ]
+    if motivation:
+        lines.append(f"<div style='font-size:0.98em; color:#666; margin-bottom:0.3em;'>&ldquo;{motivation}&rdquo;</div>")
+    if year:
+        lines.append(f"<div style='margin-bottom:0.1em;'><strong>Year won:</strong> {year}</div>")
+    if country:
+        lines.append(f"<div style='margin-bottom:0.1em;'><strong>Country:</strong> {flag} {country}</div>")
+
+    card_html = "\n".join(lines)
+
+    st.markdown(
+        f"""
+        <div style='border-radius:12px; border:2px solid #e0e0e0; background:#f9f9f9; padding:1.2em 1.2em 1em 1.2em; margin-bottom:1em;'>
+            {card_html}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Clear button
+    if st.button("Clear", key="clear_button"):
+        st.session_state["query"] = ""
+        st.session_state.pop("results_shown", None)
+        st.session_state.pop("response", None)
+        st.rerun()
 
 # --- Show results ---
 if st.session_state.get("results_shown"):
     response = st.session_state["response"]
     if response["answer_type"] == "metadata":
-        # Render factual/metadata answer card only (no sources)
-        rule = response.get("metadata_answer", {}).get("source", {}).get("rule")
-        render_metadata_card(response["answer"], rule)
+        metadata_answer = response.get("metadata_answer", {})
+        render_metadata_card(response["answer"], metadata_answer)
     else:
         # --- Existing RAG/LLM rendering (to be refactored later) ---
         st.markdown("### Answer")
@@ -207,29 +288,23 @@ if st.session_state.get("results_shown"):
 if not st.session_state.get("results_shown"):
     st.markdown("#### Try asking")
     suggestions = [
-        "What do laureates say about justice?",
-        "Which country has won the most Nobel Prizes in Literature?",
-        "How have peace laureates addressed climate change?",
-        "What themes connect Physics and Chemistry laureates?",
-        "How have acceptance speeches evolved over the last century?",
+        "In what year did Toni Morrison win the Nobel Prize?",
+        "Who won the Nobel Prize in 1972?",
+        "How do laureates describe the creative writing process?",
+        "Draft a job acceptance email in the style of a Nobel Prize winner.",
+        "What themes are most commonly expressed in Nobel lectures?",
     ]
-    col1, col2 = st.columns(2)
     for i, prompt in enumerate(suggestions):
-        if i % 2 == 0:
-            with col1:
-                if st.button(prompt, key=f"suggestion_{i}"):
-                    st.session_state.clear()
-                    st.session_state["query"] = prompt
-                    response = answer_query(prompt)
-                    st.session_state["response"] = response
-                    st.session_state["results_shown"] = True
-                    st.rerun()
-        else:
-            with col2:
-                if st.button(prompt, key=f"suggestion_{i}"):
-                    st.session_state.clear()
-                    st.session_state["query"] = prompt
-                    response = answer_query(prompt)
-                    st.session_state["response"] = response
-                    st.session_state["results_shown"] = True
-                    st.rerun()
+        prompt_with_emoji = f"✨ {prompt}"
+        button_style = (
+            "width: 100%; margin-top: 0.1em; margin-bottom: 0.1em; font-size: 1.08em; border-radius: 12px; "
+            "text-align: left; padding-top: 0.2em; padding-bottom: 0.2em;"
+        )
+        if st.button(prompt_with_emoji, key=f"suggestion_{i}", help=None, type="secondary"):
+            st.session_state.clear()
+            st.session_state["query"] = prompt
+            response = answer_query(prompt)
+            st.session_state["response"] = response
+            st.session_state["results_shown"] = True
+            st.rerun()
+        st.markdown(f"<style>div[data-testid='stButton'] > button{{ {button_style} }}</style>", unsafe_allow_html=True)
