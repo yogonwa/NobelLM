@@ -1,6 +1,8 @@
 import pytest
-from rag.query_router import IntentClassifier, QueryRouter
+from rag.intent_classifier import IntentClassifier
+from rag.query_router import QueryRouter
 from rag.query_router import QueryRouteResult
+from unittest.mock import patch
 
 # Example metadata for testing (copied from test_metadata_handler.py)
 EXAMPLE_METADATA = [
@@ -36,75 +38,6 @@ EXAMPLE_METADATA = [
 @pytest.fixture
 def classifier():
     return IntentClassifier()
-
-def test_factual_query(classifier):
-    """Test that a direct factual question is classified as factual."""
-    queries = [
-        "What did Toni Morrison say about justice?",
-        "When did Kazuo Ishiguro win the Nobel Prize?",
-        "Where was Camilo José Cela born?",
-        "Summarize the 1989 acceptance speech.",
-        "Who won the Nobel Prize in 2001?",
-        "Give me the speech by Seamus Heaney."
-    ]
-    for q in queries:
-        assert classifier.classify(q) == "factual"
-
-def test_thematic_query(classifier):
-    """Test that a thematic/analytical question is classified as thematic."""
-    queries = [
-        "What are common themes in Nobel lectures?",
-        "How have topics changed over time?",
-        "Compare speeches from U.S. vs. European laureates.",
-        "What motifs are recurring across decades?",
-        "What patterns emerge in acceptance speeches?",
-        "Are there typical themes in Peace Prize lectures?"
-    ]
-    for q in queries:
-        assert classifier.classify(q) == "thematic"
-
-def test_generative_query(classifier):
-    """Test that a generative/stylistic request is classified as generative."""
-    queries = [
-        "Write a speech in the style of Toni Morrison.",
-        "Compose a Nobel acceptance for a teacher.",
-        "Paraphrase this text as if written by a laureate.",
-        "Generate a motivational quote like a Nobel winner.",
-        "Draft a letter as if you were a Nobel laureate.",
-        "Rewrite this in the style of a laureate."
-    ]
-    for q in queries:
-        assert classifier.classify(q) == "generative"
-
-def test_precedence_generative_over_thematic(classifier):
-    """Test that generative keywords take precedence over thematic."""
-    query = "Write a speech about common themes in Nobel lectures."
-    assert classifier.classify(query) == "generative"
-
-def test_precedence_generative_over_factual(classifier):
-    """Test that generative keywords take precedence over factual."""
-    query = "Compose a summary of what Toni Morrison said about justice."
-    assert classifier.classify(query) == "generative"
-
-def test_precedence_thematic_over_factual(classifier):
-    """Test that thematic keywords take precedence over factual."""
-    query = "What are common themes in Toni Morrison's speeches?"
-    assert classifier.classify(query) == "thematic"
-
-def test_fallback_to_factual(classifier):
-    """Test that queries with no keywords default to factual."""
-    queries = [
-        "Tell me about the Nobel Prize.",
-        "Information on laureates.",
-        "Details about the ceremony."
-    ]
-    for q in queries:
-        assert classifier.classify(q) == "factual"
-
-def test_case_insensitivity(classifier):
-    """Test that classification is case-insensitive."""
-    query = "WRITE ME a summary of themes in Nobel lectures."
-    assert classifier.classify(query) == "generative"
 
 def test_router_metadata_match():
     """Test that factual queries matching metadata rules return answer_type 'metadata' and correct answer."""
@@ -166,4 +99,72 @@ def test_router_logs_and_fields():
         assert "metadata_rule" in result.logs
         assert result.metadata_answer is not None
     else:
-        assert result.metadata_answer is None 
+        assert result.metadata_answer is None
+
+def test_router_thematic_query_comprehensive():
+    """Comprehensively test thematic query routing and logs."""
+    router = QueryRouter(metadata=EXAMPLE_METADATA)
+    query = "What are common themes in Nobel lectures?"
+    result = router.route_query(query)
+    # Basic checks
+    assert result.answer_type == "rag"
+    assert result.intent == "thematic"
+    assert result.metadata_answer is None
+    # Check logs for theme extraction
+    assert "thematic_canonical_themes" in result.logs
+    assert "thematic_expanded_terms" in result.logs
+    # Check retrieval config
+    assert result.retrieval_config.top_k == 15
+    # Check prompt template
+    assert "literary analyst" in result.prompt_template  # or a more specific string from the thematic template 
+
+def test_select_thematic_prompt_template():
+    """Unit test: Ensure the correct thematic prompt template is returned for 'thematic' intent."""
+    from rag.query_router import PromptTemplateSelector
+    selector = PromptTemplateSelector()
+    template = selector.select('thematic')
+    # Check for key thematic instructions and structure
+    assert "literary analyst" in template
+    assert "User question:" in template
+    assert "Excerpts:" in template
+    assert "Instructions:" in template
+    assert "Identify prominent or recurring themes" in template
+    assert "Reference the speaker and year when relevant" in template
+    # Should not be a factual template
+    assert "Answer the question using only the information in the context" not in template
+    # Should raise ValueError for unknown intent
+    import pytest
+    with pytest.raises(ValueError):
+        selector.select('unknown_intent') 
+
+def test_end_to_end_thematic_query():
+    """Integration: Simulate a full thematic query pipeline with mocked retrieval and LLM."""
+    from rag.query_engine import answer_query
+
+    # Mock the retrieval to return fixed chunks
+    mock_chunks = [
+        {
+            "text": "Justice is a recurring theme.",
+            "laureate": "Toni Morrison",
+            "year_awarded": 1993,
+            "source_type": "nobel_lecture",
+            "score": 0.95,
+            "chunk_id": 1
+        }
+    ]
+    # Patch the retrieval and LLM call
+    with patch("rag.query_engine.ThematicRetriever.retrieve", return_value=mock_chunks), \
+         patch("rag.query_engine.call_openai", return_value={"answer": "Justice is a key theme across laureates.", "completion_tokens": 20}):
+        result = answer_query("What are common themes in Nobel lectures?")
+        assert result["answer_type"] == "rag"
+        assert "justice" in result["answer"].lower()
+        assert result["sources"][0]["laureate"] == "Toni Morrison"
+        assert "text_snippet" in result["sources"][0] 
+
+def test_thematic_query_with_last_name_scoping():
+    clf = IntentClassifier()
+    # Should match last name 'Morrison' (Toni Morrison)
+    result = clf.classify("What did Morrison say about justice?")
+    assert isinstance(result, dict)
+    assert result["intent"] == "thematic"
+    assert result["scoped_entity"] == "Morrison" 

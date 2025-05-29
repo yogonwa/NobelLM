@@ -54,6 +54,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def parse_date_field(field: str) -> Optional[str]:
+    # Try ISO format first
+    iso_match = re.search(r"(\d{4}-\d{2}-\d{2})", field)
+    if iso_match:
+        try:
+            return datetime.strptime(iso_match.group(1), "%Y-%m-%d").date().isoformat()
+        except ValueError:
+            pass
+    # Fallback to 'day month year'
     match = re.search(r"(\d{1,2} \w+ \d{4})", field)
     if match:
         try:
