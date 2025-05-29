@@ -1,37 +1,19 @@
 import streamlit as st
+from PIL import Image
+import os
+from nav import render_nav
+
+logo_path = os.path.join(os.path.dirname(__file__), "../assets", "nobel_logo.png")
+favicon_img = Image.open(logo_path)
 
 st.set_page_config(
     page_title="About NobelLM",
+    page_icon=favicon_img,
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-st.markdown("""
-    <style>
-    .top-nav {
-        position: absolute;
-        top: 18px;
-        right: 32px;
-        z-index: 100;
-        font-size: 1rem;
-    }
-    .top-nav a {
-        margin-left: 18px;
-        color: #3366cc;
-        text-decoration: none;
-        font-weight: 500;
-    }
-    .top-nav a.active {
-        color: #222;
-        font-weight: bold;
-        text-decoration: underline;
-    }
-    </style>
-    <div class='top-nav'>
-        <a href='/' class='home-link'>Home</a>
-        <a href='/About' class='about-link'>About</a>
-    </div>
-""", unsafe_allow_html=True)
+render_nav()
 
 st.title("About NobelLM")
 
