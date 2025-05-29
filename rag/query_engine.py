@@ -28,6 +28,7 @@ except ImportError:
     tiktoken = None
 from rag.query_router import QueryRouter
 import json
+from rag.metadata_utils import flatten_laureate_metadata, load_laureate_metadata
 
 dotenv.load_dotenv()
 
@@ -321,43 +322,20 @@ def query(
         }
 
 
-# --- Load laureate metadata for QueryRouter ---
-def flatten_laureate_metadata(raw_metadata):
-    """
-    Flattens the nested laureate metadata into a flat list of laureate dicts.
-    Each laureate dict will include all original laureate fields plus year_awarded, category, and any other top-level fields needed for factual queries.
-    """
-    flat = []
-    for entry in raw_metadata:
-        year = entry.get("year_awarded")
-        category = entry.get("category")
-        for laureate in entry.get("laureates", []):
-            laureate_flat = dict(laureate)
-            laureate_flat["year_awarded"] = year
-            laureate_flat["category"] = category
-            # Optionally add other top-level fields if needed
-            flat.append(laureate_flat)
-    return flat
-
-def load_laureate_metadata():
-    # Use the canonical metadata file for all laureates
-    metadata_path = os.path.join(os.path.dirname(__file__), '../data/nobel_literature.json')
-    if os.path.exists(metadata_path):
-        with open(metadata_path, 'r', encoding='utf-8') as f:
-            raw = json.load(f)
-            return flatten_laureate_metadata(raw)
-    return None
-
-
-# Initialize QueryRouter with metadata (singleton)
-LAUREATE_METADATA = load_laureate_metadata()
-if LAUREATE_METADATA is None:
-    logger.warning("Laureate metadata file not found or could not be loaded. Factual queries will fall back to RAG.")
-elif not LAUREATE_METADATA:
-    logger.warning("Laureate metadata file is empty. Factual queries will fall back to RAG.")
-else:
-    logger.info(f"Loaded laureate metadata with {len(LAUREATE_METADATA)} records.")
-QUERY_ROUTER = QueryRouter(metadata=LAUREATE_METADATA)
+# --- QueryRouter Lazy Loader ---
+_QUERY_ROUTER = None
+def get_query_router():
+    global _QUERY_ROUTER
+    if _QUERY_ROUTER is None:
+        metadata = load_laureate_metadata()
+        if metadata is None:
+            logger.warning("Laureate metadata file not found or could not be loaded. Factual queries will fall back to RAG.")
+        elif not metadata:
+            logger.warning("Laureate metadata file is empty. Factual queries will fall back to RAG.")
+        else:
+            logger.info(f"Loaded laureate metadata with {len(metadata)} records.")
+        _QUERY_ROUTER = QueryRouter(metadata=metadata)
+    return _QUERY_ROUTER
 
 
 def answer_query(query_string: str) -> dict:
@@ -366,7 +344,7 @@ def answer_query(query_string: str) -> dict:
     Returns a dict with 'answer_type', 'answer', 'metadata_answer', and 'sources'.
     """
     # Route the query
-    route_result = QUERY_ROUTER.route_query(query_string)
+    route_result = get_query_router().route_query(query_string)
     if route_result.answer_type == "metadata":
         # Direct factual answer from metadata
         return {

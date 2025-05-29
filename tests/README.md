@@ -66,6 +66,12 @@ This directory contains unit tests for core extraction and parsing logic in the 
 
 ---
 
+## Metadata Handler & Pattern Robustness
+
+All factual query patterns in the metadata handler are now robust to extra trailing context (e.g., "Nobel Prizes in Literature") and punctuation. The test suite covers all pattern variants, including those with additional phrasing at the end of the query. The metadata flattening utility is now in `rag/metadata_utils.py` for lightweight import in tests and other modules.
+
+Test collection and execution is now fast due to modularization and lazy loading of heavy resources.
+
 ## How to Run the Tests
 
 From the project root, activate your virtual environment and run:

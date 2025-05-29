@@ -206,3 +206,13 @@ To support frontend display logic and downstream analytics, the JSON answer resp
 - Continue to expand the factual query registry as new types are identified.
 - update tests for metadata flattening function and integration test with patterns registry
 - UI tweaks to factual responses- clear input, add try again button, consider including prize motivation
+
+### July 2025 Progress – Pattern Robustness & Test Coverage
+
+- All factual query patterns in the metadata handler are now robust to extra trailing context (e.g., "Nobel Prizes in Literature") and punctuation.
+- The registry and tests cover all pattern variants, including those with additional phrasing at the end of the query.
+- The metadata flattening utility is now in `rag/metadata_utils.py` for lightweight, decoupled import in tests and other modules.
+- Test collection and execution is now fast due to modularization and lazy loading of heavy resources.
+
+## Next Steps
+- [Placeholder for further discussion]
