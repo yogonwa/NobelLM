@@ -18,6 +18,9 @@ from rag.query_engine import answer_query  # You must implement this module
 import textwrap
 from PIL import Image
 from nav import render_nav
+# --- Analytics and Logging ---
+from utils.analytics import init_plausible, track_pageview, track_event
+from utils.logger import log_query
 
 # Import the country_to_flag utility
 try:
@@ -43,7 +46,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Initialize Plausible analytics (set your domain here or use env var)
+init_plausible(os.getenv("PLAUSIBLE_DOMAIN", "nobellm-demo.hf.space"))
+
 render_nav()
+
+# Track pageview for home (main view)
+track_pageview("home")
 
 # --- Custom CSS to style buttons and layout ---
 st.markdown("""
@@ -200,8 +209,13 @@ if submit and query and "results_shown" not in st.session_state:
                 st.session_state.pop("sources", None)
                 st.session_state["response"] = response
                 st.session_state["results_shown"] = True
+                # --- Analytics and query logging ---
+                track_event("search_executed", {"query_length": len(query)})
+                log_query(query, source="home")
             except Exception as e:
                 st.error(f"Sorry, something went wrong. ({type(e).__name__}: {e})")
+                # Optionally track errors
+                track_event("error", {"type": str(type(e)), "msg": str(e)})
 
 # --- Helper: Reset app state ---
 def reset_app_state():
@@ -330,6 +344,9 @@ if not st.session_state.get("results_shown"):
             response = answer_query(prompt)
             st.session_state["response"] = response
             st.session_state["results_shown"] = True
+            # --- Analytics and query logging for suggestion button ---
+            track_event("search_executed", {"query_length": len(prompt), "source": "suggestion"})
+            log_query(prompt, source="suggestion")
             st.rerun()
         st.markdown(f"<style>div[data-testid='stButton'] > button{{ {button_style} }}</style>", unsafe_allow_html=True)
 

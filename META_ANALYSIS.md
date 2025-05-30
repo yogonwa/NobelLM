@@ -1,6 +1,13 @@
 # Enhanced Retrieval & Prompting Strategy
 _Nobel Laureate Speech Explorer – Strategy Module_
 
+**June 2025–June 2024 Progress Update:**
+- Hybrid scoped thematic queries (e.g., "What did Toni Morrison say about justice?") are now fully supported. The intent classifier detects both full and last name scoping, and the query router applies laureate filters for thematic queries as needed.
+- Modular intent classification and routing are implemented and tested, with robust test coverage for all query types and hybrid scenarios.
+- Prompt templates for factual, thematic, and generative queries are in place and used appropriately.
+- All retrieval, prompt, and frontend logic for hybrid and scoped queries is integrated and documented.
+- All related tasks (see TASKS.md Task NN and 13b) are **complete** and verified.
+
 This document defines advanced strategies for query handling, retrieval, prompt formulation, and multi-dimensional scoring to support meta-analysis and thematic search.
 
 ## Overview
@@ -150,16 +157,15 @@ To efficiently answer direct factual queries (e.g., "Who won in 2017?", "What co
 ## Progress Summary
 - **Rule-based query router:** Complete and unit tested
 - **Metadata handler/registry:** Complete and unit tested
-- **Prompt template selector:** Factual template implemented; ready for thematic/generative
-- **All core factual QA logic is robust, extensible, and ready for integration**
+- **Prompt template selector:** Factual, thematic, and generative templates implemented
+- **Hybrid scoped thematic queries:** Complete and tested
+- **All core factual QA and hybrid query logic is robust, extensible, and ready for integration**
 
 ---
 
 ## Next Steps
-- Integrate metadata handler into the router pipeline
-- Expand prompt templates for thematic/generative queries
-- Add logging and observability for routing decisions
-- Continue to expand registry as new factual query types are identified
+- [Placeholder for further discussion]
++ - All planned hybrid and scoped query features are implemented and tested. No immediate next steps required for core retrieval, routing, or prompt logic.
 
 ---
 
@@ -204,8 +210,8 @@ To support frontend display logic and downstream analytics, the JSON answer resp
 - Add more logging and observability for routing decisions.
 - Ensure analytics/data scripts use the correct metadata loader for their needs.
 - Continue to expand the factual query registry as new types are identified.
-- update tests for metadata flattening function and integration test with patterns registry
-- UI tweaks to factual responses- clear input, add try again button, consider including prize motivation
+- update tests for metadata flattening function and integration test with patterns registry [DONE]
+- UI tweaks to factual responses- clear input, consider including prize motivation [DONE]
 
 ### July 2025 Progress – Pattern Robustness & Test Coverage
 

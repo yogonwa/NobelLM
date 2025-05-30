@@ -299,9 +299,7 @@ Logged JSON per query with token count and cost estimate
 - Guard against missing `OPENAI_API_KEY` and handle errors cleanly.
 - Support dry_run mode with mocked token and cost values.
 
-
-added 5.29.25
-### Task NN – Support Scoped Thematic Queries
+### Task NN – Support Scoped Thematic Queries **[COMPLETE]**
 
 **File(s)**:  
 - `rag/intent_classifier.py`  
@@ -360,7 +358,9 @@ This should retrieve only chunks authored by **Toni Morrison**, while still usin
 
 ---
 
-**Cursor Instructions**:  
-- Do **not** alter other routing logic or metadata unless needed.  
-- Avoid adding a new intent type unless required; prefer flag approach.  
-- Keep modules modular and follow CursorRules for metadata and naming.
+**Completion Note:**
+- Intent classifier now detects both full and last name laureate scoping for thematic queries and returns a `scoped_entity`.
+- Query router applies laureate filter for such queries and uses the thematic prompt template.
+- Retrieval and prompt logic updated to support hybrid queries.
+- Comprehensive tests and documentation added.
+- All requirements for scoped thematic queries are met and verified.
