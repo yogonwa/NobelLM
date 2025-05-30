@@ -10,8 +10,16 @@ This app provides a minimalist, modern UI for querying and exploring Nobel Prize
 
 Author: NobelLM Team
 """
-import sys
+
+import subprocess
 import os
+import sys
+
+# Ensure spaCy model is available by running setup.sh
+setup_path = os.path.join(os.path.dirname(__file__), "setup.sh")
+subprocess.run(["bash", setup_path], check=True)
+
+# Now continue with the rest of the app setup
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import streamlit as st
 from rag.query_engine import answer_query  # You must implement this module
@@ -22,7 +30,6 @@ from frontend.nav import render_nav
 from utils.analytics import init_plausible, track_pageview, track_event
 from utils.logger import log_query
 import spacy
-import subprocess
 
 # Import the country_to_flag utility
 try:
@@ -60,7 +67,7 @@ track_pageview("home")
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    # setup.sh handles this now
     nlp = spacy.load("en_core_web_sm")
 
 # --- Custom CSS to style buttons and layout ---
