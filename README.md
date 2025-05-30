@@ -4,15 +4,16 @@ emoji: 📚
 colorFrom: blue
 colorTo: indigo
 sdk: streamlit
+sdk_version: 1.32.0
 app_file: app.py
 pinned: false
 ---
 
+[![Hugging Face Spaces](https://img.shields.io/badge/Live%20Demo-Hugging%20Face%20Spaces-blue?logo=huggingface)](https://huggingface.co/spaces/yogonwa/nobelLM)
 
+**Live Demo:** [https://huggingface.co/spaces/yogonwa/nobelLM](https://huggingface.co/spaces/yogonwa/nobelLM)
 
 # NobelLM
-
-
 
 **Semantic search + Retrieval-Augmented Generation (RAG) for Nobel Prize speeches**  
 Explore the words of Nobel laureates through embeddings, vector search, and a lightweight Streamlit UI.
@@ -27,6 +28,7 @@ NobelLM is a modular, full-stack GenAI project that:
 - Embeds speech content using sentence-transformers (MiniLM)
 - Supports natural language Q&A via RAG using OpenAI's GPT-3.5
 - Exposes a simple interactive UI powered by Streamlit
+- **Is publicly deployed and accessible via Hugging Face Spaces: [Live Demo](https://huggingface.co/spaces/yogonwa/nobelLM)**
 - Deploys publicly via Hugging Face Spaces
 
 This project is designed for learning, modularity, and extensibility.

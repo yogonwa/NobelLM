@@ -75,6 +75,7 @@ st.markdown("""
     <style>
     .stButton > button {
         background-color: #f5f5f5;
+        color: var(--text-color, #222) !important;
         border: none;
         border-radius: 10px;
         padding: 0.4rem 1.2rem 0.4rem 1.2rem;
@@ -91,13 +92,21 @@ st.markdown("""
     .stButton > button:active,
     .stButton > button:focus {
         background-color: #f4be19 !important;
-        color: #222 !important;
+        color: var(--text-color, #222) !important;
         outline: none;
+    }
+    @media (prefers-color-scheme: dark) {
+        .stButton > button:hover,
+        .stButton > button:active,
+        .stButton > button:focus {
+            background-color: #ffe066 !important;
+            color: var(--text-color, #222) !important;
+        }
     }
     /* Style for the form submit button (Search) */
     .stFormSubmitButton button {
         background-color: #fff !important;
-        color: #222 !important;
+        color: var(--text-color, #222) !important;
         border: 1px solid #222 !important;
         outline: none;
         transition: background 0.18s;
@@ -106,9 +115,17 @@ st.markdown("""
     .stFormSubmitButton button:active,
     .stFormSubmitButton button:focus {
         background-color: #f4be19 !important;
-        color: #222 !important;
+        color: var(--text-color, #222) !important;
         border: none;
         outline: none;
+    }
+    @media (prefers-color-scheme: dark) {
+        .stFormSubmitButton button:hover,
+        .stFormSubmitButton button:active,
+        .stFormSubmitButton button:focus {
+            background-color: #ffe066 !important;
+            color: var(--text-color, #222) !important;
+        }
     }
     .css-1v0mbdj.ef3psqc12 {
         display: flex;

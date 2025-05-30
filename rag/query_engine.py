@@ -18,7 +18,7 @@ import logging
 from typing import List, Dict, Optional, Any
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from embeddings.build_index import load_index, query_index as faiss_query
+from embeddings.build_index import query_index as faiss_query
 import threading
 import dotenv
 from utils.cost_logger import log_cost_event
@@ -28,9 +28,10 @@ except ImportError:
     tiktoken = None
 from rag.query_router import QueryRouter
 import json
-from rag.metadata_utils import flatten_laureate_metadata, load_laureate_metadata
+from rag.metadata_utils import flatten_laureate_metadata
 from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
+from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 
 dotenv.load_dotenv()
 
@@ -74,7 +75,7 @@ def get_index_and_metadata(index_dir: str = "data/faiss_index/"):
         with _INDEX_LOCK:
             if _INDEX is None or _METADATA is None:
                 logger.info(f"Loading FAISS index and metadata from '{index_dir}'...")
-                _INDEX, _METADATA = load_index(index_dir)
+                _INDEX, _METADATA = get_faiss_index_and_metadata()
     return _INDEX, _METADATA
 
 
@@ -330,7 +331,7 @@ _QUERY_ROUTER = None
 def get_query_router():
     global _QUERY_ROUTER
     if _QUERY_ROUTER is None:
-        metadata = load_laureate_metadata()
+        metadata = get_flattened_metadata()
         if metadata is None:
             logger.warning("Laureate metadata file not found or could not be loaded. Factual queries will fall back to RAG.")
         elif not metadata:
