@@ -3,7 +3,7 @@ from PIL import Image
 import os
 from frontend.nav import render_nav
 
-logo_path = os.path.join(os.path.dirname(__file__), "../assets", "nobel_logo.png")
+logo_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "assets", "nobel_logo.png")
 favicon_img = Image.open(logo_path)
 
 st.set_page_config(
