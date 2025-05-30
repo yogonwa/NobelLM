@@ -1,4 +1,18 @@
+---
+title: NobelLM
+emoji: 📚
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+app_file: app.py
+pinned: false
+---
+
+
+
 # NobelLM
+
+
 
 **Semantic search + Retrieval-Augmented Generation (RAG) for Nobel Prize speeches**  
 Explore the words of Nobel laureates through embeddings, vector search, and a lightweight Streamlit UI.
