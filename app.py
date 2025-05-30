@@ -21,6 +21,8 @@ from frontend.nav import render_nav
 # --- Analytics and Logging ---
 from utils.analytics import init_plausible, track_pageview, track_event
 from utils.logger import log_query
+import spacy
+import subprocess
 
 # Import the country_to_flag utility
 try:
@@ -53,6 +55,13 @@ render_nav()
 
 # Track pageview for home (main view)
 track_pageview("home")
+
+# Ensure en_core_web_sm is available
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    nlp = spacy.load("en_core_web_sm")
 
 # --- Custom CSS to style buttons and layout ---
 st.markdown("""
@@ -318,8 +327,8 @@ if st.session_state.get("results_shown"):
                 st.markdown(header_html, unsafe_allow_html=True)
                 st.markdown(text)
 
-        # Try Again button
-        if st.button("🔄 Try Again"):
+        # Clear button (consistent with factual results)
+        if st.button("Clear", key="clear_button_llm"):
             reset_app_state()
 
 # --- Example prompts ---
