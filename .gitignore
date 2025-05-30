@@ -173,4 +173,10 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-data/
+# Ignore all data by default
+/data/
+
+# But do NOT ignore the FAISS index and chunk metadata files
+!data/faiss_index/
+!data/faiss_index/index.faiss
+!data/faiss_index/chunk_metadata.jsonl
