@@ -1,0 +1,2 @@
+data/literature_embeddings.json filter=lfs diff=lfs merge=lfs -text
+frontend/assets/nobel_logo.png filter=lfs diff=lfs merge=lfs -text
