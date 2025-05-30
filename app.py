@@ -17,7 +17,7 @@ import streamlit as st
 from rag.query_engine import answer_query  # You must implement this module
 import textwrap
 from PIL import Image
-from nav import render_nav
+from frontend.nav import render_nav
 # --- Analytics and Logging ---
 from utils.analytics import init_plausible, track_pageview, track_event
 from utils.logger import log_query
@@ -37,7 +37,7 @@ print("answer_query type:", type(answer_query))
 print("answer_query module:", getattr(answer_query, '__module__', None))
 
 # Load logo for favicon
-favicon_img = Image.open(os.path.join(os.path.dirname(__file__), "assets", "nobel_logo.png"))
+favicon_img = Image.open(os.path.join(os.path.dirname(__file__), "frontend", "assets", "nobel_logo.png"))
 
 st.set_page_config(
     page_title="NobelLM",
@@ -173,7 +173,7 @@ st.markdown("""
 
 # --- Centered logo and title ---
 # The logo is 1024x1024, so it will be sharp at 200x200.
-logo_path = os.path.join(os.path.dirname(__file__), "assets", "nobel_logo.png")
+logo_path = os.path.join(os.path.dirname(__file__), "frontend", "assets", "nobel_logo.png")
 st.image(logo_path, width=200)
 st.markdown("## **NobelLM**", unsafe_allow_html=True)
 st.markdown(

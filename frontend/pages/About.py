@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 import os
-from nav import render_nav
+from frontend.nav import render_nav
 
 logo_path = os.path.join(os.path.dirname(__file__), "../assets", "nobel_logo.png")
 favicon_img = Image.open(logo_path)
