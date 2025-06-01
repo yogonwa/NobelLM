@@ -285,3 +285,68 @@ To improve user experience when displaying source cards in search results, we wa
 - This approach avoids nested expanders and provides a clean, scalable UX for any number of sources.
 
 ---
+
+# Future Vision: Overlapping Chunks for Embedding
+
+## 📌 Overview
+
+As part of future improvements to the Nobel Literature Speech Explorer, we plan to support **overlapping chunking** during the embedding phase. This technique improves semantic recall and contextual coherence, particularly for long, nuanced content such as lectures and speeches.
+
+---
+
+## ✅ Benefits
+
+- **Improved Contextual Coherence**  
+  Prevents important ideas from being split between chunks.
+
+- **Higher Recall in Semantic Search**  
+  Increases the likelihood that relevant text is retrieved, especially for queries straddling chunk boundaries.
+
+- **Robustness via Redundancy**  
+  Key concepts appear in multiple chunks, increasing surface area for matching queries.
+
+- **Less Sensitivity to Chunk Boundaries**  
+  Reduces risk of edge-case misses due to imperfect paragraph segmentation.
+
+---
+
+## ⚠️ Tradeoffs
+
+- **Increased Embedding Volume**  
+  More chunks = more tokens = higher compute cost (especially for paid APIs like OpenAI).
+
+- **Larger Vector Index**  
+  Increases memory and storage requirements for FAISS or similar databases.
+
+- **Slower Ingestion Time**  
+  More pre-processing, I/O, and embedding operations.
+
+- **Possible Redundancy in Search Results**  
+  Similar or duplicated results may surface unless reranking is applied.
+
+---
+
+## 🔍 Use Cases
+
+| Use Case                                     | Overlap Recommended? |
+|----------------------------------------------|------------------------|
+| Nobel lectures / long-form speeches           | ✅ Yes                 |
+| Metadata, blurbs, or short factual segments   | ❌ No                  |
+| MVP with strict token/computation budget      | ⚠️ Optional            |
+| Production-ready search experience            | ✅ Yes                 |
+
+---
+
+## 🚧 Implementation (Post-MVP)
+
+We plan to implement a chunking strategy with overlap after MVP launch. A possible configuration:
+
+- `max_tokens = 250`
+- `stride = 125` (50% overlap)
+- Configurable toggle: `--use-overlap` for scripts
+
+This will be modularized to allow selective use per source type (lecture, ceremony, etc.).
+
+---
+
+## Status: 📅 **Deferred until Post-MVP**

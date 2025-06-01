@@ -5,12 +5,39 @@
 This module provides a modular, extensible, and testable interface for querying the Nobel Literature corpus using retrieval-augmented generation (RAG).
 
 ## Features
-- Embeds user queries using MiniLM (all-MiniLM-L6-v2)
-- Retrieves top-k relevant chunks from FAISS index
+- Embeds user queries using a **model-aware, config-driven approach** (BGE-Large or MiniLM, easily swappable)
+- Retrieves top-k relevant chunks from the correct FAISS index (model-specific)
 - Supports metadata filtering (e.g., by country, source_type)
 - Constructs prompts for GPT-3.5
 - Calls OpenAI API (with dry run mode)
 - Returns answer and source metadata
+
+---
+
+## Model-Aware Configuration
+
+All RAG and embedding logic is now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in [`rag/model_config.py`](./model_config.py):
+
+- To swap models (e.g., BGE-Large vs MiniLM), pass `model_id` to the query or embedding functions, or change the default in the config.
+- All file paths, model names, and embedding dimensions are set in one place.
+- Consistency checks ensure the loaded model and index match in dimension, preventing silent errors.
+- Enables easy A/B testing and reproducibility.
+
+**Example:**
+```python
+from rag.query_engine import query
+from rag.model_config import DEFAULT_MODEL_ID
+
+# Query using the default model (BGE-Large)
+response = query("What do laureates say about justice?", dry_run=True)
+
+# Query using MiniLM
+response = query("What do laureates say about justice?", dry_run=True, model_id="miniLM")
+```
+
+**To add a new model:**
+- Add its config to `rag/model_config.py`.
+- All downstream code will pick it up automatically.
 
 ---
 
@@ -28,32 +55,29 @@ def query(
     filters: Optional[Dict[str, Any]] = None,
     dry_run: bool = False,
     k: int = 3,
-    score_threshold: float = 0.25
+    score_threshold: float = 0.25,
+    model_id: str = None
 ) -> Dict[str, Any]:
     """
     Orchestrate the query pipeline: embed, retrieve, filter, prompt, and answer.
+    Model-aware: uses the embedding model, index, and metadata for the specified model_id.
     Returns a dict with 'answer' and 'sources'.
     """
 ```
 
 #### Example Usage
 ```python
-# Simple query (dry run)
+# Simple query (dry run, default model)
 response = query("What do laureates say about justice?", dry_run=True)
 print(response["answer"])
 print(response["sources"])
 
-# Filtered query (e.g., only USA Nobel lectures)
+# Query with MiniLM
 response = query(
     "What do USA winners talk about in their lectures?",
     filters={"country": "USA", "source_type": "nobel_lecture"},
-    dry_run=True
-)
-
-# Real OpenAI call (requires API key)
-response = query(
-    "How do laureates describe the role of literature in society?",
-    dry_run=False
+    dry_run=True,
+    model_id="miniLM"
 )
 ```
 
@@ -77,6 +101,13 @@ response = query(
 
 ---
 
+## Model Consistency & Safety
+- The pipeline checks that the loaded model and FAISS index have matching embedding dimensions.
+- If there is a mismatch, a clear error is raised.
+- This prevents silent failures and ensures reliable, reproducible results.
+
+---
+
 ## Environment Variables
 - `OPENAI_API_KEY` – Your OpenAI API key (required for real queries)
 - `TOKENIZERS_PARALLELISM=false` – (Optional) Suppress HuggingFace tokenizers parallelism warning
@@ -94,6 +125,10 @@ TOKENIZERS_PARALLELISM=false
 - Filtering supports any metadata field present in your chunk index (e.g., country, source_type).
 - The engine loads the embedding model and FAISS index only once per process for efficiency.
 - Errors and warnings are logged using Python's logging module.
+- **All chunking and embedding outputs are model-specific:**
+  - `/data/chunks_literature_labeled_{model}.jsonl` (token-based, model-aware chunks)
+  - `/data/literature_embeddings_{model}.json` (JSON array, each object contains chunk metadata and embedding vector)
+  - `/data/faiss_index_{model}/index.faiss` and `/data/faiss_index_{model}/chunk_metadata.jsonl`
 
 ---
 

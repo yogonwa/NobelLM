@@ -25,7 +25,7 @@ Explore the words of Nobel laureates through embeddings, vector search, and a li
 NobelLM is a modular, full-stack GenAI project that:
 
 - Scrapes and normalizes NobelPrize.org metadata and speeches (starting with the Literature category)
-- Embeds speech content using sentence-transformers (MiniLM)
+- Embeds speech content using sentence-transformers (MiniLM or BGE-Large, model-aware)
 - Supports natural language Q&A via RAG using OpenAI's GPT-3.5
 - Exposes a simple interactive UI powered by Streamlit
 - **Is publicly deployed and accessible via Hugging Face Spaces: [Live Demo](https://huggingface.co/spaces/yogonwa/nobelLM)**
@@ -43,6 +43,36 @@ This project is designed for learning, modularity, and extensibility.
 - ⚡️ Fast, robust factual Q&A from a flat laureate metadata structure (see below)
 - 🖥 Streamlit interface for live semantic search
 - 🚀 Public deployment via Hugging Face Spaces
+- 📦 **Model-aware, token-based chunking with optional overlap for context continuity**
+- 🧩 **Embeddings generated for each chunk using BGE-Large or MiniLM; outputs are model-specific**
+- 🛠️ **Centralized model config for easy model switching and reproducibility**
+
+---
+
+## 🛠️ Model-Aware Configuration
+
+All chunking, embedding, indexing, and RAG operations are now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in [`rag/model_config.py`](./rag/model_config.py):
+
+- To switch models (e.g., BGE-Large vs MiniLM), pass `--model` to any CLI tool, or set `model_id` in your code or UI.
+- All file paths, model names, and embedding dimensions are set in one place.
+- Consistency checks ensure the loaded model and index match in dimension, preventing silent errors.
+- Enables easy A/B testing and reproducibility.
+
+**Example:**
+```python
+from rag.query_engine import query
+from rag.model_config import DEFAULT_MODEL_ID
+
+# Query using the default model (BGE-Large)
+response = query("What do laureates say about justice?", dry_run=True)
+
+# Query using MiniLM
+response = query("What do laureates say about justice?", dry_run=True, model_id="miniLM")
+```
+
+**To add a new model:**
+- Add its config to `rag/model_config.py`.
+- All downstream code and scripts will pick it up automatically.
 
 ---
 
@@ -64,14 +94,14 @@ NobelLM/
 ├── TASKS.md
 ├── NOTES.md
 ├── .cursorrules          # Cursor AI execution rules
-
+```
 
 ## ⚙️ Tech Stack
 
 - **Language**: Python 3.11+
 - **Scraping**: `requests`, `beautifulsoup4`
 - **Text Parsing**: `PyMuPDF`, custom HTML/text cleaning
-- **Embeddings**: `sentence-transformers` (MiniLM model), upgradeable to OpenAI `text-embedding-3-small`
+- **Embeddings**: `sentence-transformers` (MiniLM or BGE-Large, model-aware chunking), upgradeable to OpenAI `text-embedding-3-small`
 - **Vector Store**: `FAISS` (cosine similarity, local CPU)
 - **Frontend**: `Streamlit` (hosted on Hugging Face Spaces)
 - **Testing**: `pytest`
@@ -84,14 +114,14 @@ NobelLM/
 | Phase | Description |
 |-------|-------------|
 | **M1** | Scrape and normalize Nobel Literature data |
-| **M2** | Generate text chunks and sentence embeddings |
-| **M3** | Build FAISS index and RAG query pipeline |
+| **M2** | Generate text chunks and sentence embeddings (model-aware, token-based, with optional overlap; supports BGE-Large and MiniLM) |
+| **M3** | Build FAISS index and RAG query pipeline (model-aware) |
 | **M4** | Launch public Streamlit UI |
 | **M5** | Add prompt templates and memory scaffolding |
 | **M5b** | Extend pipeline to other Nobel Prize categories |
 | **M6** | Migrate embedding generation to OpenAI API |
 
-See [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) and [`TASKS.md`](./TASKS.md) for detailed milestones.
+See [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) and [`SPEC.md`](./SPEC.md) for detailed milestones.
 
 ---
 
@@ -101,30 +131,41 @@ See [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) and [`TASKS.md`](./TASK
    ```bash
    git clone https://github.com/yourusername/NobelLM.git
    cd NobelLM
-Create a virtual environment
+   ```
+2. **Create a virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # or 'venv\Scripts\activate' on Windows
+   ```
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Add your OpenAI API key to the .env file
+   ```
+5. **Run an example module**
+   ```bash
+   python -m scraper.scrape_literature
+   ```
 
-bash
-Copy code
-python -m venv venv
-source venv/bin/activate  # or 'venv\Scripts\activate' on Windows
-Install dependencies
+---
 
-bash
-Copy code
-pip install -r requirements.txt
-Set up environment variables
+## 🛠️ Model Config Usage
 
-bash
-Copy code
-cp .env.example .env
-# Add your OpenAI API key to the .env file
-Run an example module
+- All CLI tools (chunking, embedding, index building, auditing, summarizing) accept `--model` and use config-driven paths.
+- The Streamlit UI and backend RAG pipeline use the config for all model, index, and metadata loading.
+- To switch models, simply pass `--model` to any script or set `model_id` in your code.
+- All outputs (chunks, embeddings, FAISS index) are model-specific and versioned.
 
-bash
-Copy code
-python -m scraper.scrape_literature
-📄 License
+---
+
+## 📄 License
 This project is for educational and exploratory purposes only. Source data is publicly available and usage falls under fair use.
+
+---
 
 ✍️ Author
 Built by Joe Gonwa as a structured learning project in GenAI and RAG systems.
@@ -135,8 +176,11 @@ Unit tests for extraction/parsing logic (e.g., HTML parsing, gender inference) a
 
 - Unit tests for the metadata handler should use the flat laureate structure.
 - Integration tests should cover both factual (metadata) and RAG queries.
+- All model switching and config logic is covered by tests in the relevant modules.
 
 **Backend responses now always include an `answer_type` field, which the frontend uses to render metadata vs RAG answers appropriately.**
+
+---
 
 ## 🔍 Thematic Search & Query Reformulation
 
@@ -239,3 +283,7 @@ Below is a checklist of recommended tests for the thematic search and routing pi
 - Use static fixtures and mocks for dependencies (embedder, retriever, etc.).
 - Add docstrings and comments to all test functions.
 - Run tests with `pytest` and ensure all pass before merging changes.
+
+- **Chunking and embedding outputs are model-specific:**
+  - `/data/chunks_literature_labeled_{model}.jsonl` (token-based, model-aware chunks)
+  - `/data/literature_embeddings_{model}.json` (JSON array, each object contains chunk metadata and embedding vector)

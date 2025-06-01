@@ -109,9 +109,33 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
 
 - Use `sentence-transformers` locally for speed and cost-free development
 - Optional upgrade to `text-embedding-3-small` via OpenAI in Phase 6
-- Chunks: 300–500 words, normalized by paragraph boundaries
+- Chunks: Model-aware, token-based chunking (using the tokenizer for the selected model, e.g., 500 tokens for BGE-Large, 250 for MiniLM)
+- Optional token overlap between chunks for context continuity (last N tokens of previous chunk are prepended to the next chunk)
 - Indexed with FAISS (cosine similarity)
 - **macOS Note:** The codebase sets `OMP_NUM_THREADS=1` at startup to prevent segmentation faults when using FAISS and PyTorch together. This is handled automatically as of June 2025.
+- **Outputs:**
+  - Model-specific chunked JSONL: `/data/chunks_literature_labeled_{model}.jsonl`
+  - Model-specific embeddings JSON: `/data/literature_embeddings_{model}.json` (JSON array, each object contains chunk metadata and embedding vector)
+
+### Model-Aware, Config-Driven Pipeline (NEW)
+
+All chunking, embedding, indexing, and RAG operations are now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in `rag/model_config.py`:
+
+- To switch models (e.g., BGE-Large vs MiniLM), pass `--model` to any CLI tool, or set `model_id` in your code or UI.
+- All file paths, model names, and embedding dimensions are set in one place.
+- Consistency checks ensure the loaded model and index match in dimension, preventing silent errors.
+- Enables easy A/B testing and reproducibility.
+
+**Example:**
+```bash
+python -m embeddings.chunk_literature_speeches --model bge-large
+python -m embeddings.embed_texts --model bge-large
+python -m embeddings.build_index --model bge-large
+```
+
+**To add a new model:**
+- Add its config to `rag/model_config.py`.
+- All downstream code and scripts will pick it up automatically.
 
 ---
 

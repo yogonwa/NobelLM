@@ -1,6 +1,33 @@
 # Tests for Nobel Laureate Speech Explorer
 
-This directory contains unit tests for core extraction and parsing logic in the Nobel Laureate Speech Explorer project. All tests use `pytest` and static HTML/text fixtures—no live HTTP requests are made.
+This directory contains unit tests for core extraction, parsing, and retrieval logic in the Nobel Laureate Speech Explorer project. All tests use `pytest` and static HTML/text fixtures—no live HTTP requests are made.
+
+## Model-Aware, Config-Driven Testing (NEW)
+
+All tests for chunking, embedding, and RAG are now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in `rag/model_config.py`:
+
+- Tests should use `get_model_config` to obtain model names, file paths, and dimensions.
+- Where relevant, tests should be parameterized to run for all supported models (e.g., MiniLM, BGE-Large).
+- This ensures that all code paths are robust to model switching and that outputs are correct for each model.
+- Avoid hardcoding file names, model names, or dimensions in tests—always use the config.
+
+**Example (pytest parametrize):**
+```python
+import pytest
+from rag.model_config import get_model_config
+
+@pytest.mark.parametrize("model_id", list(get_model_config().keys()))
+def test_chunking_output_schema(model_id):
+    config = get_model_config(model_id)
+    # Use config["model_name"], config["index_path"], etc.
+    # ... test logic ...
+```
+
+**To add a new model:**
+- Add its config to `rag/model_config.py`.
+- All model-aware tests will pick it up automatically.
+
+---
 
 ## Test File: `test_scraper.py`
 
@@ -136,6 +163,9 @@ pytest tests/test_query_router.py
 - Add new test files for other modules as needed (e.g., `test_chunking.py`, `test_embeddings.py`).
 - Use static fixtures and avoid network calls for unit tests.
 - Follow the same style: docstrings, descriptive test names, and clear input/output expectations.
+- **For chunking, embedding, and RAG, always use the model config and test all supported models.**
+
+---
 
 ## Test File: `test_theme_reformulator.py`
 
@@ -156,4 +186,29 @@ pytest tests/test_query_router.py
 - **Inputs:** All theme keywords from `themes.json`.
 - **Expected Output:** Expansion includes the canonical theme and the original keyword for every input.
 
-- **Note:** Retrieval configuration for thematic queries (i.e., `RetrievalConfig(top_k=15, score_threshold=None)`) is explicitly checked in the comprehensive thematic routing test (`test_router_thematic_query_comprehensive`), so no separate test is needed for this logic. 
+- **Note:** Retrieval configuration for thematic queries (i.e., `RetrievalConfig(top_k=15, score_threshold=None)`) is explicitly checked in the comprehensive thematic routing test (`test_router_thematic_query_comprehensive`), so no separate test is needed for this logic.
+
+---
+
+## TODO: Model-Aware Test Coverage (Recommended)
+
+The following tests are recommended to ensure robust, model-aware coverage for the full pipeline:
+
+- **Chunking Output Tests:**
+  - Add `test_chunking.py` to validate the output schema and content of chunk files (`chunks_literature_labeled_{model}.jsonl`) for all supported models.
+  - Parameterize over all models using `get_model_config`.
+
+- **Embedding File Tests:**
+  - Add `test_embeddings.py` to check that embedding files (`literature_embeddings_{model}.json`) are present, have correct shape, and match the config dimension for each model.
+
+- **FAISS Index Build Tests:**
+  - Add `test_index_build.py` to verify that the FAISS index and metadata files exist, are readable, and have the correct dimension for each model.
+
+- **End-to-End RAG Pipeline Tests:**
+  - Add `test_rag_pipeline.py` to run a real (non-mocked) RAG query using the actual index and embeddings for at least one model, and check that results are returned and have the expected schema.
+
+- **General:**
+  - All new tests should use `get_model_config` and be parameterized for all supported models.
+  - Avoid hardcoding file names, model names, or dimensions in tests.
+
+These additions will ensure the codebase is robust to model switching and that all outputs are correct for each supported model. 

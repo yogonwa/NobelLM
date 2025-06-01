@@ -128,16 +128,38 @@ Each record:
 - **Output:** `/data/nobel_literature.json`, `/data/acceptance_speeches/*.txt`, `metadata.csv`
 
 ### Phase 2 – Embedding & Indexing (M2)
-- Chunk speech text into 300–500 word blocks
-- Generate sentence embeddings (MiniLM)
-- Save embeddings as JSON
+- Chunk speech text using model-aware, token-based chunking (supports BGE-Large and MiniLM)
+- Optional token overlap between chunks for context continuity
+- Each chunk is tagged with rich metadata (see chunk_literature_speeches.py)
+- Generate sentence embeddings for each chunk using the selected model
+- Save embeddings as a JSON array (one object per chunk, with embedding vector attached)
 - Build and persist FAISS index
 - **macOS Note:** The codebase sets `OMP_NUM_THREADS=1` at startup to prevent segmentation faults when using FAISS and PyTorch together. This is handled automatically as of June 2025.
-- **Output:** `/data/literature_embeddings.json`, `/data/faiss_index/`
+- **Output:** `/data/literature_embeddings_{model}.json`, `/data/faiss_index_{model}/`, `/data/chunks_literature_labeled_{model}.jsonl`
+
+#### Model-Aware, Config-Driven Pipeline (NEW)
+
+All chunking, embedding, and index scripts are now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in `rag/model_config.py`:
+
+- To switch models (e.g., BGE-Large vs MiniLM), pass `--model` to any CLI tool.
+- All file paths, model names, and embedding dimensions are set in one place.
+- Consistency checks ensure the loaded model and index match in dimension, preventing silent errors.
+- Enables easy A/B testing and reproducibility.
+
+**Example:**
+```bash
+python -m embeddings.chunk_literature_speeches --model bge-large
+python -m embeddings.embed_texts --model bge-large
+python -m embeddings.build_index --model bge-large
+```
+
+**To add a new model:**
+- Add its config to `rag/model_config.py`.
+- All downstream code and scripts will pick it up automatically.
 
 ### Phase 3 – RAG Pipeline (M3)
 - Implement query-to-embedding conversion
-- Retrieve top-N passages from FAISS
+- Retrieve top-N passages from FAISS (model-aware)
 - Construct prompt and call OpenAI (text-davinci or GPT-3.5)
 - Return answer and source reference
 - **Status:** COMPLETE. The query engine is implemented, tested, and documented. See `rag/query_engine.py` and `rag/README.md` for details.
@@ -155,6 +177,7 @@ Each record:
   - `nobel_lecture` (full lecture text)
   - `acceptance_speech` (banquet/acceptance remarks)
   - `ceremony_speech` (committee's justification)
+- Chunking is now model-aware and token-based (not just word/paragraph), with optional overlap for context continuity
 - Tag each chunk with:
   - `source_type` (e.g., nobel_lecture, acceptance_speech, ceremony_speech)
   - `category`
@@ -164,9 +187,9 @@ Each record:
   - Structured fields: `gender`, `country`, `specific_work_cited`, `prize_motivation` (as tag and/or its own chunk)
 - Store a single `text` field per chunk (input files are already cleaned; no raw/clean distinction).
 - Remove `language` and `declined` from the schema (not relevant for this project).
-- Chunking logic: Accumulate paragraphs into blocks of ~300–500 words, respecting paragraph boundaries and avoiding mid-sentence splits. If a paragraph is very long, split at sentence boundaries. If the last chunk is very short, merge with the previous chunk if appropriate.
+- Chunking logic: Accumulate paragraphs into blocks up to the model's max token limit (e.g., 500 for BGE-Large, 250 for MiniLM), splitting long paragraphs as needed. If overlap is set, the last N tokens of the previous chunk are prepended to the next chunk.
 - For short fields (`prize_motivation`, `life_blurb`, `work_blurb`), treat each as a single chunk.
-- **Output:** Chunked `.jsonl` file with tagged, cleaned segments: `data/chunks_literature_labeled.jsonl`
+- **Output:** Chunked `.jsonl` file with tagged, cleaned segments: `data/chunks_literature_labeled_{model}.jsonl`
 - **Implementation:** See `embeddings/chunk_literature_speeches.py` for the implemented script.
 
 ### Phase 5 – Post-MVP Foundations (M5)
@@ -187,8 +210,8 @@ Each record:
 
 | Phase | Input                | Output                                      |
 |-------|----------------------|---------------------------------------------|
-| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv, **/data/nobel_lectures/{year}_{lastname}.txt** (plain text transcript of Nobel lecture, extracted from PDF), **/data/ceremony_speeches/{year}.txt** (ceremony speech), **/data/acceptance_speeches/{year}_{lastname}.txt** (acceptance speech) |
-| M2    | Text files           | JSON embeddings, FAISS index                |
+| M1    | NobelPrize.org       | nobel_literature.json, text files, metadata.csv, **/data/nobel_lectures/{year}_{lastname}.txt**, **/data/ceremony_speeches/{year}.txt**, **/data/acceptance_speeches/{year}_{lastname}.txt** |
+| M2    | Text files, chunked JSONL | Model-specific JSON embeddings (`/data/literature_embeddings_{model}.json`), FAISS index, chunked JSONL (`/data/chunks_literature_labeled_{model}.jsonl`) |
 | M3    | User query, index    | GPT-3.5 response, citation                  |
 | M4    | Streamlit app        | Live public UI on HF Spaces                 |
 | M5    | Session, prior query logs | Query suggestions, context filtering   |

@@ -12,7 +12,7 @@ This module prepares Nobel Literature speech texts for embedding by chunking the
 - `data/ceremony_speeches/*.txt` (cleaned ceremony speeches)
 
 ### Output File
-- `data/chunks_literature_labeled.jsonl` (newline-delimited JSON, one chunk per line)
+- `data/chunks_literature_labeled_{model}.jsonl` (newline-delimited JSON, one chunk per line, model-specific)
 
 ### Chunk Schema
 Each chunk is a JSON object with the following fields:
@@ -54,20 +54,42 @@ Each chunk is a JSON object with the following fields:
 }
 ```
 
+## Model-Aware Embedding Pipeline
+
+All chunking, embedding, and index scripts are now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in [`rag/model_config.py`](../rag/model_config.py):
+
+- To switch models (e.g., BGE-Large vs MiniLM), pass `--model` to any CLI tool.
+- All file paths, model names, and embedding dimensions are set in one place.
+- Consistency checks ensure the loaded model and index match in dimension, preventing silent errors.
+- Enables easy A/B testing and reproducibility.
+
+**Example:**
+```bash
+python -m embeddings.chunk_literature_speeches --model bge-large
+python -m embeddings.embed_texts --model bge-large
+python -m embeddings.build_index --model bge-large
+```
+
+**To add a new model:**
+- Add its config to `rag/model_config.py`.
+- All downstream code and scripts will pick it up automatically.
+
+---
+
 ## Generating Embeddings for Literature Chunks
 
 ### Purpose
 This step generates dense vector embeddings for each chunked speech or metadata block using a state-of-the-art sentence transformer. These embeddings are used for semantic search, retrieval, and downstream RAG (retrieval-augmented generation) tasks.
 
 ### Model
-- **Model:** `all-MiniLM-L6-v2` ([Hugging Face link](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2))
-- **Why this model?** MiniLM offers an excellent balance of speed, memory usage, and semantic accuracy. It is widely used for production-scale semantic search and is compatible with FAISS and other vector stores.
+- **Model:** Configurable via `--model` (see `rag/model_config.py` for supported models)
+- **Why this model?** MiniLM and BGE-Large offer a balance of speed, memory usage, and semantic accuracy. Both are compatible with FAISS and other vector stores.
 
 ### Input File
-- `data/chunks_literature_labeled.jsonl` (one chunk per line, see above)
+- `data/chunks_literature_labeled_{model}.jsonl` (one chunk per line, model-specific)
 
 ### Output File
-- `data/literature_embeddings.json` (list of JSON objects, one per chunk, with embedding)
+- `data/literature_embeddings_{model}.json` (list of JSON objects, one per chunk, with embedding)
 
 ### Embedding Schema
 Each output object contains all chunk metadata plus an additional `embedding` field:
@@ -88,18 +110,20 @@ Each output object contains all chunk metadata plus an additional `embedding` fi
   "specific_work_cited": false,
   "prize_motivation": "who, in novels of great emotional force, has uncovered the abyss beneath our illusory sense of connection with the world",
   "text": "My lecture begins with a memory from my childhood...",
-  "embedding": [0.021, -0.034, ...]  // 384-dimensional float vector
+  "embedding": [0.021, -0.034, ...]  // model-specific vector
 }
 ```
 
 ### How to Reproduce
-Run the following command from the project root (ensure your virtual environment is active):
+Run the following commands from the project root (ensure your virtual environment is active):
 
 ```sh
-python -m embeddings.embed_texts
+python -m embeddings.chunk_literature_speeches --model bge-large
+python -m embeddings.embed_texts --model bge-large
+python -m embeddings.build_index --model bge-large
 ```
 
-This will read the chunked JSONL file, generate embeddings for each chunk, and write the output JSON file. Progress and errors are logged to the console.
+This will read the chunked JSONL file, generate embeddings for each chunk, and write the output JSON file. Progress and errors are logged to the console. All outputs are model-specific and versioned.
 
 ## Building and Querying the FAISS Index
 
@@ -107,24 +131,24 @@ This will read the chunked JSONL file, generate embeddings for each chunk, and w
 This step builds a FAISS vector index for fast semantic search over Nobel Literature speech embeddings. The index enables efficient retrieval of the most relevant text chunks for a given query embedding, supporting downstream RAG and search tasks.
 
 ### Input Files
-- `data/literature_embeddings.json` (output from embedding step; list of dicts with `embedding` and metadata)
+- `data/literature_embeddings_{model}.json` (output from embedding step; list of dicts with `embedding` and metadata)
 
 ### Output Files
-- `data/faiss_index/index.faiss` (FAISS index file)
-- `data/faiss_index/chunk_metadata.json` (list of metadata dicts, one per chunk, excluding the embedding vector)
+- `data/faiss_index_{model}/index.faiss` (FAISS index file, model-specific)
+- `data/faiss_index_{model}/chunk_metadata.jsonl` (list of metadata dicts, one per chunk, excluding the embedding vector, model-specific)
 
 ### How to Build the Index
 Run the following command from the project root (ensure your virtual environment is active):
 
 ```sh
-python -m embeddings.build_index
+python -m embeddings.build_index --model bge-large
 ```
 
 This will:
-- Load all embeddings from `data/literature_embeddings.json`
+- Load all embeddings from `data/literature_embeddings_{model}.json`
 - Normalize vectors for cosine similarity
 - Build a FAISS index (`IndexFlatIP`)
-- Save the index and metadata mapping to `data/faiss_index/`
+- Save the index and metadata mapping to `data/faiss_index_{model}/`
 - Log progress and errors to the console
 
 ### API: Index Build and Query Functions

@@ -32,6 +32,7 @@ from rag.metadata_utils import flatten_laureate_metadata
 from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
+from rag.model_config import get_model_config, DEFAULT_MODEL_ID
 
 dotenv.load_dotenv()
 
@@ -41,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["query"]
 
-_MODEL_NAME = 'all-MiniLM-L6-v2'
 _MODEL = None
 _MODEL_LOCK = threading.Lock()
 _INDEX = None
@@ -53,38 +53,47 @@ KEYWORDS_TRIGGER_EXPANSION = [
     "most", "across", "often", "generally", "usually", "style", "styles"
 ]
 
-def get_model() -> SentenceTransformer:
+def get_model(model_id: str = None) -> SentenceTransformer:
     """
-    Singleton loader for the MiniLM embedding model.
+    Singleton loader for the embedding model specified by model_id.
+    Uses centralized config for model name.
     """
     global _MODEL
     if _MODEL is None:
         with _MODEL_LOCK:
             if _MODEL is None:
-                logger.info(f"Loading embedding model '{_MODEL_NAME}'...")
-                _MODEL = SentenceTransformer(_MODEL_NAME)
+                config = get_model_config(model_id)
+                logger.info(f"Loading embedding model '{config['model_name']}'...")
+                _MODEL = SentenceTransformer(config['model_name'])
     return _MODEL
 
 
-def get_index_and_metadata(index_dir: str = "data/faiss_index/"):
+def get_index_and_metadata(model_id: str = None):
     """
-    Singleton loader for the FAISS index and chunk metadata.
+    Singleton loader for the FAISS index and chunk metadata for the specified model.
+    Uses centralized config for index and metadata paths.
+    Checks embedding dimension consistency.
     """
     global _INDEX, _METADATA
     if _INDEX is None or _METADATA is None:
         with _INDEX_LOCK:
             if _INDEX is None or _METADATA is None:
-                logger.info(f"Loading FAISS index and metadata from '{index_dir}'...")
-                _INDEX, _METADATA = get_faiss_index_and_metadata()
+                config = get_model_config(model_id)
+                logger.info(f"Loading FAISS index and metadata from '{config['index_path']}'...")
+                from embeddings.build_index import load_index
+                _INDEX, _METADATA = load_index(os.path.dirname(config['index_path']))
+                # Consistency check
+                if hasattr(_INDEX, 'd') and _INDEX.d != config['embedding_dim']:
+                    raise ValueError(f"Index dimension ({_INDEX.d}) does not match model config ({config['embedding_dim']}) for model '{model_id or DEFAULT_MODEL_ID}'")
     return _INDEX, _METADATA
 
 
-def embed_query(query: str) -> np.ndarray:
+def embed_query(query: str, model_id: str = None) -> np.ndarray:
     """
-    Embed the user query using the same MiniLM model as document chunks.
+    Embed the user query using the embedding model specified by model_id.
     Returns a numpy array embedding.
     """
-    model = get_model()
+    model = get_model(model_id)
     emb = model.encode(query, show_progress_bar=False, normalize_embeddings=True)
     return np.array(emb, dtype=np.float32)
 
@@ -94,28 +103,21 @@ def retrieve_chunks(
     k: int = 3,
     filters: Optional[Dict[str, Any]] = None,
     score_threshold: float = 0.25,
-    min_k: int = 3
+    min_k: int = 3,
+    model_id: str = None
 ) -> List[Dict[str, Any]]:
     """
-    Retrieve top-k most relevant chunks from the FAISS index, with conditional filtering:
-    - For thematic queries (k > min_k): ignore score_threshold, return top_k.
-    - For factual queries (k == min_k): apply score_threshold, but if fewer than min_k pass, return top min_k regardless of score.
-    Returns a list of chunk dicts with metadata and similarity scores.
+    Retrieve top-k most relevant chunks from the FAISS index for the specified model.
     """
-    index, metadata = get_index_and_metadata()
-    results = faiss_query(index, metadata, query_embedding, top_k=k, min_score=0.0)  # always get top_k, ignore min_score here
-    # Remove results with note (no strong matches)
+    index, metadata = get_index_and_metadata(model_id)
+    results = faiss_query(index, metadata, query_embedding, top_k=k, min_score=0.0)
     results = [r for r in results if "note" not in r]
-    # Apply metadata filtering
     filtered = filter_chunks(results, filters)
-    # Thematic: k > min_k, return top_k
     if k > min_k:
         return filtered[:k]
-    # Factual: k == min_k, apply score threshold
     passing = [c for c in filtered if c.get("score", 0) >= score_threshold]
     if len(passing) >= min_k:
         return passing[:min_k]
-    # Fallback: return top min_k regardless of score
     return filtered[:min_k]
 
 
@@ -228,25 +230,23 @@ def query(
     filters: Optional[Dict[str, Any]] = None,
     dry_run: bool = False,
     k: Optional[int] = None,
-    score_threshold: float = 0.25
+    score_threshold: float = 0.25,
+    model_id: str = None
 ) -> Dict[str, Any]:
     """
     Orchestrate the query pipeline: embed, retrieve, filter, prompt, and answer.
-    If k is not provided, it is inferred from the query intent using infer_top_k_from_query().
+    Model-aware: uses the embedding model, index, and metadata for the specified model_id.
     Returns a dict with 'answer' and 'sources'.
     """
-    logger.info(f"Received query: {query_string} | Filters: {filters} | Dry run: {dry_run}")
+    logger.info(f"Received query: {query_string} | Filters: {filters} | Dry run: {dry_run} | Model: {model_id or DEFAULT_MODEL_ID}")
     try:
         top_k = k if k is not None else infer_top_k_from_query(query_string)
         logger.info(f"Using top_k={top_k} for query.")
-        query_emb = embed_query(query_string)
-        # Always retrieve top_k chunks, no score filtering at this stage
-        chunks = retrieve_chunks(query_emb, k=top_k, filters=filters, score_threshold=0.0, min_k=5)
-        # Thematic: if top_k > 10, return top_k by rank (no score threshold)
+        query_emb = embed_query(query_string, model_id)
+        chunks = retrieve_chunks(query_emb, k=top_k, filters=filters, score_threshold=0.0, min_k=5, model_id=model_id)
         if top_k > 10:
             chunks = chunks[:top_k]
         else:
-            # Factual: apply score threshold, ensure at least min_return=5
             chunks = filter_top_chunks(chunks, score_threshold=score_threshold, min_return=5)
         if not chunks:
             logger.warning("No relevant chunks found for query.")
@@ -264,7 +264,6 @@ def query(
         model = "gpt-3.5-turbo"
         if dry_run:
             logger.info("Dry run mode: returning dummy answer.")
-            # Estimate prompt tokens if tiktoken is available
             prompt_tokens = 100
             completion_tokens = 20
             if tiktoken:
@@ -281,14 +280,12 @@ def query(
                 completion_tokens=completion_tokens,
                 chunk_count=chunk_count,
                 estimated_cost_usd=estimated_cost_usd,
-                extra={"dry_run": True}
+                extra={"dry_run": True, "model_id": model_id or DEFAULT_MODEL_ID}
             )
             return {
                 "answer": "[DRY RUN] This is a simulated answer. Retrieved context:\n" + prompt,
                 "sources": [make_source(chunk) for chunk in chunks]
             }
-        # Real OpenAI call
-        # Estimate prompt tokens before call
         prompt_tokens = 0
         if tiktoken:
             try:
@@ -299,7 +296,6 @@ def query(
         result = call_openai(prompt, model=model)
         answer = result["answer"]
         completion_tokens = result.get("completion_tokens")
-        # If OpenAI usage is available, use it; else fallback to estimate
         if completion_tokens is None:
             completion_tokens = 20
         if prompt_tokens == 0:
@@ -312,7 +308,7 @@ def query(
             completion_tokens=completion_tokens,
             chunk_count=chunk_count,
             estimated_cost_usd=estimated_cost_usd,
-            extra={"dry_run": False}
+            extra={"dry_run": False, "model_id": model_id or DEFAULT_MODEL_ID}
         )
         return {
             "answer": answer,
