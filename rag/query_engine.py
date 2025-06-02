@@ -18,7 +18,6 @@ import logging
 from typing import List, Dict, Optional, Any
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from embeddings.build_index import query_index as faiss_query
 import threading
 import dotenv
 from utils.cost_logger import log_cost_event
@@ -33,6 +32,7 @@ from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
+from rag.retriever import query_index, load_index_and_metadata
 
 dotenv.load_dotenv()
 
@@ -78,10 +78,9 @@ def get_index_and_metadata(model_id: str = None):
     if _INDEX is None or _METADATA is None:
         with _INDEX_LOCK:
             if _INDEX is None or _METADATA is None:
+                model_id = model_id or DEFAULT_MODEL_ID
+                _INDEX, _METADATA = load_index_and_metadata(model_id)
                 config = get_model_config(model_id)
-                logger.info(f"Loading FAISS index and metadata from '{config['index_path']}'...")
-                from embeddings.build_index import load_index
-                _INDEX, _METADATA = load_index(os.path.dirname(config['index_path']))
                 # Consistency check
                 if hasattr(_INDEX, 'd') and _INDEX.d != config['embedding_dim']:
                     raise ValueError(f"Index dimension ({_INDEX.d}) does not match model config ({config['embedding_dim']}) for model '{model_id or DEFAULT_MODEL_ID}'")
@@ -110,7 +109,7 @@ def retrieve_chunks(
     Retrieve top-k most relevant chunks from the FAISS index for the specified model.
     """
     index, metadata = get_index_and_metadata(model_id)
-    results = faiss_query(index, metadata, query_embedding, top_k=k, min_score=0.0)
+    results = query_index(query_embedding, model_id=model_id, top_k=k, min_score=0.0)
     results = [r for r in results if "note" not in r]
     filtered = filter_chunks(results, filters)
     if k > min_k:

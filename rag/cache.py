@@ -1,5 +1,5 @@
 import streamlit as st
-from embeddings.build_index import load_index
+from rag.retriever import load_index_and_metadata
 from rag.metadata_utils import load_laureate_metadata
 from sentence_transformers import SentenceTransformer
 from typing import Tuple, List, Dict, Any
@@ -13,8 +13,8 @@ def get_faiss_index_and_metadata(model_id: str = None) -> Tuple[object, List[Dic
     Returns:
         (index, chunk_metadata): Tuple of FAISS index object and list of chunk metadata dicts.
     """
-    config = get_model_config(model_id)
-    return load_index(os.path.dirname(config["index_path"]))
+    model_id = model_id or DEFAULT_MODEL_ID
+    return load_index_and_metadata(model_id)
 
 @st.cache_resource
 def get_flattened_metadata() -> List[Dict[str, Any]]:

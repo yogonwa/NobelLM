@@ -89,48 +89,48 @@ def test_chunking_output_schema(model_id):
 
 ### What is Tested?
 
-#### 1. `QueryRouter` (routing and metadata integration)
-- **Purpose:** Ensures queries are routed to the correct answer path (metadata or RAG) and that logs/fields are correct.
-- **Test Cases:**
-  - Factual queries matching metadata rules (should return `answer_type='metadata'` and correct answer)
-  - Factual queries not matching metadata rules (should return `answer_type='rag'`)
-  - No metadata provided (should return `answer_type='rag'`)
-  - Thematic and generative queries (should return `answer_type='rag'`)
-  - Logs and metadata_answer fields present and correct
-- **Inputs:** Query strings and static `EXAMPLE_METADATA` (see test file)
-- **Expected Output:** Correct routing, answer type, and logs
+#### 1. `extract_life_and_work_blurbs`
+# ... existing code ...
 
-#### 2. `PromptTemplateSelector` (prompt template selection)
-- **Purpose:** Ensures the correct prompt template is returned for thematic intent and that errors are raised for unknown intents.
-- **Test Cases:**
-  - Thematic intent returns the correct template with all key instructions
-  - Factual template is not returned for thematic intent
-  - ValueError is raised for unknown intent
-- **Inputs:** Intent strings ('thematic', 'unknown_intent')
-- **Expected Output:** Thematic template string for 'thematic', error for unknown
-
-#### 3. Context Formatting (if applicable)
-- **Purpose:** Ensures context is formatted as expected for thematic prompts, if a dedicated formatting helper exists.
-- **Test Cases:**
-  - Thematic context is formatted with all required fields and structure
-- **Inputs:** Retrieved context chunks for thematic queries
-- **Expected Output:** Properly formatted context string for the prompt
-- **Note:** Review if a dedicated formatting helper exists for thematic context; add or update tests as needed.
-
-#### 4. End-to-End Thematic Query Handling (Integration)
-- **Purpose:** Simulates the full thematic query pipeline, including routing, retrieval, prompt construction, and LLM call (mocked), to ensure the entire pipeline works as expected.
-- **Test Cases:**
-  - Thematic query is routed, context is retrieved (mocked), prompt is constructed, and LLM call is made (mocked)
-  - Checks that the answer, sources, and answer_type are correct in the final output
-- **Inputs:** Thematic query string (e.g., "What are common themes in Nobel lectures?")
+#### 5. `test_end_to_end_thematic_and_factual_query`
+- **Purpose:** Integration test for the full pipeline for both thematic and factual queries (mocked retrieval and LLM). Also includes a placeholder for generative queries.
+- **Inputs:**
+  - Thematic query: "What are common themes in Nobel lectures?"
+  - Factual query: "What year did Toni Morrison win?"
 - **Expected Output:**
-  - `answer_type` is 'rag'
-  - The answer contains expected thematic content (e.g., mentions "justice")
-  - Sources include correct metadata (e.g., laureate, text_snippet)
+  - Thematic: `answer_type` is 'rag', answer contains 'justice', source includes 'Toni Morrison'.
+  - Factual: `answer_type` is 'metadata', answer contains '1993', metadata includes 'Toni Morrison'.
+  - Generative: Placeholder for future implementation.
 
-### 3. IntentClassifier (Unit)
-- **Status:** ✅ Fully implemented in `tests/test_intent_classifier.py`.
-- **Note:** All required unit tests for the IntentClassifier (factual, thematic, generative, precedence, case insensitivity, fallback, scoping) are present and comprehensive as of this review. No further action needed.
+#### 6. `test_answer_query_unit`
+- **Purpose:** Unit test for `answer_query`, mocking all dependencies to check output schema and correctness.
+- **Inputs:** Query string (e.g., "Who won the Nobel Prize in 2017?")
+- **Expected Output:**
+  - `answer_type` is 'metadata', answer contains '2017', metadata includes 'Kazuo Ishiguro'.
+
+---
+
+## Test File: `test_query_engine.py`
+
+### What is Tested?
+
+#### 1. `test_query_engine_e2e`
+- **Purpose:** End-to-end test for the query engine, covering both dry run (mocked) and live (real LLM) modes.
+- **Inputs:**
+  - Various queries (e.g., "What do laureates say about justice?", "What do USA winners talk about in their lectures?", "What themes are common across Nobel lectures?")
+  - Filters (e.g., country, source_type)
+  - `dry_run` flag (True/False)
+- **Expected Output:**
+  - Answer is a non-empty string, sources is a list of dicts, prompt is well-formed.
+  - In dry run, answer contains expected keywords; in live, answer is non-empty.
+
+#### 2. `test_query_engine_live`
+- **Purpose:** Live E2E test for the query engine (requires OpenAI API key and real data).
+- **Inputs:** Query string (e.g., "How do laureates describe the role of literature in society?")
+- **Expected Output:**
+  - Non-empty answer and sources list.
+- **How to Execute:**
+  - Set environment variable `NOBELLM_LIVE_TEST=1` to enable this test.
 
 ---
 
@@ -152,6 +152,13 @@ Or to run only a specific test file:
 
 ```bash
 pytest tests/test_query_router.py
+pytest rag/test_query_engine.py
+```
+
+To run live E2E tests (requires OpenAI API key and real data):
+
+```bash
+NOBELLM_LIVE_TEST=1 pytest rag/test_query_engine.py
 ```
 
 ## Output

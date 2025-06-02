@@ -137,11 +137,12 @@ def test_select_thematic_prompt_template():
     with pytest.raises(ValueError):
         selector.select('unknown_intent') 
 
-def test_end_to_end_thematic_query():
-    """Integration: Simulate a full thematic query pipeline with mocked retrieval and LLM."""
+def test_end_to_end_thematic_and_factual_query():
+    """Integration: Simulate full pipeline for thematic and factual queries (mocked retrieval and LLM)."""
     from rag.query_engine import answer_query
+    from unittest.mock import patch
 
-    # Mock the retrieval to return fixed chunks
+    # --- Thematic query ---
     mock_chunks = [
         {
             "text": "Justice is a recurring theme.",
@@ -152,14 +153,53 @@ def test_end_to_end_thematic_query():
             "chunk_id": 1
         }
     ]
-    # Patch the retrieval and LLM call
     with patch("rag.query_engine.ThematicRetriever.retrieve", return_value=mock_chunks), \
          patch("rag.query_engine.call_openai", return_value={"answer": "Justice is a key theme across laureates.", "completion_tokens": 20}):
         result = answer_query("What are common themes in Nobel lectures?")
         assert result["answer_type"] == "rag"
         assert "justice" in result["answer"].lower()
         assert result["sources"][0]["laureate"] == "Toni Morrison"
-        assert "text_snippet" in result["sources"][0] 
+        assert "text_snippet" in result["sources"][0]
+
+    # --- Factual query ---
+    # Patch metadata handler to return a canned answer
+    with patch("rag.query_engine.QueryRouter.route_query") as mock_router:
+        mock_router.return_value.answer_type = "metadata"
+        mock_router.return_value.answer = "Toni Morrison won in 1993."
+        mock_router.return_value.metadata_answer = {"answer": "Toni Morrison won in 1993.", "laureate": "Toni Morrison", "year_awarded": 1993}
+        mock_router.return_value.intent = "factual"
+        mock_router.return_value.logs = {"metadata_handler": "matched", "metadata_rule": "award_year_by_name"}
+        mock_router.return_value.retrieval_config = None
+        mock_router.return_value.prompt_template = None
+        result = answer_query("What year did Toni Morrison win?")
+        assert result["answer_type"] == "metadata"
+        assert "1993" in result["answer"]
+        assert result["metadata_answer"]["laureate"] == "Toni Morrison"
+
+    # --- Generative query (placeholder) ---
+    # TODO: Add generative E2E test when functionality is complete
+    # with patch(...):
+    #     result = answer_query("Write a speech in the style of Toni Morrison.")
+    #     assert result["answer_type"] == "rag"
+    #     ...
+
+def test_answer_query_unit():
+    """Unit test for answer_query: mocks all dependencies and checks output schema."""
+    from rag.query_engine import answer_query
+    from unittest.mock import patch
+
+    with patch("rag.query_engine.QueryRouter.route_query") as mock_router:
+        mock_router.return_value.answer_type = "metadata"
+        mock_router.return_value.answer = "Kazuo Ishiguro won in 2017."
+        mock_router.return_value.metadata_answer = {"answer": "Kazuo Ishiguro won in 2017.", "laureate": "Kazuo Ishiguro", "year_awarded": 2017}
+        mock_router.return_value.intent = "factual"
+        mock_router.return_value.logs = {"metadata_handler": "matched", "metadata_rule": "award_year_by_name"}
+        mock_router.return_value.retrieval_config = None
+        mock_router.return_value.prompt_template = None
+        result = answer_query("Who won the Nobel Prize in 2017?")
+        assert result["answer_type"] == "metadata"
+        assert "2017" in result["answer"]
+        assert result["metadata_answer"]["laureate"] == "Kazuo Ishiguro"
 
 def test_thematic_query_with_last_name_scoping():
     clf = IntentClassifier()

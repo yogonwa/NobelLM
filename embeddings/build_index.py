@@ -15,7 +15,7 @@ import argparse
 from typing import List, Dict, Tuple
 import numpy as np
 import faiss
-from rag.model_config import get_model_config, DEFAULT_MODEL_ID
+from rag.model_config import get_model_config, DEFAULT_MODEL_ID, MODEL_CONFIGS
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -59,7 +59,7 @@ def build_faiss_index(model_id: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', default=DEFAULT_MODEL_ID, choices=list(get_model_config().keys()), help='Embedding model to use')
+    parser.add_argument('--model', default=DEFAULT_MODEL_ID, choices=list(MODEL_CONFIGS.keys()), help='Embedding model to use')
     args = parser.parse_args()
     build_faiss_index(args.model)
 

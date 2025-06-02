@@ -164,52 +164,40 @@ def build_index(
     """
 ```
 
-#### `load_index`
-```python
-def load_index(
-    index_dir: str = "data/faiss_index/"
-) -> Tuple[faiss.Index, List[Dict[str, Any]]]:
-    """
-    Load the FAISS index and metadata mapping from disk.
-    Returns:
-        index: FAISS index object
-        metadata: List of chunk metadata dicts (excluding embeddings)
-    """
-```
-
 #### `query_index`
 ```python
 def query_index(
-    index: faiss.Index,
-    metadata: List[Dict[str, Any]],
     query_embedding: np.ndarray,
-    top_k: int = 3
+    model_id: str = "bge-large",
+    top_k: int = 3,
+    min_score: float = 0.2
 ) -> List[Dict[str, Any]]:
     """
-    Query the FAISS index and return top_k most similar chunks with metadata.
-    Args:
-        index: FAISS index object
-        metadata: List of chunk metadata dicts
-        query_embedding: 1D numpy array (should be normalized)
-        top_k: Number of results to return
-    Returns:
-        List of metadata dicts for top_k results, each with a 'score' field
+    Query the FAISS index for a given model using a normalized query embedding.
+    Returns top-k results with metadata and similarity scores.
     """
+```
+
+#### `load_index_and_metadata`
+```python
+from rag.retriever import load_index_and_metadata
+
+index, metadata = load_index_and_metadata(model_id="bge-large")
 ```
 
 ### Example Usage
 ```python
 import numpy as np
-from embeddings.build_index import load_index, query_index
+from rag.retriever import load_index_and_metadata, query_index
 
 # Load the index and metadata
-index, metadata = load_index()
+index, metadata = load_index_and_metadata(model_id="bge-large")
 
 # Prepare a query embedding (must be a 1D np.ndarray, normalized)
 query_embedding = np.random.rand(index.d)
 
 # Query the index for top 3 most similar chunks
-results = query_index(index, metadata, query_embedding, top_k=3)
+results = query_index(query_embedding, model_id="bge-large", top_k=3)
 for r in results:
     print(r["chunk_id"], r["score"], r["text"][:100])
 ```
