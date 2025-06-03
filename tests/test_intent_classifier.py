@@ -152,4 +152,39 @@ def test_intent_classifier_fallback():
 def test_thematic_query_with_last_name_scoping():
     clf = IntentClassifier()
     result = clf.classify("What did Morrison say about justice?")
-    assert is_thematic(result, expected_scoped="Morrison") 
+    assert is_thematic(result, expected_scoped="Morrison")
+
+# --- Additional tests for coverage gaps (hybrid, malformed, international) ---
+
+def test_hybrid_phrasing_intent(classifier):
+    """Test queries that mix factual and thematic/generative language (hybrid phrasing)."""
+    # Should prefer generative over thematic/factual
+    assert is_generative(classifier.classify("Write a summary of themes in Morrison's lectures."))
+    # Should prefer thematic over factual
+    result = classifier.classify("What are the recurring themes in Toni Morrison's speeches?")
+    assert is_thematic(result, expected_scoped="Toni Morrison")
+    # Should treat this as factual (no thematic/generative keywords)
+    assert is_factual(classifier.classify("What years did Americans win the prize?"))
+
+def test_malformed_inputs(classifier):
+    """Test classifier robustness to malformed, empty, or nonsensical queries."""
+    # Empty string
+    assert is_factual(classifier.classify(""))
+    # Whitespace only
+    assert is_factual(classifier.classify("   "))
+    # Nonsense
+    assert is_factual(classifier.classify("asdfghjkl"))
+    # Punctuation only
+    assert is_factual(classifier.classify("?!@#$%"))
+    # Partial keywords
+    assert is_factual(classifier.classify("wha"))
+
+def test_international_queries(classifier):
+    """Test queries with non-English or accented characters (simulate internationalization)."""
+    # Accented laureate name
+    result = classifier.classify("What did Camilo José Cela say about justice?")
+    assert is_thematic(result, expected_scoped="Camilo José Cela")
+    # Non-English query (should fallback to factual)
+    assert is_factual(classifier.classify("¿Cuándo ganó el Premio Nobel?"))
+    # Mixed language
+    assert is_factual(classifier.classify("Wann hat Kazuo Ishiguro gewonnen?")) 

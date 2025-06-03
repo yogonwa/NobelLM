@@ -12,7 +12,7 @@ def source_to_chunk(source):
     # Use the text_snippet as the 'text' field for prompt reconstruction
     return {**source, "text": source["text_snippet"]}
 
-def main():
+def main(model_id=None):
     logging.basicConfig(level=logging.INFO)
     print("\n=== NobelLM Query Engine Test ===\n")
 
@@ -21,7 +21,8 @@ def main():
     print("[Dry Run] General query (no filters):")
     response = query(
         user_query,
-        dry_run=True
+        dry_run=False,
+        model_id=model_id
     )
     prompt = build_prompt([source_to_chunk(s) for s in response['sources']], user_query)
     print(f"User Query: {user_query}")
@@ -41,7 +42,8 @@ def main():
     response = query(
         user_query,
         filters=filters,
-        dry_run=True
+        dry_run=False,
+        model_id=model_id
     )
     prompt = build_prompt([source_to_chunk(s) for s in response['sources']], user_query)
     print(f"User Query: {user_query}")
@@ -61,7 +63,8 @@ def main():
     response = query(
         user_query,
         filters=filters,
-        dry_run=False
+        dry_run=False,
+        model_id=model_id
     )
     prompt = build_prompt([source_to_chunk(s) for s in response['sources']], user_query)
     print(f"User Query: {user_query}")
@@ -74,23 +77,28 @@ def main():
         print(f"  - {src}")
     print("\n" + "-"*40 + "\n")
 
-@pytest.mark.parametrize("user_query,filters,expected_k,dry_run", [
-    ("What do laureates say about justice?", None, 3, True),
-    ("What do USA winners talk about in their lectures?", {"country": "USA", "source_type": "nobel_lecture"}, 3, True),
-    ("What themes are common across Nobel lectures?", {"source_type": "nobel_lecture"}, 15, False),
+    print("✅ All test queries executed successfully.")
+
+@pytest.mark.parametrize("user_query,filters,expected_k,dry_run,model_id", [
+    # Factual
+    ("In what year did Hemingway win the Nobel Prize?", None, 3, True, None),
+    ("How many females have won the award?", None, 3, True, None),
+    # Hybrid
+    ("What do winners from the US say about racism?", {"country": "USA"}, 5, True, None),
+    # Thematic
+    ("What do winners say about the creative writing process?", {"source_type": "nobel_lecture"}, 15, False, None),
 ])
-def test_query_engine_e2e(user_query, filters, expected_k, dry_run):
+def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
     """E2E test for query engine: dry run and live modes, checks prompt, answer, and sources."""
-    response = query(user_query, filters=filters, dry_run=dry_run)
+    response = query(user_query, filters=filters, dry_run=dry_run, model_id=model_id)
     prompt = build_prompt([source_to_chunk(s) for s in response['sources']], user_query)
     assert isinstance(response["answer"], str)
     assert isinstance(response["sources"], list)
     assert len(response["sources"]) <= expected_k
     assert isinstance(prompt, str)
-    # Optionally check for expected content in dry_run mode
+    # Enhanced dry run validation
     if dry_run:
-        assert "justice" in response["answer"].lower() or "usa" in user_query.lower() or "theme" in user_query.lower()
-    # In live mode, just check output is non-empty
+        assert "failed" not in response["answer"].lower(), f"Query failed: {response['answer']}"
     else:
         assert len(response["answer"]) > 0
 

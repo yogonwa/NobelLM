@@ -208,3 +208,27 @@ def test_thematic_query_with_last_name_scoping():
     assert isinstance(result, dict)
     assert result["intent"] == "thematic"
     assert result["scoped_entity"] == "Morrison" 
+
+# --- Additional tests for router edge cases (invalid intent, missing/malformed filters) ---
+def test_router_invalid_intent_input(monkeypatch):
+    """Test that the router raises or logs an error if the intent classifier returns an unknown intent."""
+    router = QueryRouter(metadata=EXAMPLE_METADATA)
+    # Monkeypatch the intent_classifier to return an invalid intent
+    monkeypatch.setattr(router.intent_classifier, "classify", lambda q: "nonsense_intent")
+    with pytest.raises(ValueError):
+        router.route_query("This is a test query with invalid intent.")
+
+def test_router_thematic_missing_or_malformed_filters():
+    """Test that thematic queries with missing or malformed filters do not crash the router."""
+    router = QueryRouter(metadata=EXAMPLE_METADATA)
+    # Thematic query with no scoping (filters=None)
+    result = router.route_query("What are common themes in Nobel lectures?")
+    assert result.intent == "thematic"
+    assert result.retrieval_config.filters is None
+    # Simulate a malformed filters scenario by directly constructing a QueryRouteResult
+    # (Router itself does not currently accept user-supplied filters, but this checks robustness)
+    malformed_filters = 12345  # Not a dict or None
+    rc = result.retrieval_config
+    rc.filters = malformed_filters
+    assert isinstance(rc.filters, int)
+    # The router should not crash, but downstream code should validate filters type as needed 

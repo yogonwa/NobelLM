@@ -30,4 +30,24 @@ def test_theme_expansion_for_all_keywords():
             # The canonical theme keyword should be in the expansion
             assert theme in expanded, f"Theme '{theme}' not in expansion for keyword '{kw}'"
             # The original keyword should be in the expansion
-            assert kw in expanded, f"Keyword '{kw}' not in expansion for theme '{theme}'" 
+            assert kw in expanded, f"Keyword '{kw}' not in expansion for theme '{theme}'"
+
+def test_empty_query_returns_empty_set():
+    """Test that a query with no matching keywords returns an empty set."""
+    reformulator = ThemeReformulator(THEME_PATH)
+    result = reformulator.expand_query_terms("This query has no theme keywords.")
+    assert result == set(), f"Expected empty set, got {result}"
+
+@pytest.mark.parametrize("query", [
+    "What do laureates say about JUSTICE?",
+    "what do laureates say about justice?",
+    "WhAt Do LaUrEaTeS sAy AbOuT jUsTiCe?"
+])
+def test_case_insensitivity(query):
+    """Test that queries with different casing yield the same expansion."""
+    reformulator = ThemeReformulator(THEME_PATH)
+    result = reformulator.expand_query_terms(query)
+    # Should always include all justice theme keywords
+    justice_keywords = {"justice", "fairness", "law", "morality", "rights", "equality", "injustice"}
+    for kw in justice_keywords:
+        assert kw in result, f"Expected '{kw}' in expansion for query: {query}" 

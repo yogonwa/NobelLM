@@ -51,4 +51,16 @@ def test_format_chunks_for_prompt_custom_template():
     ]
     template = "{laureate} ({year_awarded}): {text}"
     result = format_chunks_for_prompt(chunks, template=template)
-    assert result == "X (2020): Custom template." 
+    assert result == "X (2020): Custom template."
+
+def test_format_chunks_for_prompt_empty_list():
+    """Test that formatting an empty chunk list returns an empty string."""
+    result = format_chunks_for_prompt([])
+    assert result == ""
+
+def test_format_chunks_for_prompt_all_metadata_missing():
+    """Test that a chunk with only text and no metadata fields falls back to 'Unknown' for all metadata."""
+    chunks = [{"text": "Only text."}]
+    result = format_chunks_for_prompt(chunks)
+    assert "Only text." in result
+    assert "Unknown" in result  # for laureate, year_awarded, source_type 
