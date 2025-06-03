@@ -16,7 +16,7 @@ Outputs:
 import json
 import argparse
 from transformers import AutoTokenizer
-from rag.model_config import get_model_config, DEFAULT_MODEL_ID
+from rag.model_config import get_model_config, DEFAULT_MODEL_ID, MODEL_CONFIGS
 
 
 def audit_chunks(path: str, tokenizer) -> None:
@@ -46,7 +46,7 @@ def audit_chunks(path: str, tokenizer) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default=DEFAULT_MODEL_ID, choices=list(get_model_config().keys()), help="Embedding model used for chunking")
+    parser.add_argument("--model", default=DEFAULT_MODEL_ID, choices=list(MODEL_CONFIGS.keys()), help="Embedding model used for chunking")
     args = parser.parse_args()
 
     config = get_model_config(args.model)
