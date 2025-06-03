@@ -1,6 +1,31 @@
 # Tests for Nobel Laureate Speech Explorer
 
-This directory contains unit tests for core extraction, parsing, and retrieval logic in the Nobel Laureate Speech Explorer project. All tests use `pytest` and static HTML/text fixtures—no live HTTP requests are made.
+## 🚦 Test Progress & Environment-Aware Execution (2025)
+
+- **Dual-process FAISS retrieval is now supported for Mac/Intel:**
+  - Set `export NOBELLM_USE_FAISS_SUBPROCESS=1` before running tests to avoid segfaults.
+  - On Linux/CI, leave this variable unset or set to `0` for faster, unified in-process tests.
+- **All tests are model-aware and config-driven.**
+- **Test coverage includes:**
+  - Extraction/parsing logic
+  - Intent classification and routing
+  - End-to-end RAG pipeline (dry run and live)
+  - Thematic expansion and chunk formatting
+
+**Helper for contributors:**
+```bash
+# On Mac/Intel (avoid segfaults):
+export NOBELLM_USE_FAISS_SUBPROCESS=1
+pytest
+
+# On Linux/CI (faster):
+export NOBELLM_USE_FAISS_SUBPROCESS=0  # or leave unset
+pytest
+```
+- You can also set this in test setup with `os.environ["NOBELLM_USE_FAISS_SUBPROCESS"] = "0"` for explicit control.
+- See the main README.md and rag/README.md for more details on the environment toggle and dual-mode retrieval logic.
+
+---
 
 ## Model-Aware, Config-Driven Testing (NEW)
 
@@ -79,15 +104,23 @@ def test_chunking_output_schema(model_id):
   - Fallback to factual
   - Thematic + full name scoping
   - Thematic + last name scoping
-  - Edge cases (ambiguous, partial, etc.)
+  - Edge cases (ambiguous, partial, malformed, international, hybrid phrasing)
 - **Inputs:** Query strings
-- **Expected Output:** Correct intent classification and scoping
+- **Expected Output:** Correct intent classification and scoping for all cases
 
 ---
 
 ## Test File: `test_query_router.py`
 
 ### What is Tested?
+
+- Fallback strategies (metadata to RAG)
+- Invalid intent input (raises ValueError)
+- Thematic/factual/generative routing
+- Logs, config, and prompt template selection
+- Missing/malformed filters in thematic routing
+- End-to-end pipeline integration (mocked)
+- All required unit tests present and passing
 
 #### 1. `extract_life_and_work_blurbs`
 # ... existing code ...
@@ -107,6 +140,45 @@ def test_chunking_output_schema(model_id):
 - **Inputs:** Query string (e.g., "Who won the Nobel Prize in 2017?")
 - **Expected Output:**
   - `answer_type` is 'metadata', answer contains '2017', metadata includes 'Kazuo Ishiguro'.
+
+## Test File: `test_retriever.py`
+
+### What is Tested?
+
+- Retrieval with valid filters (mocked FAISS and metadata)
+- Handling of zero vector (raises ValueError)
+- Dual-process retriever returns results (mocked subprocess and file I/O)
+- Dual-process retriever handles subprocess error (raises RuntimeError)
+- query_index returns correct top_k results and metadata (mocked)
+- query_index raises FileNotFoundError if index is missing
+- All required unit tests present and passing
+
+## Test File: `test_metadata_handler.py`
+
+### What is Tested?
+
+- All factual query patterns and variants are covered
+- Edge cases for unknown laureate/country
+- Compound/nested filter logic is tested via manual filtering (handler does not natively support compound filters)
+- Fallbacks for zero matches are tested
+- Note: Handler should be updated to natively support compound filters for full coverage
+- All current required unit tests present and passing
+
+## Test File: `test_utils.py`
+
+### What is Tested?
+
+- format_chunks_for_prompt is fully tested
+- Covers: all metadata present, missing metadata fallback, custom template, empty chunk list, all metadata missing
+- All required unit tests present and passing
+
+## Test File: `test_answer_compiler.py`
+
+### What is Tested?
+
+- Covers answer compilation for both RAG and metadata (factual, thematic, hybrid)
+- Tests output structure, answer content, sources, and fallbacks for no relevant chunks
+- All required unit tests present and passing
 
 ---
 
@@ -193,7 +265,13 @@ NOBELLM_LIVE_TEST=1 pytest rag/test_query_engine.py
 - **Inputs:** All theme keywords from `themes.json`.
 - **Expected Output:** Expansion includes the canonical theme and the original keyword for every input.
 
-- **Note:** Retrieval configuration for thematic queries (i.e., `RetrievalConfig(top_k=15, score_threshold=None)`) is explicitly checked in the comprehensive thematic routing test (`test_router_thematic_query_comprehensive`), so no separate test is needed for this logic.
+#### 3. Edge Cases
+- **Empty Set:** Query with no matching keywords returns an empty set.
+- **Case Insensitivity:** Queries with different casing (e.g., all caps, all lowercase, mixed case) yield the same expansion for a given theme keyword.
+
+- **Note:** Fuzzy matching and non-English queries are not currently tested.
+
+- **Status:** All required unit tests, including edge cases, are present and passing.
 
 ---
 

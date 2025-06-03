@@ -217,4 +217,32 @@ The query router now supports hybrid queries that combine a thematic concept wit
 - The laureate name list is loaded from `data/nobel_literature.json`.
 - All chunk metadata includes a `laureate` field for filtering.
 
+---
+
+# NobelLM RAG Pipeline
+
+## Environment-Aware FAISS Execution (Mac/Intel vs. Linux/Prod)
+
+**On macOS Intel, set the following environment variable to avoid PyTorch/FAISS segfaults:**
+
+```bash
+export NOBELLM_USE_FAISS_SUBPROCESS=1
+```
+
+This will run FAISS retrieval in a subprocess, isolating it from PyTorch and preventing native library conflicts.
+
+**On Linux, Hugging Face Spaces, or cloud servers, leave this variable unset for maximum speed:**
+
+```bash
+unset NOBELLM_USE_FAISS_SUBPROCESS
+```
+
+The pipeline will use a fast, unified in-process retrieval mode.
+
+| Environment       | Execution Mode         | Why                                  |
+|-------------------|------------------------|---------------------------------------|
+| macOS Intel (dev) | Subprocess (isolated)  | Prevent FAISS/PyTorch segfaults      |
+| Hugging Face      | Unified process        | Fast, stable Linux container runtime |
+| Cloud (EC2, GPU)  | Unified process        | Standard production path             |
+
 --- 
