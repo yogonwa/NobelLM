@@ -20,6 +20,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 _loaded_resources: Dict[str, Tuple[faiss.Index, List[Dict[str, Any]]]] = {}
 
 
+def is_invalid_vector(vec: np.ndarray) -> bool:
+    return (
+        np.isnan(vec).any()
+        or np.isinf(vec).any()
+        or np.allclose(vec, 0.0)
+    )
+
+
 def load_index_and_metadata(model_id: str) -> Tuple[faiss.Index, List[Dict]]:
     """
     Loads and caches the FAISS index and metadata for the given model_id.
@@ -55,17 +63,23 @@ def query_index(
     Returns top-k results with metadata and similarity scores.
     """
     index, metadata = load_index_and_metadata(model_id)
-
+    logger = logging.getLogger(__name__)
+    logger.info(f"FAISS index is trained: {getattr(index, 'is_trained', 'N/A')}, total vectors: {getattr(index, 'ntotal', 'N/A')}")
     if query_embedding.ndim == 1:
         query_embedding = query_embedding.reshape(1, -1)
+    logger.info(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
+    logger.info(f"First few values: {query_embedding[0][:5]}")
+    # Check for invalid vectors before normalization
+    if is_invalid_vector(query_embedding):
+        logger.error(f"Invalid query embedding detected: {query_embedding}")
+        raise ValueError("Invalid query embedding: contains NaN, inf, or is all zeros.")
+    else:
+        logger.info("Query embedding passed validation.")
     faiss.normalize_L2(query_embedding)
-
     scores, indices = index.search(query_embedding, top_k)
     results = []
-
     if scores.size == 0 or all(s < min_score for s in scores[0]):
         return [{"score": 0.0, "note": "No strong matches found."}]
-
     for i, (idx, score) in enumerate(zip(indices[0], scores[0])):
         if idx < 0 or idx >= len(metadata):
             continue
@@ -73,5 +87,4 @@ def query_index(
         result["score"] = float(score)
         result["rank"] = i
         results.append(result)
-
     return results 

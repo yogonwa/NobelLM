@@ -40,6 +40,8 @@ dotenv.load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+USE_FAISS_SUBPROCESS = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS", "0") == "1"
+
 __all__ = ["query"]
 
 _MODEL = None
@@ -107,17 +109,17 @@ def retrieve_chunks(
 ) -> List[Dict[str, Any]]:
     """
     Retrieve top-k most relevant chunks from the FAISS index for the specified model.
+    Uses subprocess mode if USE_FAISS_SUBPROCESS is set (for Mac/Intel dev), else in-process (for Linux/prod).
     """
-    index, metadata = get_index_and_metadata(model_id)
-    results = query_index(query_embedding, model_id=model_id, top_k=k, min_score=0.0)
-    results = [r for r in results if "note" not in r]
-    filtered = filter_chunks(results, filters)
-    if k > min_k:
-        return filtered[:k]
-    passing = [c for c in filtered if c.get("score", 0) >= score_threshold]
-    if len(passing) >= min_k:
-        return passing[:min_k]
-    return filtered[:min_k]
+    if USE_FAISS_SUBPROCESS:
+        # Subprocess mode: avoids PyTorch/FAISS segfaults on Mac/Intel
+        from rag.dual_process_retriever import retrieve_chunks_dual_process
+        # We need the original query string, not the embedding, for subprocess mode
+        # (Assume query_embedding is actually the query string in this mode)
+        return retrieve_chunks_dual_process(query_embedding, model_id=model_id, top_k=k)
+    else:
+        from rag.retriever import query_index
+        return query_index(query_embedding, model_id=model_id, top_k=k)
 
 
 # --- Filtering ---
