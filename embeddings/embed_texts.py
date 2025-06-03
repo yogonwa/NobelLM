@@ -21,7 +21,7 @@ import argparse
 from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
-from rag.model_config import get_model_config, DEFAULT_MODEL_ID
+from rag.model_config import get_model_config, DEFAULT_MODEL_ID, MODEL_CONFIGS
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -63,6 +63,6 @@ def embed_chunks(model_id: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', default=DEFAULT_MODEL_ID, choices=list(get_model_config().keys()), help='Embedding model to use')
+    parser.add_argument('--model', default=DEFAULT_MODEL_ID, choices=list(MODEL_CONFIGS.keys()), help='Embedding model to use')
     args = parser.parse_args()
     embed_chunks(args.model)
