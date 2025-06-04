@@ -343,8 +343,7 @@ def query(
             extra={"dry_run": False, "model_id": model_id}
         )
         logger.info(f"[RAG][ShapeCheck] Query intent: {intent}")
-        logger.info(f"[RAG][ShapeCheck] Retrieval path: {retrieval_path}")
-        logger.info(f"[RAG][ShapeCheck] Number of chunks returned: {len(sources)}")
+        logger.info(f"[RAG][ShapeCheck] Number of chunks returned: {len(chunks)}")
         return {
             "answer": answer,
             "sources": [make_source(chunk) for chunk in chunks],
