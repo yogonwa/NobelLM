@@ -32,7 +32,7 @@ from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from rag.retriever import query_index, load_index_and_metadata, is_invalid_vector
+from rag.retriever import query_index, load_index_and_metadata, is_invalid_vector, get_mode_aware_retriever, BaseRetriever
 
 dotenv.load_dotenv()
 
@@ -260,16 +260,15 @@ def query(
             }
         # RAG retrieval
         top_k = k if k is not None else retrieval_config.top_k
+        model_id = model_id or DEFAULT_MODEL_ID
+        retriever = get_mode_aware_retriever(model_id)
         query_emb = embed_query(query_string, model_id)
         if is_invalid_vector(query_emb):
             raise ValueError("Invalid query vector: embedding appears to be all zeros.")
-        chunks = retrieve_chunks(
-            query_emb,
-            k=top_k,
-            filters=filters or retrieval_config.filters,
-            score_threshold=retrieval_config.score_threshold or score_threshold,
-            min_k=5,
-            model_id=model_id
+        chunks = retriever.retrieve(
+            query_string,
+            top_k=top_k,
+            filters=filters or retrieval_config.filters
         )
         if not chunks:
             logger.warning("No relevant chunks found for query.")
@@ -311,7 +310,7 @@ def query(
                 completion_tokens=completion_tokens,
                 chunk_count=chunk_count,
                 estimated_cost_usd=estimated_cost_usd,
-                extra={"dry_run": True, "model_id": model_id or DEFAULT_MODEL_ID}
+                extra={"dry_run": True, "model_id": model_id}
             )
             return {
                 "answer": "[DRY RUN] This is a simulated answer. Retrieved context:\n" + prompt,
@@ -341,8 +340,11 @@ def query(
             completion_tokens=completion_tokens,
             chunk_count=chunk_count,
             estimated_cost_usd=estimated_cost_usd,
-            extra={"dry_run": False, "model_id": model_id or DEFAULT_MODEL_ID}
+            extra={"dry_run": False, "model_id": model_id}
         )
+        logger.info(f"[RAG][ShapeCheck] Query intent: {intent}")
+        logger.info(f"[RAG][ShapeCheck] Retrieval path: {retrieval_path}")
+        logger.info(f"[RAG][ShapeCheck] Number of chunks returned: {len(sources)}")
         return {
             "answer": answer,
             "sources": [make_source(chunk) for chunk in chunks],
@@ -393,23 +395,19 @@ def answer_query(query_string: str) -> dict:
     # --- Modular Thematic Retrieval ---
     retrieval_config = route_result.retrieval_config
     if route_result.intent == "thematic":
-        # Use ThematicRetriever for modular, testable logic
+        logger.info(f"[RAG][Thematic] Calling ThematicRetriever with expanded terms: {route_result.logs.get('thematic_expanded_terms', 'N/A')}")
         thematic_retriever = ThematicRetriever(
-            embedder=type('Embedder', (), {'get_embedding': staticmethod(embed_query)}),
-            retriever=type('Retriever', (), {'get_top_k_chunks': staticmethod(lambda emb, top_k, threshold=None, filters=None: retrieve_chunks(emb, k=top_k, filters=filters, score_threshold=0.0, min_k=5))})
+            retriever=get_mode_aware_retriever(model_id)
         )
-        # Pass filters if present (for scoped thematic queries)
         chunks = thematic_retriever.retrieve(query_string, top_k=retrieval_config.top_k, filters=retrieval_config.filters)
+        logger.info(f"[RAG][Thematic] Final unique chunks returned: {len(chunks)}")
+        logger.info(f"[RAG][Thematic] Final unique chunk IDs: {[c.get('chunk_id') for c in chunks]}")
     else:
-        # Factual/generative: use original logic
-        embedding_input = query_string
-        query_emb = embed_query(embedding_input)
-        chunks = retrieve_chunks(
-            query_emb,
-            k=retrieval_config.top_k,
-            filters=retrieval_config.filters,
-            score_threshold=retrieval_config.score_threshold or 0.0,
-            min_k=5
+        # Factual/generative: use retriever directly
+        chunks = get_mode_aware_retriever(model_id).retrieve(
+            query_string,
+            top_k=retrieval_config.top_k,
+            filters=retrieval_config.filters
         )
     if not chunks:
         return {

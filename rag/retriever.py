@@ -14,6 +14,8 @@ from typing import List, Dict, Tuple, Any, Optional
 import numpy as np
 import faiss
 from rag.model_config import get_model_config
+from sentence_transformers import SentenceTransformer
+from rag.dual_process_retriever import retrieve_chunks_dual_process
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
@@ -106,19 +108,34 @@ def query_index(
     id_to_idx = {meta["chunk_id"]: i for i, meta in enumerate(metadata)}
     valid_indices = [id_to_idx[m["chunk_id"]] for m in filtered_metadata]
 
-    # Extract vectors for filtered indices
-    all_vectors = index.reconstruct_n(0, index.ntotal)  # shape: (N, D)
+    # After filtering
+    logger.info(f"[RAG][ShapeCheck] valid_indices: {valid_indices}, count: {len(valid_indices)}")
+    all_vectors = index.reconstruct_n(0, index.ntotal)
     filtered_vectors = all_vectors[valid_indices]
+    if filtered_vectors.ndim == 1:
+        logger.warning("[RAG][ShapeCheck] filtered_vectors was 1D, reshaping to 2D.")
+        filtered_vectors = filtered_vectors.reshape(1, -1)
+    assert filtered_vectors.ndim == 2, f"filtered_vectors shape: {filtered_vectors.shape}"
     faiss.normalize_L2(filtered_vectors)
-
-    # Defensive: Check filtered_vectors shape
-    if filtered_vectors.ndim != 2 or query_embedding.ndim != 2:
-        raise ValueError(f"Vectors have unexpected shape: filtered_vectors={filtered_vectors.shape}, query_embedding={query_embedding.shape}")
+    logger.info(f"[RAG][ShapeCheck] filtered_vectors shape: {filtered_vectors.shape}, dtype: {filtered_vectors.dtype}")
 
     # Search over filtered vectors (cosine similarity via inner product)
     # Compute scores manually
     scores = np.dot(filtered_vectors, query_embedding[0])  # shape: (num_filtered,)
+    # After scoring
+    logger.info(f"[RAG][ShapeCheck] scores shape: {scores.shape}, dtype: {scores.dtype}")
+    if np.isscalar(scores):
+        logger.warning("[RAG][ShapeCheck] scores was scalar, converting to 1D array.")
+        scores = np.array([scores])
+    if scores.ndim == 0:
+        scores = scores.reshape(1)
+    assert scores.ndim == 1, f"scores shape: {scores.shape}"
+    logger.info(f"[RAG][ShapeCheck] Number of chunks after filtering: {len(scores)}")
     top_indices = scores.argsort()[::-1][:top_k]
+    logger.info(f"Top 10 scores: {scores[top_indices][:10]}")
+    logger.info(f"Top 10 chunk IDs: {[filtered_metadata[i]['chunk_id'] for i in top_indices[:10]]}")
+    logger.info(f"Number of chunks before score threshold: {len(filtered_metadata)}")
+    logger.info(f"Number of chunks after score threshold: {len([s for s in scores if s >= min_score])}")
     results = []
     for rank, i in enumerate(top_indices):
         if scores[i] >= min_score:
@@ -126,4 +143,33 @@ def query_index(
             result["score"] = float(scores[i])
             result["rank"] = rank
             results.append(result)
-    return results 
+    return results
+
+
+class BaseRetriever:
+    def retrieve(self, query: str, top_k: int = 5, filters: dict = None) -> List[Dict]:
+        raise NotImplementedError
+
+
+class InProcessRetriever(BaseRetriever):
+    def __init__(self, model_id: str):
+        config = get_model_config(model_id)
+        self.model_id = model_id
+        self.embedder = SentenceTransformer(config["model_name"])
+    def retrieve(self, query: str, top_k=5, filters=None):
+        emb = self.embedder.encode([query], normalize_embeddings=True)[0]
+        return query_index(emb, model_id=self.model_id, top_k=top_k, filters=filters)
+
+
+class SubprocessRetriever(BaseRetriever):
+    def __init__(self, model_id: str):
+        self.model_id = model_id
+    def retrieve(self, query: str, top_k=5, filters=None):
+        return retrieve_chunks_dual_process(query, model_id=self.model_id, top_k=top_k, filters=filters)
+
+
+def get_mode_aware_retriever(model_id: str) -> BaseRetriever:
+    if os.getenv("NOBELLM_USE_FAISS_SUBPROCESS") == "1":
+        return SubprocessRetriever(model_id)
+    else:
+        return InProcessRetriever(model_id) 

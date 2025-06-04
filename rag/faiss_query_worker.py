@@ -14,17 +14,21 @@ from rag.retriever import query_index
 
 logging.basicConfig(level=logging.INFO)
 
+logger = logging.getLogger(__name__)
+
 def main(model_id: str, tmpdir: str, filters_path: str = None, index_path: str = None, metadata_path: str = None):
     emb_path = os.path.join(tmpdir, "query_embedding.npy")
     results_path = os.path.join(tmpdir, "retrieval_results.json")
     query_vector = np.load(emb_path)
-    logging.info(f"Loaded query embedding from {emb_path}, shape: {query_vector.shape}")
+    logger.info(f"Loaded query embedding from {emb_path}, shape: {query_vector.shape}")
+    logger.info(f"[RAG][ShapeCheck] Input embedding shape: {query_vector.shape}")
     filters = None
     if filters_path and os.path.exists(filters_path):
         with open(filters_path, "r", encoding="utf-8") as f:
             filters = json.load(f)
         logging.info(f"Loaded filters from {filters_path}: {filters}")
     results = query_index(query_vector, model_id=model_id, top_k=5, filters=filters, index_path=index_path, metadata_path=metadata_path)
+    logger.info(f"[RAG][ShapeCheck] Number of chunks found: {len(results)}")
     with open(results_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     logging.info(f"Saved retrieval results to {results_path}")

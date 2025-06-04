@@ -352,3 +352,67 @@ This will be modularized to allow selective use per source type (lecture, ceremo
 ## Status: 📅 **Deferred until Post-MVP**
 
 - 2024-06: Pre-retrieval metadata filtering added. Filters are now applied before FAISS search in all retrieval modes. This improves efficiency, privacy, and explainability. Only output fields are exposed in answers.
+
+# Modern Retriever Abstraction and Refactor Plan (June 2025)
+
+## Motivation
+To ensure robust, extensible, and mode-agnostic retrieval in the NobelLM RAG pipeline, we are refactoring the retriever layer to use a consistent, self-documenting interface. This eliminates shape/type bugs and makes it easy to add new retrieval backends (e.g., ElasticSearch, hybrid, remote API) in the future.
+
+## Design
+
+### 1. BaseRetriever Interface
+```python
+class BaseRetriever:
+    def retrieve(self, query: str, top_k: int = 5, filters: dict = None) -> List[dict]:
+        raise NotImplementedError
+```
+
+### 2. Subclass by Mode
+#### A. InProcessRetriever
+```python
+class InProcessRetriever(BaseRetriever):
+    def __init__(self, model_id: str):
+        self.embedder = get_embedder(model_id)
+        self.model_id = model_id
+    def retrieve(self, query: str, top_k=5, filters=None):
+        emb = self.embedder.get_embedding(query)
+        return query_index(emb, model_id=self.model_id, top_k=top_k, filters=filters)
+```
+#### B. SubprocessRetriever
+```python
+class SubprocessRetriever(BaseRetriever):
+    def __init__(self, model_id: str):
+        self.model_id = model_id
+    def retrieve(self, query: str, top_k=5, filters=None):
+        return retrieve_chunks_dual_process(query, model_id=self.model_id, top_k=top_k, filters=filters)
+```
+
+### 3. Factory Function
+```python
+def get_mode_aware_retriever(model_id: str) -> BaseRetriever:
+    if os.getenv("NOBELLM_USE_FAISS_SUBPROCESS") == "1":
+        return SubprocessRetriever(model_id)
+    else:
+        return InProcessRetriever(model_id)
+```
+
+### 4. Update All Callers
+- Replace all direct calls to retrieval functions with:
+```python
+retriever = get_mode_aware_retriever(model_id)
+chunks = retriever.retrieve(query, top_k=k, filters=filters)
+```
+- Applies to both ThematicRetriever and factual/hybrid RAG flows.
+
+### 5. Test Strategy
+- Unit test both retriever subclasses for consistent input/output.
+- Integration test pipeline in both modes.
+- Regression test: Thematic and factual queries should return the same results as before (modulo bug fixes).
+
+### 6. Bonus: Future Extensibility
+- Add new retriever backends by subclassing BaseRetriever and updating the factory.
+- The rest of the pipeline remains unchanged.
+
+**This approach is architecturally sound, minimally invasive, and future-ready.**
+
+---

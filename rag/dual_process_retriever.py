@@ -10,10 +10,13 @@ import subprocess
 import json
 import numpy as np
 import logging
+import sys
 from sentence_transformers import SentenceTransformer
 from rag.model_config import get_model_config
 
 logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 def retrieve_chunks_dual_process(user_query: str, model_id: str = "bge-large", top_k: int = 5, filters=None) -> list:
     """
@@ -22,6 +25,8 @@ def retrieve_chunks_dual_process(user_query: str, model_id: str = "bge-large", t
     config = get_model_config(model_id)
     model = SentenceTransformer(config["model_name"])
     embedding = model.encode(user_query, normalize_embeddings=True)
+    logger.info(f"[RAG][ShapeCheck] User query: {user_query}")
+    logger.info(f"[RAG][ShapeCheck] Embedding shape: {embedding.shape}")
     with tempfile.TemporaryDirectory() as tmpdir:
         emb_path = os.path.join(tmpdir, "query_embedding.npy")
         results_path = os.path.join(tmpdir, "retrieval_results.json")
@@ -33,11 +38,13 @@ def retrieve_chunks_dual_process(user_query: str, model_id: str = "bge-large", t
             filters_path = os.path.join(tmpdir, "filters.json")
             with open(filters_path, "w", encoding="utf-8") as f:
                 json.dump(filters, f)
-        cmd = ["python", "rag/faiss_query_worker.py", "--model", model_id, "--dir", tmpdir]
+        cmd = [sys.executable, "-m", "rag.faiss_query_worker", "--model", model_id, "--dir", tmpdir]
         if filters_path:
             cmd += ["--filters", filters_path]
-        subprocess.run(cmd, check=True)
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.getcwd()
+        subprocess.run(cmd, check=True, env=env)
         with open(results_path, "r", encoding="utf-8") as f:
             results = json.load(f)
-        logging.info(f"[DualProcess] Loaded retrieval results from {results_path}")
+        logger.info(f"[RAG][ShapeCheck] Results loaded from subprocess: {len(results)} chunks")
     return results 

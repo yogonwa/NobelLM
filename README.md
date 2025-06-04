@@ -113,6 +113,27 @@ response = query("What do laureates say about justice?", dry_run=True, model_id=
 - Add its config to `rag/model_config.py`.
 - All downstream code and scripts will pick it up automatically.
 
+## 🧩 Mode-Agnostic Retriever Layer (June 2025 Refactor)
+
+**New as of June 2025:** NobelLM now uses a modern, mode-agnostic retriever abstraction for all chunk retrieval, both factual and thematic.
+
+- All retrieval is routed through a `BaseRetriever` interface, with two main implementations:
+  - `InProcessRetriever`: Runs embedding and FAISS search in-process (Linux/prod, default).
+  - `SubprocessRetriever`: Runs FAISS search in a subprocess for Mac/Intel safety (set `NOBELLM_USE_FAISS_SUBPROCESS=1`).
+- A factory function (`get_mode_aware_retriever`) selects the correct backend based on environment.
+- The interface is always `retrieve(query: str, top_k: int, filters: dict) -> List[dict]`.
+- Thematic and factual queries both use this interface—no more shape/type bugs or mode-specific logic in callers.
+- **Extensible:** You can add new backends (e.g., ElasticSearch, hybrid, remote API) by subclassing `BaseRetriever` and updating the factory.
+
+**Example usage:**
+```python
+from rag.retriever import get_mode_aware_retriever
+retriever = get_mode_aware_retriever(model_id)
+chunks = retriever.retrieve("What did laureates say about justice?", top_k=10)
+```
+
+This refactor makes the pipeline robust, testable, and future-ready for multi-backend or hybrid search.
+
 ---
 
 ## 📁 Folder Structure

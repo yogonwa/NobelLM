@@ -7,6 +7,7 @@ It is designed for modularity, testability, and easy integration into the RAG pi
 """
 import logging
 from config.theme_reformulator import ThemeReformulator
+from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -15,22 +16,19 @@ class ThematicRetriever:
     Encapsulates thematic query expansion, embedding, and retrieval logic.
     Use this class to handle all thematic search workflows in a modular, testable way.
     """
-    def __init__(self, embedder, retriever, theme_file="config/themes.json"):
+    def __init__(self, retriever, theme_file="config/themes.json"):
         """
         Initialize the ThematicRetriever.
         Args:
-            embedder: An object with a get_embedding(text) method (e.g., wraps MiniLM or OpenAI embedder).
-            retriever: An object with a get_top_k_chunks(embedding, top_k, threshold=None) method.
+            retriever: An object with a retrieve(query, top_k, filters) method (BaseRetriever).
             theme_file: Path to the JSON file mapping themes to keywords.
         """
         self.reformulator = ThemeReformulator(theme_file)
-        self.embedder = embedder
         self.retriever = retriever
 
-    def retrieve(self, user_query: str, top_k: int = 15, filters=None):
+    def retrieve(self, user_query: str, top_k: int = 15, filters=None) -> List[Dict]:
         """
-        Reformulate the query using theme expansion, embed, and retrieve top-k chunks.
-        Logs both the original and reformulated query string for transparency.
+        Reformulate the query using theme expansion, and retrieve top-k chunks for each term.
         Args:
             user_query: The original user query string.
             top_k: Number of chunks to retrieve (default 15 for thematic search).
@@ -38,15 +36,22 @@ class ThematicRetriever:
         Returns:
             List of retrieved chunk dicts.
         """
-        # Expand the query to all related theme terms
         terms = self.reformulator.expand_query_terms(user_query)
-        if terms:
-            search_string = " ".join(terms)
-        else:
-            search_string = user_query  # fallback to original query
-        # Log both the original and reformulated query
-        logger.info(f"ThematicRetriever: user_query='{user_query}' | reformulated='{search_string}'")
-        # Embed and retrieve
-        query_embedding = self.embedder.get_embedding(search_string)
-        chunks = self.retriever.get_top_k_chunks(query_embedding, top_k=top_k, threshold=None, filters=filters)
-        return chunks 
+        logger.info(f"[RAG][ShapeCheck] Expanded query terms: {terms}")
+        all_results = []
+        for term in terms:
+            chunks = self.retriever.retrieve(term, top_k, filters=filters)
+            logger.info(f"[RAG][Thematic] Retrieved {len(chunks)} chunks for term '{term}'")
+            logger.info(f"[RAG][Thematic] Chunk IDs for '{term}': {[c.get('chunk_id') for c in chunks]}")
+            logger.info(f"[RAG][Thematic] Scores for '{term}': {[c.get('score') for c in chunks]}")
+            all_results.extend(chunks)
+        # Deduplicate by chunk_id
+        unique_chunks = {}
+        for c in all_results:
+            cid = c.get('chunk_id')
+            if cid and (cid not in unique_chunks or c['score'] > unique_chunks[cid]['score']):
+                unique_chunks[cid] = c
+        logger.info(f"[RAG][Thematic] Total unique chunks after aggregation: {len(unique_chunks)}")
+        logger.info(f"[RAG][Thematic] Unique chunk IDs: {list(unique_chunks.keys())}")
+        logger.info(f"[RAG][Thematic] Unique chunk scores: {[c.get('score') for c in unique_chunks.values()]}")
+        return list(unique_chunks.values()) 
