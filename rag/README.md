@@ -4,6 +4,33 @@
 
 This module provides a modular, extensible, and testable interface for querying the Nobel Literature corpus using retrieval-augmented generation (RAG).
 
+---
+
+## 📂 RAG Module File/Class Overview
+
+| File                      | Main Classes/Functions         | Description                                                                                 |
+|---------------------------|-------------------------------|---------------------------------------------------------------------------------------------|
+| `query_engine.py`         | `query`                       | Orchestrates the full RAG pipeline: intent, retrieval, prompt, LLM, answer.                 |
+| `query_router.py`         | `QueryRouter`, `IntentClassifier`, `PromptTemplateSelector` | Classifies queries, selects retrieval config, prompt template, and routes to metadata/RAG.   |
+| `thematic_retriever.py`   | `ThematicRetriever`           | Expands thematic queries, embeds, and retrieves relevant chunks.                             |
+| `retriever.py`            | `BaseRetriever`, `InProcessRetriever`, `SubprocessRetriever`, `query_index` | Retrieves top-k chunks from FAISS index, supports mode-aware (in-process/subprocess) logic. |
+| `dual_process_retriever.py`| `retrieve_chunks_dual_process`| Subprocess-based FAISS retrieval for Mac/Intel safety.                                      |
+| `faiss_index.py`          | `load_index`, `reload_index`, `health_check` | Loads, reloads, and checks FAISS index integrity.                                           |
+| `model_config.py`         | `get_model_config`            | Central config for model names, paths, embedding dims.                                      |
+| `intent_classifier.py`    | `IntentClassifier`            | Rule-based classifier for factual/thematic/generative queries.                              |
+| `metadata_handler.py`     | `handle_metadata_query`       | Answers factual queries directly from laureate metadata.                                     |
+| `metadata_utils.py`       | `flatten_laureate_metadata`   | Flattens and loads laureate metadata for factual QA.                                        |
+| `utils.py`                | `format_chunks_for_prompt`    | Formats retrieved chunks (with metadata) for LLM prompt context.                             |
+| `cache.py`                | `get_faiss_index_and_metadata`, `get_model` | Streamlit-cached loaders for index, metadata, and models.                                   |
+
+---
+## 🗺️ RAG Pipeline Architecture
+
+View the interactive architecture diagram here:  
+[NobelLM RAG Pipeline – Mermaid Chart](https://www.mermaidchart.com/app/projects/f11ebb0b-c097-43bd-80d5-e9740319bf5e/diagrams/4ac34c1b-cea0-40b8-a1d3-10014bbcf904/version/v0.1/edit)
+
+---
+
 ## Features
 - Embeds user queries using a **model-aware, config-driven approach** (BGE-Large or MiniLM, easily swappable)
 - Retrieves top-k relevant chunks from the correct FAISS index (model-specific)
@@ -253,5 +280,17 @@ The pipeline will use a fast, unified in-process retrieval mode.
 - Supported in all retrieval modes (in-process and subprocess).
 - Improves efficiency and explainability.
 - Only output fields (e.g., chunk_id, text_snippet) are exposed to downstream consumers; internal metadata is not leaked.
+
+---
+
+## 📚 Further Reading & Related Documentation
+
+| Document                       | Description                                                      |
+|---------------------------------|------------------------------------------------------------------|
+| [Root README.md](../README.md)  | Project overview, setup, features, and high-level architecture.  |
+| [SPEC.md](../SPEC.md)           | Master project specification, schema, data sources, and goals.   |
+| [tests/README.md](../tests/README.md) | Detailed test coverage, environment notes, and test philosophy. |
+| [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) | Milestones, phases, and planned features.                      |
+| [META_ANALYSIS.md](../META_ANALYSIS.md) | Strategy, design notes, and meta-level analysis.               |
 
 --- 

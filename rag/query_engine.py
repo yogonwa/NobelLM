@@ -25,7 +25,7 @@ try:
     import tiktoken
 except ImportError:
     tiktoken = None
-from rag.query_router import QueryRouter, PromptTemplateSelector
+from rag.query_router import QueryRouter, PromptTemplateSelector, format_factual_context
 import json
 from rag.metadata_utils import flatten_laureate_metadata
 from rag.thematic_retriever import ThematicRetriever
@@ -280,7 +280,7 @@ def query(
             }
         # --- Intent-aware prompt construction ---
         if intent == "factual":
-            context = router.prompt_template_selector.format_factual_context(chunks)
+            context = format_factual_context(chunks)
         else:
             from rag.utils import format_chunks_for_prompt
             context = format_chunks_for_prompt(chunks)

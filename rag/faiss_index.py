@@ -1,3 +1,12 @@
+"""
+faiss_index.py
+
+FAISS index loader, cache, and health check utilities for the NobelLM RAG pipeline.
+
+- Loads and caches FAISS index for fast retrieval.
+- Supports force reload, cache clearing, and health checks.
+- Used by retriever and query engine modules.
+"""
 import os
 import faiss
 import logging
@@ -9,10 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 def is_subprocess_mode():
+    """
+    Return True if FAISS retrieval should run in subprocess mode (for Mac/Intel safety).
+    """
     return os.getenv("NOBELLM_USE_FAISS_SUBPROCESS") == "1"
 
 
 def load_index(force_reload=False, model_id=None):
+    """
+    Load and cache the FAISS index for the specified model_id.
+    If force_reload is True, reload from disk even if cached.
+    Uses model config for index path.
+    """
     model_id = model_id or DEFAULT_MODEL_ID
     config = get_model_config(model_id)
     index_path = config["index_path"]
@@ -24,13 +41,17 @@ def load_index(force_reload=False, model_id=None):
 
 
 def reload_index(model_id=None):
-    """Force reload from disk for the given model_id."""
+    """
+    Force reload the FAISS index from disk for the given model_id.
+    """
     logger.info(f"Forcing FAISS index reload for model_id={model_id or DEFAULT_MODEL_ID}")
     return load_index(force_reload=True, model_id=model_id)
 
 
 def clear_index(model_id=None):
-    """Clear cached index for the given model_id (or all if None)."""
+    """
+    Clear the cached FAISS index for the given model_id, or all if None.
+    """
     if model_id:
         _INDEX_CACHE.pop(model_id, None)
         logger.info(f"Cleared FAISS index cache for model_id={model_id}")
@@ -40,7 +61,9 @@ def clear_index(model_id=None):
 
 
 def health_check(model_id=None):
-    """Check index and metadata integrity, log stats."""
+    """
+    Check index and metadata integrity for the given model_id. Logs stats and errors.
+    """
     model_id = model_id or DEFAULT_MODEL_ID
     config = get_model_config(model_id)
     index_path = config["index_path"]

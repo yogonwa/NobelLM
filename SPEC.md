@@ -81,7 +81,7 @@ The **Nobel Laureate Speech Explorer** is a data-driven exploration tool designe
 - **Scraping:** `requests`, `beautifulsoup4`
 - **Parsing:** `PyMuPDF`, custom HTML cleaning
 - **Storage:** JSON, CSV (optionally: SQLite)
-- **Embedding:** `sentence-transformers` (MiniLM); upgradeable to OpenAI Embedding API
+- **Embedding:** `sentence-transformers` (MiniLM, BGE); upgradeable to OpenAI Embedding API
 - **Vector Store:** FAISS (local CPU)
 - **Frontend:** Streamlit (hosted via Hugging Face Spaces)
 
