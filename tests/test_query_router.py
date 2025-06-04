@@ -118,25 +118,6 @@ def test_router_thematic_query_comprehensive():
     # Check prompt template
     assert "literary analyst" in result.prompt_template  # or a more specific string from the thematic template 
 
-def test_select_thematic_prompt_template():
-    """Unit test: Ensure the correct thematic prompt template is returned for 'thematic' intent."""
-    from rag.query_router import PromptTemplateSelector
-    selector = PromptTemplateSelector()
-    template = selector.select('thematic')
-    # Check for key thematic instructions and structure
-    assert "literary analyst" in template
-    assert "User question:" in template
-    assert "Excerpts:" in template
-    assert "Instructions:" in template
-    assert "Identify prominent or recurring themes" in template
-    assert "Reference the speaker and year when relevant" in template
-    # Should not be a factual template
-    assert "Answer the question using only the information in the context" not in template
-    # Should raise ValueError for unknown intent
-    import pytest
-    with pytest.raises(ValueError):
-        selector.select('unknown_intent') 
-
 def test_end_to_end_thematic_and_factual_query():
     """Integration: Simulate full pipeline for thematic and factual queries (mocked retrieval and LLM)."""
     from rag.query_engine import answer_query

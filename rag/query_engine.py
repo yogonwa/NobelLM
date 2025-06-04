@@ -25,14 +25,14 @@ try:
     import tiktoken
 except ImportError:
     tiktoken = None
-from rag.query_router import QueryRouter
+from rag.query_router import QueryRouter, PromptTemplateSelector
 import json
 from rag.metadata_utils import flatten_laureate_metadata
 from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from rag.retriever import query_index, load_index_and_metadata
+from rag.retriever import query_index, load_index_and_metadata, is_invalid_vector
 
 dotenv.load_dotenv()
 
@@ -110,16 +110,19 @@ def retrieve_chunks(
     """
     Retrieve top-k most relevant chunks from the FAISS index for the specified model.
     Uses subprocess mode if USE_FAISS_SUBPROCESS is set (for Mac/Intel dev), else in-process (for Linux/prod).
+    Passes filters to query_index for pre-retrieval metadata filtering.
     """
+    if is_invalid_vector(query_embedding):
+        raise ValueError("Cannot retrieve: embedding is invalid (zero vector).")
     if USE_FAISS_SUBPROCESS:
         # Subprocess mode: avoids PyTorch/FAISS segfaults on Mac/Intel
         from rag.dual_process_retriever import retrieve_chunks_dual_process
         # We need the original query string, not the embedding, for subprocess mode
         # (Assume query_embedding is actually the query string in this mode)
-        return retrieve_chunks_dual_process(query_embedding, model_id=model_id, top_k=k)
+        return retrieve_chunks_dual_process(query_embedding, model_id=model_id, top_k=k, filters=filters)
     else:
         from rag.retriever import query_index
-        return query_index(query_embedding, model_id=model_id, top_k=k)
+        return query_index(query_embedding, model_id=model_id, top_k=k, filters=filters)
 
 
 # --- Filtering ---
@@ -241,21 +244,48 @@ def query(
     """
     logger.info(f"Received query: {query_string} | Filters: {filters} | Dry run: {dry_run} | Model: {model_id or DEFAULT_MODEL_ID}")
     try:
-        top_k = k if k is not None else infer_top_k_from_query(query_string)
-        logger.info(f"Using top_k={top_k} for query.")
+        # Use QueryRouter to classify and get template
+        router = get_query_router()
+        route_result = router.route_query(query_string)
+        intent = route_result.intent
+        prompt_template = route_result.prompt_template
+        retrieval_config = route_result.retrieval_config
+        # Factual: try metadata first
+        if route_result.answer_type == "metadata":
+            return {
+                "answer": route_result.metadata_answer["answer"],
+                "sources": [],
+                "answer_type": "metadata",
+                "metadata_answer": route_result.metadata_answer
+            }
+        # RAG retrieval
+        top_k = k if k is not None else retrieval_config.top_k
         query_emb = embed_query(query_string, model_id)
-        chunks = retrieve_chunks(query_emb, k=top_k, filters=filters, score_threshold=0.0, min_k=5, model_id=model_id)
-        if top_k > 10:
-            chunks = chunks[:top_k]
-        else:
-            chunks = filter_top_chunks(chunks, score_threshold=score_threshold, min_return=5)
+        if is_invalid_vector(query_emb):
+            raise ValueError("Invalid query vector: embedding appears to be all zeros.")
+        chunks = retrieve_chunks(
+            query_emb,
+            k=top_k,
+            filters=filters or retrieval_config.filters,
+            score_threshold=retrieval_config.score_threshold or score_threshold,
+            min_k=5,
+            model_id=model_id
+        )
         if not chunks:
             logger.warning("No relevant chunks found for query.")
             return {
                 "answer": "No relevant information found in the corpus.",
-                "sources": []
+                "sources": [],
+                "answer_type": "rag",
+                "metadata_answer": None
             }
-        prompt = build_prompt(chunks, query_string)
+        # --- Intent-aware prompt construction ---
+        if intent == "factual":
+            context = router.prompt_template_selector.format_factual_context(chunks)
+        else:
+            from rag.utils import format_chunks_for_prompt
+            context = format_chunks_for_prompt(chunks)
+        prompt = prompt_template.format(context=context, query=query_string)
         def make_source(chunk):
             snippet = " ".join(chunk["text"].split()[:15]) + ("..." if len(chunk["text"].split()) > 15 else "")
             return {
@@ -285,7 +315,9 @@ def query(
             )
             return {
                 "answer": "[DRY RUN] This is a simulated answer. Retrieved context:\n" + prompt,
-                "sources": [make_source(chunk) for chunk in chunks]
+                "sources": [make_source(chunk) for chunk in chunks],
+                "answer_type": "rag",
+                "metadata_answer": None
             }
         prompt_tokens = 0
         if tiktoken:
@@ -313,13 +345,17 @@ def query(
         )
         return {
             "answer": answer,
-            "sources": [make_source(chunk) for chunk in chunks]
+            "sources": [make_source(chunk) for chunk in chunks],
+            "answer_type": "rag",
+            "metadata_answer": None
         }
     except Exception as e:
         logger.error(f"Query engine failed: {e}")
         return {
             "answer": f"An error occurred: {e}",
-            "sources": []
+            "sources": [],
+            "answer_type": "rag",
+            "metadata_answer": None
         }
 
 

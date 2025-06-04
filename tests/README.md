@@ -141,6 +141,16 @@ def test_chunking_output_schema(model_id):
 - **Expected Output:**
   - `answer_type` is 'metadata', answer contains '2017', metadata includes 'Kazuo Ishiguro'.
 
+#### 7. Multi-field filter propagation
+- **Purpose:** Ensures that when multiple filters (e.g., {"country": "USA", "source_type": "nobel_lecture"}) are passed, they are correctly propagated to the retriever. The test checks only output fields (e.g., chunk_id, text_snippet) in the final answer, not internal metadata fields, to align with privacy and output schema requirements.
+- **Test Cases:**
+  - Query with multiple filters
+- **Inputs:** Query string, filter dict with multiple fields
+- **Expected Output:**
+  - All returned chunks have correct output fields (e.g., chunk_id, text_snippet) and match the expected output schema
+  - Internal metadata fields are not exposed in the output
+- **Status:** Test present and passing
+
 ## Test File: `test_retriever.py`
 
 ### What is Tested?
@@ -172,108 +182,46 @@ def test_chunking_output_schema(model_id):
 - Covers: all metadata present, missing metadata fallback, custom template, empty chunk list, all metadata missing
 - All required unit tests present and passing
 
+## Test File: `test_prompt_builder.py`
+- **Purpose:** Unit tests for prompt building logic. Ensures all fields and formatting are correct for all query types.
+- **Test Cases:** Factual, thematic, generative, edge cases (missing fields, empty chunks).
+- **Status:** All required unit tests present and passing.
+
 ## Test File: `test_answer_compiler.py`
+- **Purpose:** Unit tests for answer compilation logic. Ensures output schema, answer content, and source formatting are correct.
+- **Test Cases:** RAG, metadata, hybrid, no relevant chunks.
+- **Status:** All required unit tests present and passing.
+
+## Test File: `test_e2e_frontend_contract.py`
+- **Purpose:** End-to-end test for user query → answer, validating the full output contract expected by the frontend.
+- **Test Cases:** Factual, thematic, generative, no results, empty query, error handling.
+- **Status:** All required E2E tests present and passing.
+
+## Test File: `test_retriever_to_query_index.py`
 
 ### What is Tested?
 
-- Covers answer compilation for both RAG and metadata (factual, thematic, hybrid)
-- Tests output structure, answer content, sources, and fallbacks for no relevant chunks
-- All required unit tests present and passing
+- **Integration test for retrieve_chunks → query_index**
+- Ensures that retrieve_chunks calls query_index with correct arguments (embedding, top_k, filters, model_id)
+- Tests filter propagation (single and multi-field)
+- Handles no results (empty list)
+- Asserts output schema (required fields present)
+- **Score threshold filtering:** Only returns chunks above score_threshold unless fallback is triggered
+- **min_k fallback:** If too few chunks pass the threshold, returns at least min_k chunks
+- **Invalid embedding handling:** Raises ValueError for invalid (all-zeros) embedding
+- **Status:** All tests present and passing
 
 ---
 
-## Test File: `test_query_engine.py`
+## Test File: `test_prompt_template.py`
+- **Purpose:** Unit tests for PromptTemplateSelector. Ensures correct template is returned for each intent and that error handling is robust.
+- **Test Cases:** Factual, thematic, generative, unknown intent.
+- **Status:** All required unit tests present and passing.
 
-### What is Tested?
-
-#### 1. `test_query_engine_e2e`
-- **Purpose:** End-to-end test for the query engine, covering both dry run (mocked) and live (real LLM) modes.
-- **Inputs:**
-  - Various queries (e.g., "What do laureates say about justice?", "What do USA winners talk about in their lectures?", "What themes are common across Nobel lectures?")
-  - Filters (e.g., country, source_type)
-  - `dry_run` flag (True/False)
-- **Expected Output:**
-  - Answer is a non-empty string, sources is a list of dicts, prompt is well-formed.
-  - In dry run, answer contains expected keywords; in live, answer is non-empty.
-
-#### 2. `test_query_engine_live`
-- **Purpose:** Live E2E test for the query engine (requires OpenAI API key and real data).
-- **Inputs:** Query string (e.g., "How do laureates describe the role of literature in society?")
-- **Expected Output:**
-  - Non-empty answer and sources list.
-- **How to Execute:**
-  - Set environment variable `NOBELLM_LIVE_TEST=1` to enable this test.
-
----
-
-## Metadata Handler & Pattern Robustness
-
-All factual query patterns in the metadata handler are now robust to extra trailing context (e.g., "Nobel Prizes in Literature") and punctuation. The test suite covers all pattern variants, including those with additional phrasing at the end of the query. The metadata flattening utility is now in `rag/metadata_utils.py` for lightweight import in tests and other modules.
-
-Test collection and execution is now fast due to modularization and lazy loading of heavy resources.
-
-## How to Run the Tests
-
-From the project root, activate your virtual environment and run:
-
-```bash
-pytest
-```
-
-Or to run only a specific test file:
-
-```bash
-pytest tests/test_query_router.py
-pytest rag/test_query_engine.py
-```
-
-To run live E2E tests (requires OpenAI API key and real data):
-
-```bash
-NOBELLM_LIVE_TEST=1 pytest rag/test_query_engine.py
-```
-
-## Output
-- All tests should pass with no errors.
-- Output will be shown in the terminal by pytest (summary of passed/failed tests).
-- No files are written or modified by these tests.
-
-## Adding More Tests
-- Add new test files for other modules as needed (e.g., `test_chunking.py`, `test_embeddings.py`).
-- Use static fixtures and avoid network calls for unit tests.
-- Follow the same style: docstrings, descriptive test names, and clear input/output expectations.
-- **For chunking, embedding, and RAG, always use the model config and test all supported models.**
-
----
-
-## Test File: `test_theme_reformulator.py`
-
-### What is Tested?
-
-#### 1. `expand_query_terms`
-- **Purpose:** Ensures that expansion includes canonical themes and all related keywords for a sample query, using lemmatization and theme mapping.
-- **Test Cases:**
-  - Query with multiple related theme keywords (e.g., "morality and truth")
-  - Checks that all canonical and related keywords for matched themes are included in the expansion.
-- **Inputs:** Sample queries containing theme-related words.
-- **Expected Output:** Set of expanded keywords including all canonical and related terms for the matched themes.
-
-#### 2. `expand_query_terms` (parametric, all keywords)
-- **Purpose:** Ensures that for every theme and every keyword in `themes.json`, the expansion includes both the canonical theme and the original keyword.
-- **Test Cases:**
-  - For each theme and each keyword, query with that keyword and check expansion.
-- **Inputs:** All theme keywords from `themes.json`.
-- **Expected Output:** Expansion includes the canonical theme and the original keyword for every input.
-
-#### 3. Edge Cases
-- **Empty Set:** Query with no matching keywords returns an empty set.
-- **Case Insensitivity:** Queries with different casing (e.g., all caps, all lowercase, mixed case) yield the same expansion for a given theme keyword.
-
-- **Note:** Fuzzy matching and non-English queries are not currently tested.
-
-- **Status:** All required unit tests, including edge cases, are present and passing.
-
----
+## Test File: `test_context_formatting.py`
+- **Purpose:** Unit tests for context formatting helpers. Ensures correct formatting for factual and thematic contexts.
+- **Test Cases:** All fields present, missing fields, custom templates.
+- **Status:** All required unit tests present and passing.
 
 ## TODO: Model-Aware Test Coverage (Recommended)
 

@@ -75,6 +75,17 @@ This project is designed for learning, modularity, and extensibility.
 - 🧩 **Embeddings generated for each chunk using BGE-Large or MiniLM; outputs are model-specific**
 - 🛠️ **Centralized model config for easy model switching and reproducibility**
 
+## Pre-retrieval Metadata Filtering
+
+NobelLM now supports **pre-retrieval metadata filtering** at the retrieval layer. This means that any filter (e.g., by gender, country, source_type) is applied to the chunk metadata before vector search (FAISS), ensuring only relevant chunks are searched. This improves efficiency, explainability, and privacy.
+
+- Filters can be passed as a dictionary (e.g., {"gender": "female", "country": "USA"}) to any query.
+- Filtering is supported in both in-process and subprocess retrieval modes.
+- Any metadata field present in the chunk index can be used for filtering.
+- The output schema is privacy-preserving: only public fields (e.g., chunk_id, text_snippet) are returned in answers.
+
+See `tests/README.md` and `tests/test_coverage_plan.md` for integration test coverage.
+
 ---
 
 ## 🛠️ Model-Aware Configuration

@@ -350,3 +350,5 @@ This will be modularized to allow selective use per source type (lecture, ceremo
 ---
 
 ## Status: 📅 **Deferred until Post-MVP**
+
+- 2024-06: Pre-retrieval metadata filtering added. Filters are now applied before FAISS search in all retrieval modes. This improves efficiency, privacy, and explainability. Only output fields are exposed in answers.

@@ -210,6 +210,17 @@ def handle_first_last_country_laureate(match: re.Match, metadata: List[Dict[str,
         "order": order
     }
 
+# --- Handler: Count male/female laureates ---
+def handle_count_gender_laureates(match, metadata):
+    gender = match.group(1).lower()
+    # Normalize gender
+    if gender in ["woman", "female", "women", "females"]:
+        gender = "female"
+    elif gender in ["man", "male", "men", "males"]:
+        gender = "male"
+    count = sum(1 for l in metadata if l.get("gender", "").lower() == gender)
+    return {"answer": f"There have been {count} {gender} laureates.", "count": count, "gender": gender}
+
 # --- Registry Entry Definition ---
 @dataclass
 class QueryRule:
@@ -288,6 +299,15 @@ FACTUAL_QUERY_REGISTRY: List[QueryRule] = [
         name="first_last_country_laureate",
         patterns=[re.compile(r"who was the (first|last) ([\w .'-]+) laureate(?: [\w\s]+)?\s*[\?\.\!\,;:]*$", re.IGNORECASE)],
         handler=handle_first_last_country_laureate
+    ),
+    QueryRule(
+        name="count_gender_laureates",
+        patterns=[
+            re.compile(r"how many (females|women|female|males|men|male) (have )?(won|are (winners|laureates))(?: [\\w\\s]+)?\\s*[\\?\\.\\!\\,;:]*$", re.IGNORECASE),
+            re.compile(r"how many (females|women|female|males|men|male) have won(?: [\\w\\s]+)?\\s*[\\?\\.\\!\\,;:]*$", re.IGNORECASE),
+            re.compile(r"how many (females|women|female|males|men|male) are laureates(?: [\\w\\s]+)?\\s*[\\?\\.\\!\\,;:]*$", re.IGNORECASE),
+        ],
+        handler=handle_count_gender_laureates
     ),
     # Add more rules here as needed
 ]

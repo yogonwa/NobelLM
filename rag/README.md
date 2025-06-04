@@ -245,4 +245,13 @@ The pipeline will use a fast, unified in-process retrieval mode.
 | Hugging Face      | Unified process        | Fast, stable Linux container runtime |
 | Cloud (EC2, GPU)  | Unified process        | Standard production path             |
 
+---
+
+### Pre-retrieval Metadata Filtering
+
+- Filters (e.g., by gender, country, source_type) are applied to chunk metadata before FAISS search.
+- Supported in all retrieval modes (in-process and subprocess).
+- Improves efficiency and explainability.
+- Only output fields (e.g., chunk_id, text_snippet) are exposed to downstream consumers; internal metadata is not leaked.
+
 --- 

@@ -66,60 +66,50 @@ This document outlines a comprehensive testing strategy for the NobelLM Retrieva
 
 * **✅ `test_theme_reformulator.py`**: Covers expansion for canonical themes and all related keywords, parametric coverage for all keywords, empty set for no matches, and case insensitivity. All required unit tests present and passing. 6/2
 
-✅ 2. Integration Tests
+### prompt_template.py
 
-intent_classifier + query_router
+* **✅ `test_prompt_template.py`**: Unit tests for PromptTemplateSelector. Covers factual, thematic, generative, and error handling. All tests present and passing.
 
-⛔ Missing → Add:
+### context_formatting.py
 
-# test_intent_to_router.py
+* **✅ `test_context_formatting.py`**: Unit tests for context formatting helpers. Covers factual and thematic context formatting. All tests present and passing.
 
-def test_routing_from_thematic_intent():
-    # Check top_k and retriever selection for thematic query
-    pass
+### prompt_builder.py
+* **✅ `test_prompt_builder.py`**: Unit tests for prompt building logic. Covers all query types and edge cases.
 
-query_router + retriever
+### answer_compiler.py
+* **✅ `test_answer_compiler.py`**: Unit tests for answer compilation logic. Covers all output types and edge cases.
 
-Partial in test_query_engine.py
+## ✅ 2. Integration Tests
 
-🔧 Needs: Explicit tests for top_k tuning and filter propagation.
+### intent_classifier + query_router
 
-retriever + query_index
+* **✅ `test_intent_to_router.py`**: Integration test present and passing. Verifies that a thematic query is correctly classified and routed by the QueryRouter, with correct intent, answer_type, and top_k (15) for thematic queries. Test present and passing 6/3.
 
-⛔ Missing → Covered by test_query_index.py if added.
+### query_router + retriever
 
-prompt builder + compiler
+* **✅ `test_query_router_to_retriever.py`**: Integration tests for filter propagation, top_k tuning, and chunk schema. Includes tests for single-field and multi-field filters (e.g., {"country": "USA", "source_type": "nobel_lecture"}), asserting all returned chunks match the expected output fields (not internal metadata). Output schema is privacy-preserving. Test present and passing 6/3.
 
-⛔ Missing → Add:
+### retriever + query_index
 
-# test_prompt_to_compiler.py
+* **✅ `test_retriever_to_query_index.py`**: Integration tests for retrieve_chunks → query_index. Covers argument propagation, filter propagation, no results, output schema, score threshold filtering, min_k fallback, and invalid embedding handling. All tests present and passing 6/3.
 
-def test_prompt_contains_all_sources():
-    # Validate source text appears in prompt and final answer
-    pass
+### faiss_query_worker (subprocess integration)
+
+* **✅ `test_faiss_query_worker.py`**: Integration test for subprocess-based FAISS retrieval. Runs the worker as a subprocess with a temp FAISS index, metadata, and filters. Asserts only matching chunks are returned, subprocess uses provided paths, and no global state is affected. Required for Mac/Intel dual-process support. Test present and passing 6/3.
+
+### prompt builder + compiler
+
+* **✅ `test_prompt_to_compiler.py`**: Integration test for prompt builder → answer compiler. Ensures all source chunks and their metadata are included in the prompt, the user query is present, and the prompt structure is correct. Asserts that all chunk texts, laureate names, years, and source types are present in the prompt. All required integration tests present and passing. 6/3
 
 ✅ 3. End-to-End Tests
 
-test_query_engine.py
-
-✅ Exists
-
-🔧 Needs:
-
-Clear labels for factual, hybrid, thematic
-
-Better assertions (not just "term in answer")
-
-Use fixtures for stability and reproducibility
-
-@pytest.mark.parametrize("user_query, filters, expected_k, dry_run", [...])
-def test_query_engine_e2e(...):
-    # Validate prompt generation, top_k, and response
-    pass
+### e2e_frontend_contract.py
+* **✅ `test_e2e_frontend_contract.py`**: End-to-end tests for user query to frontend output contract. Covers all user-facing scenarios.
 
 ✅ 4. Failure Tests
 
-Failure & Edge Cases
+### Failure & Edge Cases
 
 ⛔ Missing → Add:
 
