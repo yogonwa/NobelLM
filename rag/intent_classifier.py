@@ -24,7 +24,7 @@ class IntentClassifier:
         "theme", "themes", "pattern", "patterns", "motif", "motifs", "compare", "comparison",
         "differences", "similarities", "trend", "trends", "common", "typical", "recurring", "across", "evolution",
         "topic", "topics", "change", "changed", "changes", "over time",
-        "say about", "talk about", "what does", "how does"
+        "say about", "talk about", "what does", "how does", "describe", "describe the"
     ]
     GENERATIVE_KEYWORDS = [
         "write", "compose", "mimic", "generate", "paraphrase", "rewrite", "draft", "emulate",
