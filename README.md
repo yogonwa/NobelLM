@@ -1,20 +1,37 @@
 ---
 title: NobelLM
 emoji: 📚
-colorFrom: blue
-colorTo: indigo
+colorFrom: indigo
+colorTo: blue
 sdk: streamlit
-sdk_version: 1.32.0
+sdk_version: "1.32.2"
 app_file: app.py
 pinned: false
 ---
 
-[![Hugging Face Spaces](https://img.shields.io/badge/Live%20Demo-Hugging%20Face%20Spaces-blue?logo=huggingface)](https://huggingface.co/spaces/yogonwa/nobelLM)
-
 # NobelLM
 
-**Semantic search + Retrieval-Augmented Generation (RAG) for Nobel Prize speeches**  
-Explore the words of Nobel laureates through embeddings, vector search, and a lightweight Streamlit UI.
+A modern interface for exploring Nobel Prize laureate speeches and insights. Built with Streamlit and powered by advanced RAG techniques.
+
+## Features
+
+- Query Nobel Prize laureate speeches and metadata
+- Get factual answers about laureates and awards
+- Explore thematic insights across speeches
+- Generate creative content in the style of Nobel laureates
+- Rich source attribution and context
+
+## Try it out
+
+Visit the live demo at [NobelLM on Hugging Face Spaces](https://huggingface.co/spaces/yogonwa/NobelLM)
+
+## Development
+
+This project uses:
+- Streamlit for the frontend
+- BGE-Large for embeddings
+- OpenAI GPT-3.5 for generation
+- FAISS for vector search
 
 ---
 
