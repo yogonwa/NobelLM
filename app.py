@@ -1,3 +1,17 @@
+---
+title: NobelLM
+emoji: 📚
+colorFrom: indigo
+colorTo: blue
+sdk: streamlit
+sdk_version: "1.32.2"
+app_file: app.py
+pinned: false
+---
+
+
+
+
 """
 Nobel Laureate Speech Explorer – Streamlit Frontend
 
@@ -237,7 +251,7 @@ if submit and query and "results_shown" not in st.session_state:
     with result_placeholder.container():
         with st.spinner("Analyzing Nobel archives..."):
             try:
-                response = answer_query(query)
+                response = answer_query(query, model_id="BAAI/bge-large-en-v1.5")
                 st.session_state.pop("answer", None)
                 st.session_state.pop("sources", None)
                 st.session_state["response"] = response
@@ -374,7 +388,7 @@ if not st.session_state.get("results_shown"):
         if st.button(prompt_with_emoji, key=f"suggestion_{i}", help=None, type="secondary"):
             # Do NOT call reset_app_state() here; just set the prompt and trigger search
             st.session_state["query"] = prompt
-            response = answer_query(prompt)
+            response = answer_query(prompt, model_id="BAAI/bge-large-en-v1.5")
             st.session_state["response"] = response
             st.session_state["results_shown"] = True
             # --- Analytics and query logging for suggestion button ---

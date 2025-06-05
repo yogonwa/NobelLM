@@ -376,11 +376,16 @@ def get_query_router():
     return _QUERY_ROUTER
 
 
-def answer_query(query_string: str) -> dict:
+def answer_query(query_string: str, model_id: str = None) -> dict:
     """
     Unified entry point for the frontend. Routes query via QueryRouter.
     Returns a dict with 'answer_type', 'answer', 'metadata_answer', and 'sources'.
+    
+    Args:
+        query_string: The user's query
+        model_id: Optional model ID to use for retrieval. Defaults to DEFAULT_MODEL_ID.
     """
+    model_id = model_id or DEFAULT_MODEL_ID
     # Route the query
     route_result = get_query_router().route_query(query_string)
     if route_result.answer_type == "metadata":
