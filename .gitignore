@@ -180,3 +180,10 @@ cython_debug/
 !data/faiss_index/
 !data/faiss_index/index.faiss
 !data/faiss_index/chunk_metadata.jsonl
+!data/faiss_index/metadata.json
+
+# Also track the BGE-Large index files
+!data/faiss_index_bge-large/
+!data/faiss_index_bge-large/index.faiss
+!data/faiss_index_bge-large/chunk_metadata.jsonl
+!data/faiss_index_bge-large/metadata.json
