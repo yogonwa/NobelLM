@@ -75,4 +75,6 @@ Misc
 Do not invent new folders or top-level files without confirmation.
 Follow semantic commit conventions if suggesting Git commits (e.g., feat: add FAISS index builder).
 Document all new modules with a top-of-file summary comment.
+When debugging errors- explain what you find before implementing a change.
+
 
