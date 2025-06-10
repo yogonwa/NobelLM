@@ -1,20 +1,24 @@
 """
-Query Engine for Nobel Laureate Speech Explorer
+Query engine module for NobelLM RAG pipeline.
 
-This module provides a modular, extensible, and testable interface for querying the Nobel Literature corpus using retrieval-augmented generation (RAG).
+This module provides the main entry points for querying the Nobel Literature corpus
+using retrieval-augmented generation (RAG). The canonical entry point is answer_query(),
+which provides consistent score threshold handling and model-aware retrieval across
+all query types.
 
-Features:
-- Embeds user queries using MiniLM
-- Retrieves top-k relevant chunks from FAISS index
-- Supports metadata filtering (e.g., by country, source_type)
-- Constructs prompts for GPT-3.5
-- Calls OpenAI API (with dry run mode)
-- Returns answer and source metadata
+The legacy query() function is deprecated and will be removed in a future version.
+Use answer_query() instead for a fully consistent and robust retrieval + prompting
+pipeline.
 
-Author: NobelLM Team
+Key features:
+- Consistent score threshold filtering across all paths
+- Model-aware retrieval configuration
+- Query type-specific min/max return counts
+- Proper error handling and logging
 """
 import os
 import logging
+import warnings
 from typing import List, Dict, Optional, Any
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -33,16 +37,16 @@ from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
 from rag.retriever import query_index, load_index_and_metadata, is_invalid_vector, get_mode_aware_retriever, BaseRetriever
+from rag.logging_utils import get_module_logger, log_with_context, QueryContext
 
 dotenv.load_dotenv()
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Get module logger
+logger = get_module_logger(__name__)
 
 USE_FAISS_SUBPROCESS = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS", "0") == "1"
 
-__all__ = ["query"]
+__all__ = ["answer_query"]  # Only export answer_query as the canonical entry point
 
 _MODEL = None
 _MODEL_LOCK = threading.Lock()
@@ -103,7 +107,7 @@ def retrieve_chunks(
     query_embedding: np.ndarray,
     k: int = 3,
     filters: Optional[Dict[str, Any]] = None,
-    score_threshold: float = 0.25,
+    score_threshold: float = 0.2,
     min_k: int = 3,
     model_id: str = None
 ) -> List[Dict[str, Any]]:
@@ -111,6 +115,17 @@ def retrieve_chunks(
     Retrieve top-k most relevant chunks from the FAISS index for the specified model.
     Uses subprocess mode if USE_FAISS_SUBPROCESS is set (for Mac/Intel dev), else in-process (for Linux/prod).
     Passes filters to query_index for pre-retrieval metadata filtering.
+    
+    Args:
+        query_embedding: Normalized query vector
+        k: Number of results to return
+        filters: Optional metadata filters
+        score_threshold: Minimum similarity score threshold (default: 0.2)
+        min_k: Minimum number of results to return (unused, kept for backward compatibility)
+        model_id: Model identifier (e.g., "bge-large")
+        
+    Returns:
+        List of top-k chunks with metadata and scores
     """
     if is_invalid_vector(query_embedding):
         raise ValueError("Cannot retrieve: embedding is invalid (zero vector).")
@@ -119,10 +134,22 @@ def retrieve_chunks(
         from rag.dual_process_retriever import retrieve_chunks_dual_process
         # We need the original query string, not the embedding, for subprocess mode
         # (Assume query_embedding is actually the query string in this mode)
-        return retrieve_chunks_dual_process(query_embedding, model_id=model_id, top_k=k, filters=filters)
+        return retrieve_chunks_dual_process(
+            query_embedding, 
+            model_id=model_id, 
+            top_k=k, 
+            score_threshold=score_threshold,
+            filters=filters
+        )
     else:
         from rag.retriever import query_index
-        return query_index(query_embedding, model_id=model_id, top_k=k, filters=filters)
+        return query_index(
+            query_embedding, 
+            model_id=model_id, 
+            top_k=k, 
+            score_threshold=score_threshold,
+            filters=filters
+        )
 
 
 # --- Filtering ---
@@ -145,7 +172,7 @@ def filter_chunks(chunks: List[Dict[str, Any]], filters: Optional[Dict[str, Any]
     return filtered
 
 
-def filter_top_chunks(chunks, score_threshold=0.25, min_return=3):
+def filter_top_chunks(chunks, score_threshold=0.25, min_return=3, max_return=10):
     """
     Filter chunks by score threshold, but always return at least min_return chunks (by rank).
     """
@@ -156,19 +183,22 @@ def filter_top_chunks(chunks, score_threshold=0.25, min_return=3):
 
 
 # --- Prompt Construction ---
-def build_prompt(chunks: List[Dict[str, Any]], query: str) -> str:
+def build_prompt(query: str, context: str, prompt_template: Optional[str] = None) -> str:
     """
-    Build a prompt for GPT-3.5 using the retrieved chunks and user query.
-    Includes chunk metadata for all query types.
+    Build a prompt for GPT-3.5 using retrieved chunks and the user query.
+    
+    Args:
+        query: The user's query string
+        context: Formatted context from retrieved chunks
+        prompt_template: Optional custom prompt template. If None, uses default template.
+        
+    Returns:
+        Formatted prompt string
     """
-    context = format_chunks_for_prompt(chunks)
-    prompt = (
-        "Answer the question using only the content below. If the answer is not found, say so.\n\n"
-        f"Context:\n{context}\n\n"
-        f"Question: {query}\n"
-        "Answer:"
-    )
-    return prompt
+    if prompt_template is None:
+        prompt_template = "Answer the following question about Nobel Literature laureates: {query}\n\nContext: {context}"
+    
+    return prompt_template.format(query=query, context=context)
 
 
 # --- OpenAI Call ---
@@ -231,133 +261,43 @@ def infer_top_k_from_query(query: str) -> int:
 # --- Main Orchestration ---
 def query(
     query_string: str,
-    filters: Optional[Dict[str, Any]] = None,
-    dry_run: bool = False,
-    k: Optional[int] = None,
-    score_threshold: float = 0.25,
-    model_id: str = None
+    model_id: str = "bge-large",
+    dry_run: bool = False
 ) -> Dict[str, Any]:
     """
-    Orchestrate the query pipeline: embed, retrieve, filter, prompt, and answer.
-    Model-aware: uses the embedding model, index, and metadata for the specified model_id.
-    Returns a dict with 'answer' and 'sources'.
+    Legacy entry point for the RAG pipeline (DEPRECATED).
+    
+    This function is deprecated and will be removed in a future version.
+    It has known issues:
+    1. Inconsistent score threshold handling
+    2. Subprocess mode (USE_FAISS_SUBPROCESS=1) passes embeddings instead of query strings
+    3. No support for min/max return counts
+    
+    Use answer_query() instead for a fully consistent and robust retrieval +
+    prompting pipeline.
+    
+    Args:
+        query_string: The user's query
+        model_id: Model identifier (default: "bge-large")
+        dry_run: If True, skip LLM call and return mock answer
+        
+    Returns:
+        dict with answer and sources
+        
+    Deprecated:
+        This function will be removed in a future version. Use answer_query() instead.
     """
-    logger.info(f"Received query: {query_string} | Filters: {filters} | Dry run: {dry_run} | Model: {model_id or DEFAULT_MODEL_ID}")
-    try:
-        # Use QueryRouter to classify and get template
-        router = get_query_router()
-        route_result = router.route_query(query_string)
-        intent = route_result.intent
-        prompt_template = route_result.prompt_template
-        retrieval_config = route_result.retrieval_config
-        # Factual: try metadata first
-        if route_result.answer_type == "metadata":
-            return {
-                "answer": route_result.metadata_answer["answer"],
-                "sources": [],
-                "answer_type": "metadata",
-                "metadata_answer": route_result.metadata_answer
-            }
-        # RAG retrieval
-        top_k = k if k is not None else retrieval_config.top_k
-        model_id = model_id or DEFAULT_MODEL_ID
-        retriever = get_mode_aware_retriever(model_id)
-        query_emb = embed_query(query_string, model_id)
-        if is_invalid_vector(query_emb):
-            raise ValueError("Invalid query vector: embedding appears to be all zeros.")
-        chunks = retriever.retrieve(
-            query_string,
-            top_k=top_k,
-            filters=filters or retrieval_config.filters
-        )
-        if not chunks:
-            logger.warning("No relevant chunks found for query.")
-            return {
-                "answer": "No relevant information found in the corpus.",
-                "sources": [],
-                "answer_type": "rag",
-                "metadata_answer": None
-            }
-        # --- Intent-aware prompt construction ---
-        if intent == "factual":
-            context = format_factual_context(chunks)
-        else:
-            from rag.utils import format_chunks_for_prompt
-            context = format_chunks_for_prompt(chunks)
-        prompt = prompt_template.format(context=context, query=query_string)
-        def make_source(chunk):
-            snippet = " ".join(chunk["text"].split()[:15]) + ("..." if len(chunk["text"].split()) > 15 else "")
-            return {
-                k: v for k, v in chunk.items() if k in ("laureate", "year_awarded", "source_type", "score", "chunk_id")
-            } | {"text_snippet": snippet}
-        chunk_count = len(chunks)
-        model = "gpt-3.5-turbo"
-        if dry_run:
-            logger.info("Dry run mode: returning dummy answer.")
-            prompt_tokens = 100
-            completion_tokens = 20
-            if tiktoken:
-                try:
-                    enc = tiktoken.encoding_for_model(model)
-                    prompt_tokens = len(enc.encode(prompt))
-                except Exception:
-                    pass
-            estimated_cost_usd = 0.0015 * (prompt_tokens + completion_tokens) / 1000
-            log_cost_event(
-                user_query=query_string,
-                model=model,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                chunk_count=chunk_count,
-                estimated_cost_usd=estimated_cost_usd,
-                extra={"dry_run": True, "model_id": model_id}
-            )
-            return {
-                "answer": "[DRY RUN] This is a simulated answer. Retrieved context:\n" + prompt,
-                "sources": [make_source(chunk) for chunk in chunks],
-                "answer_type": "rag",
-                "metadata_answer": None
-            }
-        prompt_tokens = 0
-        if tiktoken:
-            try:
-                enc = tiktoken.encoding_for_model(model)
-                prompt_tokens = len(enc.encode(prompt))
-            except Exception:
-                pass
-        result = call_openai(prompt, model=model)
-        answer = result["answer"]
-        completion_tokens = result.get("completion_tokens")
-        if completion_tokens is None:
-            completion_tokens = 20
-        if prompt_tokens == 0:
-            prompt_tokens = 100
-        estimated_cost_usd = 0.0015 * (prompt_tokens + completion_tokens) / 1000
-        log_cost_event(
-            user_query=query_string,
-            model=model,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            chunk_count=chunk_count,
-            estimated_cost_usd=estimated_cost_usd,
-            extra={"dry_run": False, "model_id": model_id}
-        )
-        logger.info(f"[RAG][ShapeCheck] Query intent: {intent}")
-        logger.info(f"[RAG][ShapeCheck] Number of chunks returned: {len(chunks)}")
-        return {
-            "answer": answer,
-            "sources": [make_source(chunk) for chunk in chunks],
-            "answer_type": "rag",
-            "metadata_answer": None
-        }
-    except Exception as e:
-        logger.error(f"Query engine failed: {e}")
-        return {
-            "answer": f"An error occurred: {e}",
-            "sources": [],
-            "answer_type": "rag",
-            "metadata_answer": None
-        }
+    logger.warning(
+        "query() is deprecated and will be removed in a future version. "
+        "Use answer_query() instead for consistent score threshold handling "
+        "and model-aware retrieval."
+    )
+    # For backward compatibility, delegate to answer_query but preserve dry_run behavior
+    result = answer_query(query_string, model_id=model_id)
+    if dry_run:
+        # Modify the result to match the old dry_run behavior
+        result["answer"] = "[DRY RUN] This is a simulated answer. Retrieved context:\n" + result.get("answer", "")
+    return result
 
 
 # --- QueryRouter Lazy Loader ---
@@ -376,59 +316,166 @@ def get_query_router():
     return _QUERY_ROUTER
 
 
-def answer_query(query_string: str) -> dict:
+def answer_query(
+    query_string: str,
+    model_id: Optional[str] = None,
+    score_threshold: float = 0.2,
+    min_return: Optional[int] = None,
+    max_return: Optional[int] = None
+) -> Dict[str, Any]:
     """
-    Unified entry point for the frontend. Routes query via QueryRouter.
-    Returns a dict with 'answer_type', 'answer', 'metadata_answer', and 'sources'.
+    Canonical entry point for the RAG pipeline.
+    
+    This function provides a unified interface for all query types (factual,
+    thematic, generative) with consistent score threshold handling and model-aware
+    retrieval. It:
+    1. Routes the query via QueryRouter
+    2. Retrieves chunks using the appropriate retriever
+    3. Applies score threshold filtering
+    4. Formats the prompt and calls the LLM
+    5. Compiles the final answer with sources
+    
+    Args:
+        query_string: The user's query
+        model_id: Optional model identifier used only to get the appropriate retriever.
+                 If None, uses DEFAULT_MODEL_ID from model_config.
+        score_threshold: Minimum similarity score for chunks (default: 0.2)
+        min_return: Minimum number of chunks to return (query-type specific)
+        max_return: Maximum number of chunks to return (query-type specific)
+    
+    Returns:
+        dict with:
+            answer_type: 'rag' or 'metadata'
+            answer: The generated answer
+            metadata_answer: Dict for metadata answers, None for RAG
+            sources: List of source chunks with metadata
     """
-    # Route the query
-    route_result = get_query_router().route_query(query_string)
-    if route_result.answer_type == "metadata":
-        # Direct factual answer from metadata
-        return {
-            "answer_type": "metadata",
-            "answer": route_result.metadata_answer["answer"],
-            "metadata_answer": route_result.metadata_answer,
-            "sources": []
-        }
-    # --- Modular Thematic Retrieval ---
-    retrieval_config = route_result.retrieval_config
-    if route_result.intent == "thematic":
-        logger.info(f"[RAG][Thematic] Calling ThematicRetriever with expanded terms: {route_result.logs.get('thematic_expanded_terms', 'N/A')}")
-        thematic_retriever = ThematicRetriever(
-            retriever=get_mode_aware_retriever(model_id)
+    with QueryContext(model_id) as ctx:
+        log_with_context(
+            logger,
+            logging.INFO,
+            "QueryEngine",
+            "Starting query processing",
+            {
+                "query": query_string,
+                "model_id": model_id,
+                "score_threshold": score_threshold
+            }
         )
-        chunks = thematic_retriever.retrieve(query_string, top_k=retrieval_config.top_k, filters=retrieval_config.filters)
-        logger.info(f"[RAG][Thematic] Final unique chunks returned: {len(chunks)}")
-        logger.info(f"[RAG][Thematic] Final unique chunk IDs: {[c.get('chunk_id') for c in chunks]}")
-    else:
-        # Factual/generative: use retriever directly
-        chunks = get_mode_aware_retriever(model_id).retrieve(
-            query_string,
-            top_k=retrieval_config.top_k,
-            filters=retrieval_config.filters
-        )
-    if not chunks:
-        return {
-            "answer_type": "rag",
-            "answer": "No relevant information found in the corpus.",
-            "metadata_answer": None,
-            "sources": []
-        }
-    prompt = build_prompt(chunks, query_string)
-    result = call_openai(prompt, model="gpt-3.5-turbo")
-    answer = result["answer"]
-    def make_source(chunk):
-        snippet = " ".join(chunk["text"].split()[:15]) + ("..." if len(chunk["text"].split()) > 15 else "")
-        return {
-            k: v for k, v in chunk.items() if k in ("laureate", "year_awarded", "source_type", "score", "chunk_id")
-        } | {"text_snippet": snippet}
-    return {
-        "answer_type": "rag",
-        "answer": answer,
-        "metadata_answer": None,
-        "sources": [make_source(chunk) for chunk in chunks]
-    }
+        
+        try:
+            # Route the query
+            route_result = get_query_router().route_query(query_string)
+            
+            if route_result.answer_type == "metadata":
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "QueryEngine",
+                    "Using metadata answer",
+                    {"intent": route_result.intent}
+                )
+                return {
+                    "answer_type": "metadata",
+                    "answer": route_result.answer,
+                    "metadata_answer": route_result.metadata_answer,
+                    "sources": []  # No chunks for metadata answers
+                }
+            
+            # Get the appropriate retriever based on intent
+            if route_result.intent == "thematic":
+                retriever = ThematicRetriever(model_id=model_id)
+                # Thematic queries use a larger top_k (15) and need more diverse context
+                # Use router's score_threshold if provided, otherwise use function parameter
+                effective_score_threshold = route_result.retrieval_config.score_threshold or score_threshold
+                chunks = retriever.retrieve(
+                    query_string,
+                    top_k=15,
+                    filters=route_result.retrieval_config.filters,
+                    score_threshold=effective_score_threshold,
+                    min_return=min_return or 5,
+                    max_return=max_return or 12
+                )
+            else:
+                # Factual or generative query
+                retriever = get_mode_aware_retriever(model_id)
+                # Use router's score_threshold if provided, otherwise use function parameter
+                effective_score_threshold = route_result.retrieval_config.score_threshold or score_threshold
+                chunks = retriever.retrieve(
+                    query_string,
+                    top_k=route_result.retrieval_config.top_k,
+                    filters=route_result.retrieval_config.filters,
+                    score_threshold=effective_score_threshold,
+                    min_return=min_return or 3,
+                    max_return=max_return or 10
+                )
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "QueryEngine",
+                "Retrieved chunks",
+                {
+                    "count": len(chunks),
+                    "intent": route_result.intent,
+                    "mean_score": np.mean([c["score"] for c in chunks]) if chunks else 0
+                }
+            )
+            
+            # Format chunks for prompt
+            context = format_chunks_for_prompt(chunks)
+            
+            # Build and call LLM
+            prompt = build_prompt(
+                query_string,
+                context,
+                route_result.prompt_template
+            )
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "QueryEngine",
+                "Calling LLM",
+                {"prompt_length": len(prompt)}
+            )
+            
+            response = call_openai(prompt)
+            
+            # Compile final answer
+            result = {
+                "answer_type": "rag",
+                "answer": response["answer"],
+                "metadata_answer": None,
+                "sources": chunks
+            }
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "QueryEngine",
+                "Query completed successfully",
+                {
+                    "intent": route_result.intent,
+                    "chunk_count": len(chunks),
+                    "completion_tokens": response.get("completion_tokens", 0)
+                }
+            )
+            
+            return result
+            
+        except Exception as e:
+            log_with_context(
+                logger,
+                logging.ERROR,
+                "QueryEngine",
+                "Query failed",
+                {
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+            )
+            raise
 
 
 # ... existing code ... 

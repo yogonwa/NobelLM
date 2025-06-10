@@ -13,38 +13,86 @@ import logging
 import sys
 from sentence_transformers import SentenceTransformer
 from rag.model_config import get_model_config
+from typing import List, Dict, Any, Optional
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-def retrieve_chunks_dual_process(user_query: str, model_id: str = "bge-large", top_k: int = 5, filters=None) -> list:
+def retrieve_chunks_dual_process(
+    query: str,
+    model_id: str = None,
+    top_k: int = 5,
+    filters: Dict[str, Any] = None,
+    score_threshold: float = 0.2,
+    min_return: int = 3,
+    max_return: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """
-    Retrieve chunks using a subprocess FAISS worker. Supports filter propagation.
+    Retrieve chunks using a subprocess for FAISS search.
+    This is the safe path for Mac/Intel environments.
+
+    Args:
+        query: The query string
+        model_id: Optional model identifier
+        top_k: Number of chunks to retrieve (default: 5)
+        filters: Optional metadata filters
+        score_threshold: Minimum similarity score (default: 0.2)
+        min_return: Minimum number of chunks to return (default: 3)
+        max_return: Optional maximum number of chunks to return
+
+    Returns:
+        List of chunks, filtered by score threshold
     """
-    config = get_model_config(model_id)
-    model = SentenceTransformer(config["model_name"])
-    embedding = model.encode(user_query, normalize_embeddings=True)
-    logger.info(f"[RAG][ShapeCheck] User query: {user_query}")
-    logger.info(f"[RAG][ShapeCheck] Embedding shape: {embedding.shape}")
-    with tempfile.TemporaryDirectory() as tmpdir:
-        emb_path = os.path.join(tmpdir, "query_embedding.npy")
-        results_path = os.path.join(tmpdir, "retrieval_results.json")
-        np.save(emb_path, embedding)
-        logging.info(f"[DualProcess] Saved query embedding to {emb_path}")
-        # Pass filters as a JSON file if present
-        filters_path = None
-        if filters:
-            filters_path = os.path.join(tmpdir, "filters.json")
-            with open(filters_path, "w", encoding="utf-8") as f:
-                json.dump(filters, f)
-        cmd = [sys.executable, "-m", "rag.faiss_query_worker", "--model", model_id, "--dir", tmpdir]
-        if filters_path:
-            cmd += ["--filters", filters_path]
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.getcwd()
-        subprocess.run(cmd, check=True, env=env)
-        with open(results_path, "r", encoding="utf-8") as f:
-            results = json.load(f)
-        logger.info(f"[RAG][ShapeCheck] Results loaded from subprocess: {len(results)} chunks")
-    return results 
+    # Get the path to the worker script
+    worker_path = Path(__file__).parent / "faiss_query_worker.py"
+    if not worker_path.exists():
+        raise FileNotFoundError(f"Worker script not found at {worker_path}")
+
+    # Build command with all parameters
+    cmd = [
+        sys.executable,
+        str(worker_path),
+        "--query", query,
+        "--top_k", str(top_k),
+        "--score_threshold", str(score_threshold),
+        "--min_return", str(min_return)
+    ]
+    if model_id:
+        cmd.extend(["--model_id", model_id])
+    if max_return:
+        cmd.extend(["--max_return", str(max_return)])
+    if filters:
+        cmd.extend(["--filters", json.dumps(filters)])
+
+    # Run worker in subprocess
+    logger.info(f"[DualProcess] Running worker with command: {' '.join(cmd)}")
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        chunks = json.loads(result.stdout)
+        
+        # Log score distribution
+        if chunks:
+            scores = [c["score"] for c in chunks]
+            logger.info(
+                f"[DualProcess] Retrieved {len(chunks)} chunks — "
+                f"mean score: {np.mean(scores):.3f}, stddev: {np.std(scores):.3f}, "
+                f"min: {min(scores):.3f}, max: {max(scores):.3f}"
+            )
+        else:
+            logger.warning("[DualProcess] No chunks returned from worker")
+            
+        return chunks
+        
+    except subprocess.CalledProcessError as e:
+        logger.error(f"[DualProcess] Worker failed: {e.stderr}")
+        raise RuntimeError(f"FAISS worker failed: {e.stderr}")
+    except json.JSONDecodeError as e:
+        logger.error(f"[DualProcess] Failed to parse worker output: {e}")
+        raise RuntimeError("Failed to parse worker output") 
