@@ -7,6 +7,20 @@ import numpy as np
 from unittest.mock import patch
 from rag.query_engine import retrieve_chunks
 
+@pytest.fixture(autouse=True)
+def force_inprocess(monkeypatch):
+    # Force in-process mode so tests are consistent unless explicitly testing subprocess
+    monkeypatch.setenv("NOBELLM_USE_FAISS_SUBPROCESS", "0")
+
+def test_retrieve_chunks_dual_process_path(monkeypatch):
+    # Patch the module-level variable directly, not just the environment
+    with patch("rag.query_engine.USE_FAISS_SUBPROCESS", True), \
+         patch("rag.dual_process_retriever.retrieve_chunks_dual_process", return_value=[{"chunk_id": "dummy", "score": 0.9}]) as mock_dual:
+        embedding = np.ones(1024, dtype=np.float32)
+        result = retrieve_chunks(embedding, k=1, filters=None, score_threshold=0.2, min_k=1, model_id="bge-large")
+        mock_dual.assert_called_once()
+        assert result == [{"chunk_id": "dummy", "score": 0.9}]
+
 def test_retrieve_chunks_calls_query_index_with_correct_args():
     embedding = np.ones(1024, dtype=np.float32)
     mock_chunks = [

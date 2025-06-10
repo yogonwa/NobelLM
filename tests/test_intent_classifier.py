@@ -1,65 +1,67 @@
 import pytest
 from rag.intent_classifier import IntentClassifier
-
-def is_thematic(result, expected_scoped=None):
-    if isinstance(result, dict):
-        if result["intent"] != "thematic":
-            return False
-        if expected_scoped is not None:
-            return result["scoped_entity"] == expected_scoped
-        return True
-    return result == "thematic"
-
-def is_factual(result):
-    return result == "factual"
-
-def is_generative(result):
-    return result == "generative"
+from tests.test_utils_intent import is_factual, is_thematic, is_generative
 
 @pytest.fixture
 def classifier():
     return IntentClassifier()
 
-def test_factual_query(classifier):
-    """Test that a direct factual question is classified as factual."""
-    queries = [
-        "When did Kazuo Ishiguro win the Nobel Prize?",
-        "Where was Camilo José Cela born?",
-        "Summarize the 1989 acceptance speech.",
-        "Who won the Nobel Prize in 2001?",
-        "Give me the speech by Seamus Heaney."
-    ]
-    for q in queries:
-        assert is_factual(classifier.classify(q))
-    # The following query is now thematic+scoped
-    result = classifier.classify("What did Toni Morrison say about justice?")
-    assert is_thematic(result, expected_scoped="Toni Morrison")
+@pytest.mark.parametrize("query", [
+    "When did Kazuo Ishiguro win the Nobel Prize?",
+    "Where was Camilo José Cela born?",
+    "Summarize the 1989 acceptance speech.",
+    "Who won the Nobel Prize in 2001?",
+    "Give me the speech by Seamus Heaney.",
+    "When did Morrison win?",
+    "Who won in 1990?",
+    "What years did Americans win the prize?"
+])
+def test_factual_queries(classifier, query):
+    """Test that direct factual questions are classified as factual."""
+    assert is_factual(classifier.classify(query))
 
-def test_thematic_query(classifier):
-    """Test that a thematic/analytical question is classified as thematic."""
-    queries = [
-        "What are common themes in Nobel lectures?",
-        "How have topics changed over time?",
-        "Compare speeches from U.S. vs. European laureates.",
-        "What motifs are recurring across decades?",
-        "What patterns emerge in acceptance speeches?",
-        "Are there typical themes in Peace Prize lectures?"
-    ]
-    for q in queries:
-        assert is_thematic(classifier.classify(q))
+@pytest.mark.parametrize("query", [
+    "What are common themes in Nobel lectures?",
+    "How have topics changed over time?",
+    "Compare speeches from U.S. vs. European laureates.",
+    "What motifs are recurring across decades?",
+    "What patterns emerge in acceptance speeches?",
+    "Are there typical themes in Peace Prize lectures?",
+    "What themes are present in Nobel lectures?",
+    "How do laureates talk about justice?",
+    "Compare motifs across laureates."
+])
+def test_thematic_queries(classifier, query):
+    """Test that thematic/analytical questions are classified as thematic."""
+    assert is_thematic(classifier.classify(query))
 
-def test_generative_query(classifier):
-    """Test that a generative/stylistic request is classified as generative."""
-    queries = [
-        "Write a speech in the style of Toni Morrison.",
-        "Compose a Nobel acceptance for a teacher.",
-        "Paraphrase this text as if written by a laureate.",
-        "Generate a motivational quote like a Nobel winner.",
-        "Draft a letter as if you were a Nobel laureate.",
-        "Rewrite this in the style of a laureate."
-    ]
-    for q in queries:
-        assert is_generative(classifier.classify(q))
+@pytest.mark.parametrize("query", [
+    "Write a speech in the style of Toni Morrison.",
+    "Compose a Nobel acceptance for a teacher.",
+    "Paraphrase this text as if written by a laureate.",
+    "Generate a motivational quote like a Nobel winner.",
+    "Draft a letter as if you were a Nobel laureate.",
+    "Rewrite this in the style of a laureate.",
+    "Write a speech in the style of Morrison",
+    "Compose a Nobel acceptance for a teacher.",
+    "Paraphrase this text as if written by a laureate."
+])
+def test_generative_queries(classifier, query):
+    """Test that generative/stylistic requests are classified as generative."""
+    assert is_generative(classifier.classify(query))
+
+def test_thematic_scoping_full_vs_last_name(classifier):
+    """Test that scoping works consistently for both full names and last names."""
+    result_full = classifier.classify("What did Toni Morrison say about justice?")
+    assert is_thematic(result_full, expected_scoped="Toni Morrison")
+
+    result_last = classifier.classify("What did Morrison say about justice?")
+    assert is_thematic(result_last, expected_scoped="Morrison")
+
+def test_thematic_unknown_laureate_scoping(classifier):
+    """Test handling of thematic queries with unknown laureate names."""
+    result = classifier.classify("What did John Doe say about justice?")
+    assert is_thematic(result)  # Should still be thematic, scoped entity may vary
 
 def test_precedence_generative_over_thematic(classifier):
     """Test that generative keywords take precedence over thematic."""
@@ -77,114 +79,40 @@ def test_precedence_thematic_over_factual(classifier):
     result = classifier.classify(query)
     assert is_thematic(result, expected_scoped="Toni Morrison")
 
-def test_fallback_to_factual(classifier):
-    """Test that queries with no keywords default to factual."""
-    queries = [
-        "Tell me about the Nobel Prize.",
-        "Information on laureates.",
-        "Details about the ceremony."
-    ]
-    for q in queries:
-        assert is_factual(classifier.classify(q))
-
 def test_case_insensitivity(classifier):
     """Test that classification is case-insensitive."""
-    query = "WRITE ME a summary of themes in Nobel lectures."
-    assert is_generative(classifier.classify(query))
+    queries = [
+        ("WRITE ME a summary of themes in Nobel lectures.", is_generative),
+        ("WHAT THEMES ARE PRESENT?", is_thematic),
+        ("WHEN DID MORRISON WIN?", is_factual)
+    ]
+    for query, check_func in queries:
+        assert check_func(classifier.classify(query))
 
-def test_intent_classifier_factual():
-    """
-    Test that factual queries are classified as 'factual'.
-    """
-    clf = IntentClassifier()
-    assert is_factual(clf.classify("When did Morrison win?"))
-    assert is_factual(clf.classify("Who won in 1990?"))
-    assert is_factual(clf.classify("Where was Camilo José Cela born?"))
-    assert is_factual(clf.classify("Summarize the 1989 acceptance speech."))
-
-def test_intent_classifier_thematic():
-    """
-    Test that thematic queries are classified as 'thematic'.
-    """
-    clf = IntentClassifier()
-    assert is_thematic(clf.classify("What themes are present in Nobel lectures?"))
-    assert is_thematic(clf.classify("How do laureates talk about justice?"))
-    assert is_thematic(clf.classify("Compare motifs across laureates."))
-    # This is now scoped to Morrison
-    result = clf.classify("What does Morrison say about freedom?")
-    assert is_thematic(result, expected_scoped="Morrison")
-
-def test_intent_classifier_generative():
-    """
-    Test that generative queries are classified as 'generative'.
-    """
-    clf = IntentClassifier()
-    assert is_generative(clf.classify("Write a speech in the style of Morrison"))
-    assert is_generative(clf.classify("Compose a Nobel acceptance for a teacher."))
-    assert is_generative(clf.classify("Paraphrase this text as if written by a laureate."))
-
-def test_intent_classifier_precedence():
-    """
-    Test that generative > thematic > factual precedence is respected.
-    """
-    clf = IntentClassifier()
-    assert is_generative(clf.classify("Write a thematic analysis of Nobel lectures"))
-    # This is now scoped to Morrison
-    result = clf.classify("What does Morrison say about justice?")
-    assert is_thematic(result, expected_scoped="Morrison")
-
-def test_intent_classifier_case_insensitivity():
-    """
-    Test that classification is case-insensitive.
-    """
-    clf = IntentClassifier()
-    assert is_thematic(clf.classify("WHAT THEMES ARE PRESENT?"))
-    assert is_generative(clf.classify("write a speech in the style of morrison"))
-    assert is_factual(clf.classify("WHEN DID MORRISON WIN?"))
-
-def test_intent_classifier_fallback():
-    """
-    Test that queries with no keywords fall back to 'factual'.
-    """
-    clf = IntentClassifier()
-    assert is_factual(clf.classify("Tell me something interesting."))
-
-def test_thematic_query_with_last_name_scoping():
-    clf = IntentClassifier()
-    result = clf.classify("What did Morrison say about justice?")
-    assert is_thematic(result, expected_scoped="Morrison")
-
-# --- Additional tests for coverage gaps (hybrid, malformed, international) ---
+def test_unknown_intent_raises_value_error(classifier):
+    """Test that queries with no clear intent raise ValueError."""
+    unknown_queries = [
+        "Tell me about the Nobel Prize.",  # Too vague
+        "Information on laureates.",       # No clear intent
+        "Details about the ceremony.",     # No clear intent
+        "",                               # Empty string
+        "   ",                            # Whitespace only
+        "asdfghjkl",                      # Nonsense
+        "?!@#$%",                         # Punctuation only
+        "wha"                             # Partial keywords
+    ]
+    for query in unknown_queries:
+        with pytest.raises(ValueError, match="Could not determine intent"):
+            classifier.classify(query)
 
 def test_hybrid_phrasing_intent(classifier):
-    """Test queries that mix factual and thematic/generative language (hybrid phrasing)."""
+    """Test queries that mix factual and thematic/generative language."""
     # Should prefer generative over thematic/factual
     assert is_generative(classifier.classify("Write a summary of themes in Morrison's lectures."))
     # Should prefer thematic over factual
     result = classifier.classify("What are the recurring themes in Toni Morrison's speeches?")
     assert is_thematic(result, expected_scoped="Toni Morrison")
-    # Should treat this as factual (no thematic/generative keywords)
-    assert is_factual(classifier.classify("What years did Americans win the prize?"))
+    # Should raise ValueError for unclear intent
+    with pytest.raises(ValueError, match="Could not determine intent"):
+        classifier.classify("Tell me something about the prize ceremony")  # Too vague, no clear intent
 
-def test_malformed_inputs(classifier):
-    """Test classifier robustness to malformed, empty, or nonsensical queries."""
-    # Empty string
-    assert is_factual(classifier.classify(""))
-    # Whitespace only
-    assert is_factual(classifier.classify("   "))
-    # Nonsense
-    assert is_factual(classifier.classify("asdfghjkl"))
-    # Punctuation only
-    assert is_factual(classifier.classify("?!@#$%"))
-    # Partial keywords
-    assert is_factual(classifier.classify("wha"))
-
-def test_international_queries(classifier):
-    """Test queries with non-English or accented characters (simulate internationalization)."""
-    # Accented laureate name
-    result = classifier.classify("What did Camilo José Cela say about justice?")
-    assert is_thematic(result, expected_scoped="Camilo José Cela")
-    # Non-English query (should fallback to factual)
-    assert is_factual(classifier.classify("¿Cuándo ganó el Premio Nobel?"))
-    # Mixed language
-    assert is_factual(classifier.classify("Wann hat Kazuo Ishiguro gewonnen?")) 

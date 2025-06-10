@@ -1,78 +1,112 @@
-import os
-import json
-import tempfile
+"""
+Integration test for faiss_query_worker subprocess.
+
+Tests that:
+- The subprocess returns correct results
+- Filters are applied correctly
+- score_threshold / min_return / max_return are respected
+"""
+
 import subprocess
+import json
 import numpy as np
-import faiss
+from pathlib import Path
 import pytest
+import sys
 
-@pytest.mark.slow
-def test_faiss_query_worker_with_filters():
-    """
-    Integration test: Runs faiss_query_worker.py as a subprocess with a real tiny FAISS index, metadata, and filters.
-    Asserts that only chunks matching the filter are returned.
-    """
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # 1. Create tiny FAISS index (3 vectors, 2D)
-        dim = 2
-        index = faiss.IndexFlatIP(dim)
-        vectors = np.array([[1, 0], [0, 1], [1, 1]], dtype=np.float32)
-        faiss.normalize_L2(vectors)
-        index.add(vectors)
-        index_path = os.path.join(tmpdir, "index.faiss")
-        faiss.write_index(index, index_path)
+# Use this instead of load_chunk_metadata:
+from rag.metadata_utils import load_laureate_metadata
 
-        # 2. Write metadata JSONL (3 chunks, with gender field)
-        metadata = [
-            {"chunk_id": "c0", "gender": "female", "text": "A"},
-            {"chunk_id": "c1", "gender": "male", "text": "B"},
-            {"chunk_id": "c2", "gender": "female", "text": "C"},
-        ]
-        metadata_path = os.path.join(tmpdir, "chunk_metadata.jsonl")
-        with open(metadata_path, "w", encoding="utf-8") as f:
-            for m in metadata:
-                f.write(json.dumps(m) + "\n")
+@pytest.fixture(scope="module")
+def test_query_embedding():
+    """Simple test embedding."""
+    vec = np.random.rand(768).astype(np.float32)
+    vec /= np.linalg.norm(vec)
+    return vec.tolist()
 
-        # 3. Write query embedding (2D vector)
-        query_emb = np.array([1, 0], dtype=np.float32)
-        query_emb = query_emb / np.linalg.norm(query_emb)
-        emb_path = os.path.join(tmpdir, "query_embedding.npy")
-        np.save(emb_path, query_emb)
+@pytest.fixture(scope="module")
+def test_metadata():
+    """Load example laureate metadata."""
+    return load_laureate_metadata()
 
-        # 4. Write filters.json
-        filters = {"gender": "female"}
-        filters_path = os.path.join(tmpdir, "filters.json")
-        with open(filters_path, "w", encoding="utf-8") as f:
-            json.dump(filters, f)
+def run_faiss_worker_subprocess(
+    query: str,
+    model_id: str = "bge-large",
+    top_k: int = 5,
+    score_threshold: float = 0.2,
+    min_return: int = 3,
+    max_return: int = None,
+    filters: dict = None
+):
+    """Run faiss_query_worker.py as subprocess with given args."""
+    worker_path = Path(__file__).parent.parent / "rag/faiss_query_worker.py"
+    if not worker_path.exists():
+        raise FileNotFoundError(f"Worker script not found at {worker_path}")
 
-        # 5. No need to patch model config anymore
-        model_id = "bge-large"
+    cmd = [
+        sys.executable,
+        str(worker_path),
+        "--query", query,
+        "--top_k", str(top_k),
+        "--score_threshold", str(score_threshold),  # <--- CORRECT NAME
+        "--min_return", str(min_return),
+        "--model_id", model_id
+    ]
+    if max_return:
+        cmd.extend(["--max_return", str(max_return)])
+    if filters:
+        cmd.extend(["--filters", json.dumps(filters)])
 
-        try:
-            # 6. Call faiss_query_worker.py as subprocess, setting PYTHONPATH
-            results_path = os.path.join(tmpdir, "retrieval_results.json")
-            cmd = [
-                "python", "rag/faiss_query_worker.py",
-                "--model", model_id,
-                "--dir", tmpdir,
-                "--filters", filters_path,
-                "--index_path", index_path,
-                "--metadata_path", metadata_path
-            ]
-            env = os.environ.copy()
-            env["PYTHONPATH"] = os.getcwd()
-            result = subprocess.run(cmd, check=True, env=env, capture_output=True, text=True)
-            print("STDOUT:\n", result.stdout)
-            print("STDERR:\n", result.stderr)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    chunks = json.loads(result.stdout)
+    return chunks
 
-            # 7. Read and check results
-            with open(results_path, "r", encoding="utf-8") as f:
-                results = json.load(f)
-            # Only chunks with gender == "female" should be returned
-            assert all(r["gender"] == "female" for r in results)
-            # Should return at least one result
-            assert len(results) > 0
-            # Should not return any male chunk
-            assert all(r["chunk_id"] != "c1" for r in results)
-        finally:
-            pass  # No config to restore 
+def test_faiss_worker_returns_valid_chunks(test_query_embedding, test_metadata):
+    """Test basic end-to-end FAISS worker subprocess run."""
+    query = "What did Toni Morrison say about justice?"
+    chunks = run_faiss_worker_subprocess(query)
+
+    assert isinstance(chunks, list)
+    assert len(chunks) > 0
+    first_chunk = chunks[0]
+    # Basic schema checks
+    assert "text" in first_chunk
+    assert "score" in first_chunk
+    assert "chunk_id" in first_chunk
+    assert "laureate" in first_chunk
+    assert "year_awarded" in first_chunk
+
+def test_faiss_worker_filters_applied(test_query_embedding, test_metadata):
+    """Test that filters are passed correctly and filter results."""
+    query = "What did Toni Morrison say about justice?"
+    filters = {"laureate": "Toni Morrison"}
+
+    chunks = run_faiss_worker_subprocess(query, filters=filters)
+
+    assert len(chunks) > 0
+    for chunk in chunks:
+        assert chunk["laureate"] == "Toni Morrison"
+
+def test_faiss_worker_score_threshold(test_query_embedding, test_metadata):
+    """Test that score_threshold is respected."""
+    query = "What did Toni Morrison say about justice?"
+    threshold = 0.5
+
+    chunks = run_faiss_worker_subprocess(query, score_threshold=threshold)
+
+    assert len(chunks) > 0
+    for chunk in chunks:
+        assert chunk["score"] >= threshold
+
+def test_faiss_worker_min_max_return(test_query_embedding, test_metadata):
+    """Test min_return and max_return behavior."""
+    query = "What did Toni Morrison say about justice?"
+    min_return = 2
+    max_return = 4
+
+    chunks = run_faiss_worker_subprocess(
+        query, min_return=min_return, max_return=max_return
+    )
+
+    assert len(chunks) >= min_return
+    assert len(chunks) <= max_return
