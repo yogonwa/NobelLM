@@ -14,6 +14,10 @@ Usage:
     python embed_texts.py --model bge-large
 """
 
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import os
 import json
 import logging
