@@ -10,7 +10,7 @@ This module provides a modular, extensible, and testable interface for querying 
 
 | File                      | Main Classes/Functions         | Description                                                                                 |
 |---------------------------|-------------------------------|---------------------------------------------------------------------------------------------|
-| `query_engine.py`         | `query`                       | Orchestrates the full RAG pipeline: intent, retrieval, prompt, LLM, answer.                 |
+| `query_engine.py`         | `answer_query`                | Canonical entry point for the RAG pipeline. Routes queries via QueryRouter, handles all retrieval modes safely. |
 | `query_router.py`         | `QueryRouter`, `IntentClassifier`, `PromptTemplateSelector` | Classifies queries, selects retrieval config, prompt template, and routes to metadata/RAG.   |
 | `thematic_retriever.py`   | `ThematicRetriever`           | Expands thematic queries, embeds, and retrieves relevant chunks.                             |
 | `retriever.py`            | `BaseRetriever`, `InProcessRetriever`, `SubprocessRetriever`, `query_index` | Retrieves top-k chunks from FAISS index, supports mode-aware (in-process/subprocess) logic. |
@@ -24,6 +24,7 @@ This module provides a modular, extensible, and testable interface for querying 
 | `cache.py`                | `get_faiss_index_and_metadata`, `get_model` | Streamlit-cached loaders for index, metadata, and models.                                   |
 
 ---
+
 ## 🗺️ RAG Pipeline Architecture
 
 View the interactive architecture diagram here:  
@@ -41,30 +42,78 @@ View the interactive architecture diagram here:
 
 ---
 
+## Mode-Agnostic Retriever Layer (June 2025 Refactor)
+
+**New as of June 2025:** NobelLM now uses a modern, mode-agnostic retriever abstraction for all chunk retrieval, both factual and thematic.
+
+- All retrieval is routed through a `BaseRetriever` interface, with two main implementations:
+  - `InProcessRetriever`: Runs embedding and FAISS search in-process (Linux/prod, default).
+  - `SubprocessRetriever`: Runs FAISS search in a subprocess for Mac/Intel safety (set `NOBELLM_USE_FAISS_SUBPROCESS=1`).
+- A factory function (`get_mode_aware_retriever`) selects the correct backend based on environment.
+- The interface is always `retrieve(query: str, top_k: int, filters: dict) -> List[dict]`.
+- **Standard Default:** The retriever interface defines `top_k=5` as the standard default. All implementations (in-process, subprocess, thematic) must respect this value when passed from callers.
+- **Score Threshold:** All retrieval paths now apply a consistent score threshold (default 0.2) with minimum and maximum return counts per query type. This ensures consistent prompt construction and prevents prompt bloat.
+- **Index Type Requirement:** The retriever requires a FAISS `IndexFlatIP` index for metadata filtering. Other index types (IVF, PQ, HNSW) are not supported for filtered queries.
+- Thematic and factual queries both use this interface—no more shape/type bugs or mode-specific logic in callers.
+- **Extensible:** You can add new backends (e.g., ElasticSearch, hybrid, remote API) by subclassing `BaseRetriever` and updating the factory.
+
+**Example usage:**
+```python
+from rag.query_engine import answer_query
+
+# Simple query (uses default model)
+response = answer_query("What do laureates say about justice?")
+print(response["answer"])
+print(response["sources"])
+
+# Query with MiniLM
+response = answer_query(
+    "What do USA winners talk about in their lectures?",
+    model_id="miniLM"
+)
+```
+
+This refactor makes the pipeline robust, testable, and future-ready for multi-backend or hybrid search.
+
 ## Model-Aware Configuration
 
 All RAG and embedding logic is now **model-aware and config-driven**. The embedding model, FAISS index, and chunk metadata paths are centrally managed in [`rag/model_config.py`](./model_config.py):
 
-- To swap models (e.g., BGE-Large vs MiniLM), pass `model_id` to the query or embedding functions, or change the default in the config.
+- To swap models (e.g., BGE-Large vs MiniLM), pass `model_id` to `answer_query()`, or change the default in the config.
 - All file paths, model names, and embedding dimensions are set in one place.
 - Consistency checks ensure the loaded model and index match in dimension, preventing silent errors.
 - Enables easy A/B testing and reproducibility.
+- **NEW: Standard defaults** (e.g., top_k=5) are defined in the config and respected by all implementations.
 
 **Example:**
 ```python
-from rag.query_engine import query
-from rag.model_config import DEFAULT_MODEL_ID
+from rag.query_engine import answer_query
+from rag.model_config import DEFAULT_MODEL_ID, get_model_config
+
+# Get config for a specific model
+config = get_model_config("miniLM")
+print(f"Using model: {config['model_name']}")
+print(f"Index path: {config['index_path']}")
 
 # Query using the default model (BGE-Large)
-response = query("What do laureates say about justice?", dry_run=True)
+response = answer_query("What do laureates say about justice?")
 
 # Query using MiniLM
-response = query("What do laureates say about justice?", dry_run=True, model_id="miniLM")
+response = answer_query("What do laureates say about justice?", model_id="miniLM")
 ```
 
 **To add a new model:**
-- Add its config to `rag/model_config.py`.
-- All downstream code will pick it up automatically.
+1. Add its config to `rag/model_config.py`:
+   ```python
+   MODEL_CONFIGS["new-model"] = {
+       "model_name": "path/to/model",
+       "embedding_dim": 512,
+       "index_path": "data/faiss_index_new-model/index.faiss",
+       "metadata_path": "data/faiss_index_new-model/chunk_metadata.jsonl",
+   }
+   ```
+2. All downstream code will pick it up automatically.
+3. Run the model-aware tests to verify behavior.
 
 ---
 
@@ -72,39 +121,51 @@ response = query("What do laureates say about justice?", dry_run=True, model_id=
 
 ### Main Function
 ```python
-from rag.query_engine import query
+from rag.query_engine import answer_query  # Recommended
+# from rag.query_engine import query  # DEPRECATED
 ```
 
 #### Signature
 ```python
-def query(
+def answer_query(
     query_string: str,
-    filters: Optional[Dict[str, Any]] = None,
-    dry_run: bool = False,
-    k: int = 3,
-    score_threshold: float = 0.25,
-    model_id: str = None
+    model_id: str = None,
+    score_threshold: float = 0.2,  # Minimum similarity score
+    min_return: int = None,        # Minimum chunks to return (query-type specific)
+    max_return: int = None         # Maximum chunks to return (query-type specific)
 ) -> Dict[str, Any]:
     """
-    Orchestrate the query pipeline: embed, retrieve, filter, prompt, and answer.
-    Model-aware: uses the embedding model, index, and metadata for the specified model_id.
-    Returns a dict with 'answer' and 'sources'.
+    Unified entry point for the frontend. Routes query via QueryRouter.
+    Uses model_id only to instantiate the retriever, then forgets it.
+    Downstream logic (prompt building, answer formatting) sees only chunks/metadata.
+
+    Args:
+        query_string: The user's query
+        model_id: Optional model identifier used only to get the appropriate retriever.
+                 If None, uses DEFAULT_MODEL_ID from model_config.
+        score_threshold: Minimum similarity score for chunks (default: 0.2)
+        min_return: Minimum number of chunks to return (query-type specific)
+        max_return: Maximum number of chunks to return (query-type specific)
+
+    Returns:
+        dict with 'answer_type', 'answer', 'metadata_answer', and 'sources'
     """
 ```
 
 #### Example Usage
 ```python
-# Simple query (dry run, default model)
-response = query("What do laureates say about justice?", dry_run=True)
+# Simple query (uses default model and score threshold)
+response = answer_query("What do laureates say about justice?")
 print(response["answer"])
 print(response["sources"])
 
-# Query with MiniLM
-response = query(
+# Query with custom score threshold and return limits
+response = answer_query(
     "What do USA winners talk about in their lectures?",
-    filters={"country": "USA", "source_type": "nobel_lecture"},
-    dry_run=True,
-    model_id="miniLM"
+    model_id="miniLM",
+    score_threshold=0.3,
+    min_return=3,
+    max_return=10
 )
 ```
 
@@ -118,13 +179,27 @@ response = query(
       "source_type": "acceptance_speech",
       "laureate": "Bob Dylan",
       "year_awarded": 2016,
-      "score": 0.53,
+      "score": 0.53,  # Always >= score_threshold unless min_return fallback
       "text_snippet": "Bob Dylan's speech at the Nobel Banquet ..."
     },
     # ...
-  ]
+  ],
+  "answer_type": "rag",  # or "metadata" for factual queries
+  "metadata_answer": None  # or dict for metadata answers
 }
 ```
+
+### Legacy Function (Deprecated)
+```python
+from rag.query_engine import query  # DEPRECATED
+```
+
+The legacy `query()` function is deprecated and will be removed in a future version. It has known issues:
+1. Inconsistent score threshold handling
+2. Subprocess mode (USE_FAISS_SUBPROCESS=1) passes embeddings instead of query strings
+3. No support for min/max return counts
+
+Use `answer_query()` instead for a fully consistent and robust retrieval + prompting pipeline.
 
 ---
 
@@ -138,18 +213,18 @@ response = query(
 ## Environment Variables
 - `OPENAI_API_KEY` – Your OpenAI API key (required for real queries)
 - `TOKENIZERS_PARALLELISM=false` – (Optional) Suppress HuggingFace tokenizers parallelism warning
+- `NOBELLM_USE_FAISS_SUBPROCESS=1` – (Optional) Use subprocess mode for Mac/Intel safety
 
 You can add these to your `.env` file:
 ```
 OPENAI_API_KEY=sk-...
 TOKENIZERS_PARALLELISM=false
+NOBELLM_USE_FAISS_SUBPROCESS=1  # Only on Mac/Intel
 ```
 
 ---
 
 ## Notes
-- Dry run mode (`dry_run=True`) does not call OpenAI and is safe for CI/testing.
-- Filtering supports any metadata field present in your chunk index (e.g., country, source_type).
 - The engine loads the embedding model and FAISS index only once per process for efficiency.
 - Errors and warnings are logged using Python's logging module.
 - **All chunking and embedding outputs are model-specific:**
@@ -160,7 +235,7 @@ TOKENIZERS_PARALLELISM=false
 ---
 
 ## Example CLI Test
-See `rag/test_query_engine.py` for a ready-to-run test script demonstrating dry run, filtering, and real OpenAI queries.
+See `rag/test_query_engine.py` for a ready-to-run test script demonstrating the canonical `answer_query()` function.
 
 # Nobel Laureate Speech Explorer – RAG Module
 
@@ -293,4 +368,31 @@ The pipeline will use a fast, unified in-process retrieval mode.
 | [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) | Milestones, phases, and planned features.                      |
 | [META_ANALYSIS.md](../META_ANALYSIS.md) | Strategy, design notes, and meta-level analysis.               |
 
---- 
+---
+
+## Mode-Agnostic Retriever Layer (June 2025 Refactor)
+
+**New as of June 2025:** NobelLM now uses a modern, mode-agnostic retriever abstraction for all chunk retrieval, both factual and thematic.
+
+- All retrieval is routed through a `BaseRetriever` interface, with two main implementations:
+  - `InProcessRetriever`: Runs embedding and FAISS search in-process (Linux/prod, default).
+  - `SubprocessRetriever`: Runs FAISS search in a subprocess for Mac/Intel safety (set `NOBELLM_USE_FAISS_SUBPROCESS=1`).
+- A factory function (`get_mode_aware_retriever`) selects the correct backend based on environment.
+- The interface is always `retrieve(query: str, top_k: int, filters: dict) -> List[dict]`.
+- **Standard Default:** The retriever interface defines `top_k=5` as the standard default. All implementations (in-process, subprocess, thematic) must respect this value when passed from callers.
+- **Score Threshold:** All retrieval paths now apply a consistent score threshold (default 0.2) with minimum and maximum return counts per query type. This ensures consistent prompt construction and prevents prompt bloat.
+- **Index Type Requirement:** The retriever requires a FAISS `IndexFlatIP` index for metadata filtering. Other index types (IVF, PQ, HNSW) are not supported for filtered queries.
+- Thematic and factual queries both use this interface—no more shape/type bugs or mode-specific logic in callers.
+- **Extensible:** You can add new backends (e.g., ElasticSearch, hybrid, remote API) by subclassing `BaseRetriever` and updating the factory.
+
+**Example usage:**
+```python
+from rag.retriever import get_mode_aware_retriever
+retriever = get_mode_aware_retriever(model_id)
+# Uses standard default top_k=5
+chunks = retriever.retrieve("What did laureates say about justice?")
+# Override top_k if needed
+chunks = retriever.retrieve("What did laureates say about justice?", top_k=10)
+```
+
+This refactor makes the pipeline robust, testable, and future-ready for multi-backend or hybrid search. 

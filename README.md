@@ -139,14 +139,14 @@ All chunking, embedding, indexing, and RAG operations are now **model-aware and 
 
 **Example:**
 ```python
-from rag.query_engine import query
+from rag.query_engine import answer_query
 from rag.model_config import DEFAULT_MODEL_ID
 
 # Query using the default model (BGE-Large)
-response = query("What do laureates say about justice?", dry_run=True)
+response = answer_query("What do laureates say about justice?", dry_run=True)
 
 # Query using MiniLM
-response = query("What do laureates say about justice?", dry_run=True, model_id="miniLM")
+response = answer_query("What do laureates say about justice?", dry_run=True, model_id="miniLM")
 ```
 
 **To add a new model:**
