@@ -4,6 +4,10 @@ Embedding Model Sanity Check Script
 This script tests loading the NobelLM embedding model and generating an embedding for a simple string.
 Use this to debug segmentation faults or model compatibility issues in isolation from the main pipeline.
 """
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import logging
 from sentence_transformers import SentenceTransformer
 

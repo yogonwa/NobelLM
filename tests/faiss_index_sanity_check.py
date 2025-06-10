@@ -4,6 +4,10 @@ FAISS Index Sanity Check Script
 This script tests loading the NobelLM FAISS index and running a search with a random vector.
 Use this to debug segmentation faults or index compatibility issues in isolation from the main pipeline.
 """
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import logging
 import faiss
 import numpy as np

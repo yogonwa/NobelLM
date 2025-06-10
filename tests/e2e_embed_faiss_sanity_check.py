@@ -4,6 +4,10 @@ End-to-End Embedding + FAISS Sanity Check Script
 This script tests the full pipeline: embedding a string and searching the NobelLM FAISS index.
 Use this to debug integration issues or segmentation faults in isolation from the test harness.
 """
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import logging
 import faiss
 from sentence_transformers import SentenceTransformer
