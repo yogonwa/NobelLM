@@ -9,6 +9,10 @@ Usage:
 
 Outputs a summary to stdout. Uses logging for errors.
 """
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import json
 import logging
 import os

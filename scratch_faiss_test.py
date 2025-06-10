@@ -1,3 +1,7 @@
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 from rag.retriever import load_index_and_metadata, query_index
 from sentence_transformers import SentenceTransformer
 import numpy as np

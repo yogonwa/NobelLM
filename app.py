@@ -15,6 +15,10 @@ import subprocess
 import os
 import sys
 
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 # Ensure spaCy model is available by running setup.sh
 setup_path = os.path.join(os.path.dirname(__file__), "setup.sh")
 subprocess.run(["bash", setup_path], check=True)

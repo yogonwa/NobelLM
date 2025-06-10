@@ -137,6 +137,14 @@ This step builds a FAISS vector index for fast semantic search over Nobel Litera
 - `data/faiss_index_{model}/index.faiss` (FAISS index file, model-specific)
 - `data/faiss_index_{model}/chunk_metadata.jsonl` (list of metadata dicts, one per chunk, excluding the embedding vector, model-specific)
 
+### Important: Index Type Requirement
+The RAG pipeline requires a FAISS `IndexFlatIP` (cosine similarity) index. This is because:
+1. The retrieval logic uses `reconstruct_n` for metadata filtering
+2. Only `IndexFlatIP` guarantees both reconstruct_n support and direct similarity search
+3. Other index types (e.g., PQ, IVF, HNSW) are not supported as they may not support reconstruct_n
+
+The index builder (`build_index.py`) enforces this by always creating an `IndexFlatIP` index.
+
 ### How to Build the Index
 Run the following command from the project root (ensure your virtual environment is active):
 

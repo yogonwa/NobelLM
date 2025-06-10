@@ -1,39 +1,33 @@
 import pytest
-from rag.query_router import PromptTemplateSelector
+from rag.query_router import PromptTemplateSelector, QueryIntent
 
-def test_select_factual_prompt_template():
-    selector = PromptTemplateSelector()
-    template = selector.select('factual')
-    assert "Answer the question using only the information in the context" in template
-    assert "Context:" in template
-    assert "Question:" in template
-    assert "Answer:" in template
+def test_get_factual_prompt_template():
+    template = PromptTemplateSelector.get_template(QueryIntent.FACTUAL)
+    assert "Answer the following factual question about Nobel Literature laureates" in template
+    assert "{query}" in template
+    assert "{context}" in template
     assert "literary analyst" not in template
     assert "creative, original response" not in template
 
-def test_select_thematic_prompt_template():
-    selector = PromptTemplateSelector()
-    template = selector.select('thematic')
-    assert "literary analyst" in template
-    assert "User question:" in template
-    assert "Excerpts:" in template
-    assert "Instructions:" in template
-    assert "Identify prominent or recurring themes" in template
-    assert "Reference the speaker and year when relevant" in template
-    assert "Answer the question using only the information in the context" not in template
-
-def test_select_generative_prompt_template():
-    selector = PromptTemplateSelector()
-    template = selector.select('generative')
-    assert "Nobel laureate speech generator" in template
-    assert "creative, original response" in template
-    assert "Context:" in template
-    assert "User request:" in template
-    assert "Response:" in template
+def test_get_thematic_prompt_template():
+    template = PromptTemplateSelector.get_template(QueryIntent.THEMATIC)
+    assert "Analyze the following thematic question about Nobel Literature laureates" in template
+    assert "{query}" in template
+    assert "{context}" in template
     assert "literary analyst" not in template
-    assert "Answer the question using only the information in the context" not in template
+    assert "creative, original response" not in template
 
-def test_prompt_template_selector_error():
-    selector = PromptTemplateSelector()
-    with pytest.raises(ValueError):
-        selector.select('unknown_intent') 
+def test_get_generative_prompt_template():
+    template = PromptTemplateSelector.get_template(QueryIntent.GENERATIVE)
+    assert "Generate a creative response to" in template
+    assert "{query}" in template
+    assert "{context}" in template
+    assert "literary analyst" not in template
+    assert "creative, original response" not in template
+
+def test_prompt_template_selector_fallback():
+    # Test that unknown intent falls back to factual template
+    template = PromptTemplateSelector.get_template("unknown_intent")
+    assert "Answer the following factual question about Nobel Literature laureates" in template
+    assert "{query}" in template
+    assert "{context}" in template 

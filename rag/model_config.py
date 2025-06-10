@@ -3,9 +3,30 @@ model_config.py
 
 Centralized configuration for embedding models, FAISS index, and chunk metadata paths for the NobelLM RAG pipeline.
 
-- Use this module to ensure all RAG, embedding, and utility code references the correct model, index, and metadata files.
-- Prevents mismatches and hardcoded paths.
-- Add new models here as needed.
+This module provides a single source of truth for all model-specific configuration:
+- Model names and embedding dimensions
+- FAISS index and metadata file paths
+- Standard defaults (e.g., top_k=5 for retrieval)
+
+Key Features:
+- Model-aware: Each model (e.g., BGE-Large, MiniLM) has its own config
+- Environment-aware: Supports both in-process and subprocess retrieval
+- Standardized defaults: Defines consistent behavior across all models
+- Extensible: Easy to add new models by updating MODEL_CONFIGS
+
+Usage:
+    from rag.model_config import get_model_config
+    
+    # Get config for default model (BGE-Large)
+    config = get_model_config()
+    
+    # Get config for specific model
+    config = get_model_config("miniLM")
+    
+    # Use in retrieval
+    index_path = config["index_path"]
+    model_name = config["model_name"]
+    embedding_dim = config["embedding_dim"]
 
 Author: NobelLM Team
 """

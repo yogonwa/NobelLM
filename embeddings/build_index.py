@@ -8,6 +8,10 @@ Usage:
     python build_index.py --model bge-large
 """
 
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import os
 import json
 import logging
@@ -45,10 +49,11 @@ def build_faiss_index(model_id: str):
     faiss.normalize_L2(embeddings)
 
     index = faiss.IndexFlatIP(dim)
+    assert index.metric_type == faiss.METRIC_INNER_PRODUCT, f"Expected metric_type 1 but got {index.metric_type}"
     index.add(embeddings)
 
     faiss.write_index(index, index_path)
-    logging.info(f"FAISS index saved to {index_path}")
+    logging.info(f"FAISS index saved to {index_path} with metric_type {index.metric_type}")
 
     with open(metadata_path, 'w', encoding='utf-8') as f:
         for d in data:

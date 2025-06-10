@@ -4,14 +4,15 @@ Ensures that retrieval config from QueryRouter is correctly propagated to the re
 """
 import pytest
 import numpy as np
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from rag.query_router import QueryRouter
-from rag.query_engine import query as query_engine_query
+from rag.query_engine import answer_query as query_engine_query
 
 @pytest.fixture
 def factual_query() -> str:
-    """Fixture for a sample factual user query."""
-    return "When did Toni Morrison win?"
+    """Fixture for a factual query that doesn't match metadata rules and should fall back to RAG.
+    Uses a query about a specific detail that isn't in metadata but is clearly factual."""
+    return "What was the exact time of day when Toni Morrison received her Nobel Prize?"
 
 @pytest.fixture
 def mock_embedding() -> np.ndarray:
@@ -53,9 +54,16 @@ def mock_thematic_chunks() -> list:
         for i in range(15)
     ]
 
-def test_query_router_to_retriever_factual(factual_query: str, mock_embedding: np.ndarray, mock_chunks: list) -> None:
+def test_query_router_to_retriever_factual_fallback_to_rag(factual_query: str, mock_embedding: np.ndarray, mock_chunks: list) -> None:
     """
-    Integration test: Checks that QueryRouter's retrieval config is passed to the retriever and that the retriever returns the correct number and schema of chunks. Patches at the query_engine level.
+    Integration test: Verifies that factual queries which don't match metadata rules correctly fall back to RAG.
+    Specifically checks that:
+    1. The query goes through the retriever (not metadata handler)
+    2. QueryRouter's retrieval config is properly passed to the retriever
+    3. The retriever returns chunks with correct schema and count
+    
+    This is a key test case for the factual-to-RAG fallback path, ensuring that queries
+    which can't be answered from metadata still get proper retrieval treatment.
     """
     # Patch embed_query and query_index at the query_engine level
     with patch("rag.query_engine.embed_query", return_value=mock_embedding):
@@ -121,15 +129,16 @@ def test_filter_propagation_to_retriever(mock_embedding: np.ndarray, mock_chunks
 def test_topk_override_behavior(mock_embedding: np.ndarray, mock_chunks: list) -> None:
     """
     Integration test: Checks that top_k override is respected by the retriever and pipeline returns correct number of results.
+    Uses a factual query that doesn't match metadata rules to ensure it goes through retriever.
     """
-    query = "When did Toni Morrison win?"
+    query = "What was the exact time of day when Toni Morrison received her Nobel Prize?"
     with patch("rag.query_engine.embed_query", return_value=mock_embedding):
         with patch("rag.retriever.query_index", return_value=mock_chunks[:3]) as mock_query_index:
             result = query_engine_query(query, k=3, model_id="bge-large")
             mock_query_index.assert_called_once()
             args, kwargs = mock_query_index.call_args
-            assert kwargs["top_k"] == 3
-            assert len(result["sources"]) == 3
+            assert kwargs["top_k"] == 3, f"Expected top_k=3, got {kwargs['top_k']}"
+            assert len(result["sources"]) == 3, f"Expected 3 chunks, got {len(result['sources'])}"
 
 def test_no_results_returns_empty_list(mock_embedding: np.ndarray) -> None:
     """

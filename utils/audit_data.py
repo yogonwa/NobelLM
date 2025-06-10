@@ -1,9 +1,18 @@
-import os
-import json
+"""
+audit_data.py
+
+Audit the NobelLM data pipeline for consistency and completeness.
+"""
+# Configure threading globally before any FAISS/PyTorch imports
+from config.threading import configure_threading
+configure_threading()
+
 import logging
-from typing import List, Dict, Any, Optional
+import json
 import faiss
-from rag.model_config import get_model_config
+from pathlib import Path
+from typing import Optional
+from rag.model_config import get_model_config, DEFAULT_MODEL_ID
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
