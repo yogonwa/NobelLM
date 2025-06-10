@@ -23,7 +23,7 @@ class IntentClassifier:
     THEMATIC_KEYWORDS = [
         "theme", "themes", "pattern", "patterns", "motif", "motifs", "compare", "comparison",
         "differences", "similarities", "trend", "trends", "common", "typical", "recurring", "across", "evolution",
-        "topic", "topics", "change", "changed", "changes", "over time",
+        "topic", "topics", "change", "changed", "changes", "over time", "what are", "what do",
         "say about", "talk about", "what does", "how does", "describe", "describe the"
     ]
     GENERATIVE_KEYWORDS = [
@@ -91,6 +91,7 @@ class IntentClassifier:
         """
         Classify the query as 'generative', 'thematic', or 'factual', or a dict with 'intent' and 'scoped_entity'.
         Precedence: generative > thematic > factual.
+        Raises ValueError if no intent can be determined.
         """
         q = query.lower()
         if self._matches(q, self.generative_patterns, self.generative_phrases):
@@ -102,4 +103,4 @@ class IntentClassifier:
             return "thematic"
         if self._matches(q, self.factual_patterns, self.factual_phrases):
             return "factual"
-        return "factual" 
+        raise ValueError(f"Could not determine intent for query: {query}") 

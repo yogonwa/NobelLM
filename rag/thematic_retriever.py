@@ -7,51 +7,128 @@ It is designed for modularity, testability, and easy integration into the RAG pi
 """
 import logging
 from config.theme_reformulator import ThemeReformulator
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
+from .utils import filter_top_chunks
 
 logger = logging.getLogger(__name__)
 
 class ThematicRetriever:
     """
-    Encapsulates thematic query expansion, embedding, and retrieval logic.
-    Use this class to handle all thematic search workflows in a modular, testable way.
+    A retriever that expands thematic queries into multiple terms and merges results.
+    Uses a base retriever (e.g., ModeAwareRetriever) for the actual retrieval.
     """
-    def __init__(self, retriever, theme_file="config/themes.json"):
-        """
-        Initialize the ThematicRetriever.
-        Args:
-            retriever: An object with a retrieve(query, top_k, filters) method (BaseRetriever).
-            theme_file: Path to the JSON file mapping themes to keywords.
-        """
-        self.reformulator = ThemeReformulator(theme_file)
-        self.retriever = retriever
 
-    def retrieve(self, user_query: str, top_k: int = 15, filters=None) -> List[Dict]:
+    def __init__(self, model_id: Optional[str] = None):
         """
-        Reformulate the query using theme expansion, and retrieve top-k chunks for each term.
+        Initialize the thematic retriever.
+
         Args:
-            user_query: The original user query string.
-            top_k: Number of chunks to retrieve (default 15 for thematic search).
-            filters: Optional dict of metadata filters (e.g., laureate name)
-        Returns:
-            List of retrieved chunk dicts.
+            model_id: Optional model identifier to use for the base retriever.
+                     If None, uses DEFAULT_MODEL_ID from model_config.
         """
-        terms = self.reformulator.expand_query_terms(user_query)
-        logger.info(f"[RAG][ShapeCheck] Expanded query terms: {terms}")
-        all_results = []
-        for term in terms:
-            chunks = self.retriever.retrieve(term, top_k, filters=filters)
-            logger.info(f"[RAG][Thematic] Retrieved {len(chunks)} chunks for term '{term}'")
-            logger.info(f"[RAG][Thematic] Chunk IDs for '{term}': {[c.get('chunk_id') for c in chunks]}")
-            logger.info(f"[RAG][Thematic] Scores for '{term}': {[c.get('score') for c in chunks]}")
-            all_results.extend(chunks)
-        # Deduplicate by chunk_id
+        from .query_engine import get_mode_aware_retriever
+        self.base_retriever = get_mode_aware_retriever(model_id)
+
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 15,
+        filters: Optional[Dict[str, Any]] = None,
+        score_threshold: float = 0.2,
+        min_return: int = 5,
+        max_return: int = 12
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve chunks for a thematic query by expanding it into multiple terms.
+
+        Args:
+            query: The thematic query to expand and retrieve for
+            top_k: Number of chunks to retrieve per term (default: 15)
+            filters: Optional metadata filters to apply
+            score_threshold: Minimum similarity score (default: 0.2)
+            min_return: Minimum number of chunks to return (default: 5)
+            max_return: Maximum number of chunks to return (default: 12)
+
+        Returns:
+            List of unique chunks, sorted by score, filtered by score threshold
+        """
+        # Expand query into thematic terms
+        expanded_terms = self._expand_thematic_query(query)
+        logger.info(f"[ThematicRetriever] Expanded query '{query}' into terms: {expanded_terms}")
+
+        # Retrieve chunks for each term with consistent filtering
+        all_chunks = []
+        for term in expanded_terms:
+            chunks = self.base_retriever.retrieve(
+                term,
+                top_k=top_k,
+                filters=filters,
+                score_threshold=score_threshold,
+                min_return=min_return,
+                max_return=max_return
+            )
+            all_chunks.extend(chunks)
+
+        # Merge and deduplicate chunks
+        unique_chunks = self._merge_chunks(all_chunks)
+        logger.info(f"[ThematicRetriever] Found {len(unique_chunks)} unique chunks after merging")
+
+        # Apply final filtering to ensure consistent output
+        filtered_chunks = filter_top_chunks(
+            unique_chunks,
+            score_threshold=score_threshold,
+            min_return=min_return,
+            max_return=max_return
+        )
+        logger.info(f"[ThematicRetriever] Final filtered chunks: {len(filtered_chunks)}")
+
+        return filtered_chunks
+
+    def _expand_thematic_query(self, query: str) -> List[str]:
+        """
+        Expand a thematic query into multiple related terms.
+        For now, uses a simple heuristic approach.
+
+        Args:
+            query: The thematic query to expand
+
+        Returns:
+            List of expanded query terms
+        """
+        # TODO: Replace with more sophisticated expansion (e.g., using embeddings)
+        # For now, just split on common thematic connectors
+        terms = []
+        for term in query.split():
+            if term.lower() not in ("and", "or", "but", "the", "a", "an", "in", "on", "at", "to", "of", "for", "with"):
+                terms.append(term)
+        return terms if terms else [query]
+
+    def _merge_chunks(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Merge and deduplicate chunks, keeping the highest score for each unique chunk.
+        When scores are equal, prefer lecture chunks over ceremony speeches.
+
+        Args:
+            chunks: List of chunks to merge
+
+        Returns:
+            List of unique chunks, sorted by score (and source_type for equal scores)
+        """
+        # Use chunk_id as key for deduplication
         unique_chunks = {}
-        for c in all_results:
-            cid = c.get('chunk_id')
-            if cid and (cid not in unique_chunks or c['score'] > unique_chunks[cid]['score']):
-                unique_chunks[cid] = c
-        logger.info(f"[RAG][Thematic] Total unique chunks after aggregation: {len(unique_chunks)}")
-        logger.info(f"[RAG][Thematic] Unique chunk IDs: {list(unique_chunks.keys())}")
-        logger.info(f"[RAG][Thematic] Unique chunk scores: {[c.get('score') for c in unique_chunks.values()]}")
-        return list(unique_chunks.values()) 
+        for chunk in chunks:
+            chunk_id = chunk.get("chunk_id")
+            if not chunk_id:
+                continue
+            if chunk_id not in unique_chunks or chunk["score"] > unique_chunks[chunk_id]["score"]:
+                unique_chunks[chunk_id] = chunk
+
+        # Sort by score descending, then prefer lecture chunks for equal scores
+        def sort_key(chunk):
+            # Primary sort by score (descending)
+            score = -chunk["score"]  # Negative for descending sort
+            # Secondary sort: prefer lecture chunks (0) over ceremony speeches (1)
+            source_type = 1 if chunk.get("source_type") == "ceremony_speech" else 0
+            return (score, source_type)
+
+        return sorted(unique_chunks.values(), key=sort_key) 

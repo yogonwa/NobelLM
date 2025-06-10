@@ -92,4 +92,18 @@ class ThemeReformulator:
         for kw in matched_keywords:
             for theme in self.keyword_to_themes[kw]:
                 expanded.update(self.theme_map[theme])
-        return expanded 
+        return expanded
+
+    def extract_themes(self, query: str) -> Set[str]:
+        """
+        Extract canonical themes from a query by matching against theme keywords.
+        Args:
+            query: The user query string.
+        Returns:
+            Set of matched canonical theme names.
+        """
+        matched_keywords = self.extract_theme_keywords(query)
+        themes = set()
+        for kw in matched_keywords:
+            themes.update(self.keyword_to_themes[kw])
+        return themes 
