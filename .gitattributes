@@ -3,3 +3,5 @@ frontend/assets/nobel_logo.png filter=lfs diff=lfs merge=lfs -text
 data/faiss_index/index.faiss filter=lfs diff=lfs merge=lfs -text
 data/faiss_index/metadata.json filter=lfs diff=lfs merge=lfs -text
 data/faiss_index/chunk_metadata.jsonl filter=lfs diff=lfs merge=lfs -text
+data/faiss_index_bge-large/index.faiss filter=lfs diff=lfs merge=lfs -text
+data/faiss_index_bge-large/chunk_metadata.jsonl filter=lfs diff=lfs merge=lfs -text
