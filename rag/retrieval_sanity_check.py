@@ -3,29 +3,59 @@ import logging
 from rag.model_config import get_model_config
 from sentence_transformers import SentenceTransformer
 from rag.dual_process_retriever import retrieve_chunks_dual_process
+from typing import List, Dict, Any
+from .retriever import query_index
+from .utils import filter_top_chunks
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def retrieve_top_chunks(query: str, k: int = 10, score_threshold: float = 0.25, model_id="bge-large"):
-    # 1. Load embedding model
-    config = get_model_config(model_id)
-    model = SentenceTransformer(config["model_name"])
+def retrieve_top_chunks(
+    query: str,
+    top_k: int = 5,
+    filters: Dict[str, Any] = None,
+    score_threshold: float = 0.2,
+    min_return: int = 3,
+    max_return: int = 5
+) -> List[Dict[str, Any]]:
+    """
+    Retrieve and filter top chunks for a query, using the same filtering logic
+    as the main query pipeline. This ensures consistent behavior between
+    sanity checks and real queries.
+
+    Args:
+        query: The query string
+        top_k: Number of chunks to retrieve (default: 5)
+        filters: Optional metadata filters
+        score_threshold: Minimum similarity score (default: 0.2)
+        min_return: Minimum number of chunks to return (default: 3)
+        max_return: Maximum number of chunks to return (default: 5)
+
+    Returns:
+        List of filtered chunks, sorted by score
+    """
+    # Retrieve chunks using query_index
+    chunks = query_index(query, top_k=top_k, filters=filters)
     
-    # 2. Embed the user query
-    query_embedding = model.encode([query], normalize_embeddings=True)[0]  # shape: (dim,)
-    logger.info(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
+    # Apply consistent filtering using filter_top_chunks
+    filtered_chunks = filter_top_chunks(
+        chunks,
+        score_threshold=score_threshold,
+        min_return=min_return,
+        max_return=max_return
+    )
     
-    # 3. Use dual-process retrieval for FAISS (safe on Mac/Intel)
-    # retrieve_chunks_dual_process expects the query string, not the embedding
-    results = retrieve_chunks_dual_process(query, model_id=model_id, top_k=k, filters=None)
-    # 4. Filter by score_threshold
-    filtered = [r for r in results if score_threshold is None or r.get("score", 0) >= score_threshold]
-    logger.info(f"Returned {len(filtered)} chunks above threshold {score_threshold}.")
-    logger.info(f"Score distribution: {[r.get('score', 0) for r in results]}")
-    if not filtered:
-        logger.warning("No chunks returned above threshold.")
-    return filtered
+    # Log chunk details for debugging
+    for i, chunk in enumerate(filtered_chunks):
+        logger.info(
+            f"[SanityCheck] Chunk {i+1}/{len(filtered_chunks)} — "
+            f"Score: {chunk['score']:.3f}, "
+            f"Source: {chunk.get('source_type', 'unknown')}, "
+            f"Laureate: {chunk.get('laureate', 'unknown')}, "
+            f"Year: {chunk.get('year_awarded', 'unknown')}"
+        )
+    
+    return filtered_chunks
 
 def main():
     parser = argparse.ArgumentParser(description="FAISS Retrieval Sanity Check (Subprocess Mode)")
@@ -47,7 +77,7 @@ def main():
     all_results = []
     for term in terms:
         print(f"\nRetrieving for term: '{term}'")
-        results = retrieve_top_chunks(term, k=args.k, score_threshold=args.score_threshold, model_id=args.model_id)
+        results = retrieve_top_chunks(term, k=args.k, score_threshold=args.score_threshold)
         print(f"  {len(results)} chunks returned for '{term}'")
         all_results.extend(results)
 
