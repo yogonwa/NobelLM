@@ -1,27 +1,21 @@
-# Core utilities
+# Core dependencies
 requests
 beautifulsoup4
-tqdm
+sentence-transformers==2.2.2
+faiss-cpu
+streamlit
 python-dotenv
+PyMuPDF
 pytest
-
-# Core ML stack
-sentence-transformers==3.1.1
-transformers<=4.39.3
+tqdm
+numpy==1.23.5  # safe with this torch/thinc stack
 scikit-learn
 scipy
-numpy==1.24.4
-faiss-cpu
-
-# Streamlit app
-streamlit
-Pillow
-PyMuPDF
-
-# LLM API
+transformers==4.21.1
 openai
+spacy==3.5.4
+thinc==8.1.10
+Pillow
 
-# NLP stack
-spacy==3.7.2
-# Explicit model install — Streamlit Cloud supports this syntax:
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+# Install spacy model explicitly — Streamlit Cloud supports this syntax:
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
