@@ -1,20 +1,27 @@
+# Core utilities
 requests
 beautifulsoup4
-sentence-transformers==3.1.1
-faiss-cpu
-streamlit
-python-dotenv
-PyMuPDF
-pytest
 tqdm
-numpy  # do NOT pin version — let transformer stack pull compatible version
-# torch  # REMOVE this line entirely — sentence-transformers will pull correct torch
+python-dotenv
+pytest
+
+# Core ML stack
+sentence-transformers==3.1.1
+transformers<=4.39.3
 scikit-learn
 scipy
-transformers<=4.39.3
-openai
-spacy>=3.0.0
-Pillow
+numpy  # do NOT pin version — let transformer stack pull compatible version
+faiss-cpu
 
-# Install spacy model explicitly — Streamlit Cloud supports this syntax:
+# Streamlit app
+streamlit
+Pillow
+PyMuPDF
+
+# LLM API
+openai
+
+# NLP stack
+spacy>=3.7.0,<4.0.0
+# Explicit model install — Streamlit Cloud supports this syntax:
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
