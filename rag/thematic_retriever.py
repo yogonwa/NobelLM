@@ -86,8 +86,8 @@ class ThematicRetriever:
 
     def _expand_thematic_query(self, query: str) -> List[str]:
         """
-        Expand a thematic query into multiple related terms.
-        For now, uses a simple heuristic approach.
+        Expand a thematic query into multiple related terms using ThemeReformulator.
+        This provides semantic expansion based on theme keywords rather than naive word splitting.
 
         Args:
             query: The thematic query to expand
@@ -95,13 +95,25 @@ class ThematicRetriever:
         Returns:
             List of expanded query terms
         """
-        # TODO: Replace with more sophisticated expansion (e.g., using embeddings)
-        # For now, just split on common thematic connectors
-        terms = []
-        for term in query.split():
-            if term.lower() not in ("and", "or", "but", "the", "a", "an", "in", "on", "at", "to", "of", "for", "with"):
-                terms.append(term)
-        return terms if terms else [query]
+        try:
+            # Use ThemeReformulator for semantic expansion with correct path
+            reformulator = ThemeReformulator("config/themes.json")
+            expanded_keywords = reformulator.expand_query_terms(query)
+            
+            if expanded_keywords:
+                # Convert set to list and filter out very short terms
+                terms = [kw for kw in expanded_keywords if len(kw) > 2]
+                logger.info(f"[ThemeReformulator] Expanded keywords: {list(expanded_keywords)}")
+                return terms if terms else [query]
+            else:
+                # Fallback: use original query if no theme keywords found
+                logger.warning(f"[ThemeReformulator] No theme keywords found for query: {query}")
+                return [query]
+                
+        except Exception as e:
+            logger.error(f"[ThemeReformulator] Error expanding query '{query}': {e}")
+            # Fallback to original query
+            return [query]
 
     def _merge_chunks(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
