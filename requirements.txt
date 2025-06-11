@@ -1,7 +1,7 @@
 requests
 beautifulsoup4
 sentence-transformers
-faiss-cpu==1.7.4
+faiss-cpu
 streamlit
 python-dotenv
 PyMuPDF
