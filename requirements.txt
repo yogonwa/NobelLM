@@ -7,11 +7,11 @@ python-dotenv
 PyMuPDF
 pytest
 tqdm
-numpy==1.26.4
-torch==2.2.2
+numpy  # do NOT pin version — let transformer stack pull compatible version
+# torch  # REMOVE this line entirely — sentence-transformers will pull correct torch
 scikit-learn
 scipy
 transformers<=4.39.3
 openai
 spacy>=3.0.0
-Pillow  # Required for `from PIL import Image` in app.py
+Pillow
