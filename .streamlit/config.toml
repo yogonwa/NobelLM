@@ -1,0 +1,8 @@
+[server]
+headless = true
+runOnSave = true
+maxUploadSize = 200
+maxMessageSize = 200
+
+[client]
+showErrorDetails = true
