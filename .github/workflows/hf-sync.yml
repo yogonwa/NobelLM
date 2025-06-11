@@ -22,5 +22,6 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          git remote remove space || true
           git remote add space https://huggingface.co/spaces/yogonwa/nobellm
           git push space main --force
