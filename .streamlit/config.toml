@@ -1,8 +1,12 @@
 [server]
 headless = true
-runOnSave = true
+port = 8501
 maxUploadSize = 200
 maxMessageSize = 200
+fileWatcherType = "poll"  # Recommended for Streamlit Cloud stability
 
 [client]
 showErrorDetails = true
+
+[theme]
+base = "light"
