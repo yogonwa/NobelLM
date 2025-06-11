@@ -72,8 +72,24 @@ def format_log_message(
     if extra:
         ctx.update(extra)
     
+    # Convert numpy types to JSON-serializable types
+    def convert_numpy_types(obj):
+        if hasattr(obj, 'dtype'):  # numpy array or scalar
+            return str(obj.dtype)
+        elif hasattr(obj, '__class__') and 'numpy' in str(obj.__class__):
+            return str(obj)
+        elif isinstance(obj, dict):
+            return {k: convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [convert_numpy_types(item) for item in obj]
+        else:
+            return obj
+    
+    # Convert context to JSON-serializable format
+    serializable_ctx = convert_numpy_types(ctx)
+    
     # Format as JSON for structured logging
-    return f"[{component}] {message} | {json.dumps(ctx)}"
+    return f"[{component}] {message} | {json.dumps(serializable_ctx)}"
 
 def log_with_context(
     logger: logging.Logger,

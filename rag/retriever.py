@@ -26,6 +26,13 @@ from abc import ABC, abstractmethod
 from .utils import filter_top_chunks
 from .faiss_index import load_index, health_check
 from .logging_utils import get_module_logger, log_with_context, QueryContext
+from .validation import (
+    validate_embedding_vector, 
+    validate_filters, 
+    validate_retrieval_parameters,
+    validate_model_id,
+    safe_faiss_scoring
+)
 from sentence_transformers import SentenceTransformer
 
 # Get module logger
@@ -47,13 +54,6 @@ def is_supported_index(index: faiss.Index) -> bool:
         bool: True if the index is IndexFlatIP, False otherwise
     """
     return isinstance(index, faiss.IndexFlatIP)
-
-def is_invalid_vector(vec: np.ndarray) -> bool:
-    return (
-        np.isnan(vec).any()
-        or np.isinf(vec).any()
-        or np.allclose(vec, 0.0)
-    )
 
 
 def query_index(
@@ -93,18 +93,19 @@ def query_index(
         ValueError: If top_k is not provided or index type is unsupported
         FileNotFoundError: If index or metadata files are missing
     """
-    if top_k is None:
-        raise ValueError("top_k must be provided")
-    # Defensive: Check for invalid vector
-    if is_invalid_vector(query_embedding):
-        raise ValueError("Embedding is invalid (zero vector, NaN, or wrong shape)")
-    # Defensive: Ensure correct shape and dtype
-    if query_embedding.ndim == 1:
-        query_embedding = query_embedding.reshape(1, -1)
-    if query_embedding.dtype != np.float32:
-        query_embedding = query_embedding.astype(np.float32)
+    # Validate inputs using centralized validation
+    validate_embedding_vector(query_embedding, context="query_embedding")
+    validate_retrieval_parameters(
+        top_k=top_k,
+        score_threshold=score_threshold,
+        min_return=min_return or 3,
+        max_return=max_return,
+        context="query_index"
+    )
+    validate_filters(filters, context="query_index_filters")
 
     if model_id:
+        validate_model_id(model_id, context="query_index_model")
         index, metadata = get_faiss_index_and_metadata(model_id)
     else:
         raise ValueError("model_id must be provided")
@@ -156,28 +157,17 @@ def query_index(
         # This is safe because we verified index type is IndexFlatIP
         all_vectors = index.reconstruct_n(0, index.ntotal)
         filtered_vectors = all_vectors[valid_indices]
-        if filtered_vectors.ndim == 1:
-            logger.warning("[RAG][ShapeCheck] filtered_vectors was 1D, reshaping to 2D.")
-            filtered_vectors = filtered_vectors.reshape(1, -1)
-        assert filtered_vectors.ndim == 2, f"filtered_vectors shape: {filtered_vectors.shape}"
-        faiss.normalize_L2(filtered_vectors)
-        logger.info(f"[RAG][ShapeCheck] filtered_vectors shape: {filtered_vectors.shape}, dtype: {filtered_vectors.dtype}")
-
-        # Search over filtered vectors (cosine similarity via inner product)
-        scores = np.dot(filtered_vectors, query_embedding[0])  # shape: (num_filtered,)
-        logger.info(f"[RAG][ShapeCheck] scores shape: {scores.shape}, dtype: {scores.dtype}")
-        if np.isscalar(scores):
-            logger.warning("[RAG][ShapeCheck] scores was scalar, converting to 1D array.")
-            scores = np.array([scores])
-        if scores.ndim == 0:
-            scores = scores.reshape(1)
-        assert scores.ndim == 1, f"scores shape: {scores.shape}"
+        
+        # Use centralized FAISS scoring with robust shape handling
+        scores = safe_faiss_scoring(filtered_vectors, query_embedding, context="filtered_query")
+        
         logger.info(f"[RAG][ShapeCheck] Number of chunks after filtering: {len(scores)}")
         top_indices = scores.argsort()[::-1][:top_k]
         logger.info(f"Top 10 scores: {scores[top_indices][:10]}")
         logger.info(f"Top 10 chunk IDs: {[filtered_metadata[i]['chunk_id'] for i in top_indices[:10]]}")
         logger.info(f"Number of chunks before score threshold: {len(filtered_metadata)}")
         logger.info(f"Number of chunks after score threshold: {len([s for s in scores if s >= score_threshold])}")
+        
         results = []
         for rank, i in enumerate(top_indices):
             if scores[i] >= score_threshold:
@@ -201,6 +191,9 @@ class BaseRetriever(ABC):
         # Handle None by using default model ID
         if model_id is None:
             model_id = DEFAULT_MODEL_ID
+            
+        # Validate model_id
+        validate_model_id(model_id, context="BaseRetriever")
             
         self.model_id = model_id
         self.model, self.embedding_dim = self._validate_model_config(model_id)
@@ -374,26 +367,33 @@ class SubprocessRetriever(BaseRetriever):
             max_return=max_return
         )
         
-        return chunks
+        # Apply consistent filtering
+        return filter_top_chunks(
+            chunks,
+            score_threshold=score_threshold,
+            min_return=min_return,
+            max_return=max_return
+        )
 
 
 def get_mode_aware_retriever(model_id: str = None) -> BaseRetriever:
     """
-    Get the appropriate retriever based on environment.
+    Get the appropriate retriever based on environment configuration.
 
     Args:
         model_id: Model identifier (default: DEFAULT_MODEL_ID)
 
     Returns:
-        BaseRetriever implementation (InProcessRetriever or SubprocessRetriever)
+        BaseRetriever: The appropriate retriever instance
     """
     use_subprocess = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS") == "1"
+    
     if use_subprocess:
         log_with_context(
             logger,
             logging.INFO,
             "Retriever",
-            "Using subprocess mode",
+            "Using subprocess retriever",
             {"env_var": "NOBELLM_USE_FAISS_SUBPROCESS=1"}
         )
         return SubprocessRetriever(model_id)
@@ -402,6 +402,7 @@ def get_mode_aware_retriever(model_id: str = None) -> BaseRetriever:
             logger,
             logging.INFO,
             "Retriever",
-            "Using in-process mode"
+            "Using in-process retriever",
+            {"env_var": "NOBELLM_USE_FAISS_SUBPROCESS=0"}
         )
         return InProcessRetriever(model_id) 
