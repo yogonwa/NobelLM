@@ -20,32 +20,22 @@ from sentence_transformers import SentenceTransformer
 from rag.dual_process_retriever import retrieve_chunks_dual_process
 from rag.retriever import query_index
 from rag.logging_utils import get_module_logger, log_with_context, QueryContext
+from rag.cache import get_model  # Add import for cached model
 
 logger = get_module_logger(__name__)
 
 USE_FAISS_SUBPROCESS = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS", "0") == "1"
 
-# Cache for the embedding model to avoid reloading
-_MODEL = None
-_MODEL_LOCK = None
+# Remove local model caching - use cached version from rag.cache
+# _MODEL = None
+# _MODEL_LOCK = None
 
 def get_embedding_model(model_id: str = None) -> SentenceTransformer:
     """
     Get the embedding model for the specified model_id.
-    Uses caching to avoid reloading the model.
+    Uses the cached model from rag.cache to avoid reloading.
     """
-    global _MODEL, _MODEL_LOCK
-    if _MODEL_LOCK is None:
-        import threading
-        _MODEL_LOCK = threading.Lock()
-    
-    if _MODEL is None:
-        with _MODEL_LOCK:
-            if _MODEL is None:
-                config = get_model_config(model_id or DEFAULT_MODEL_ID)
-                logger.info(f"Loading embedding model '{config['model_name']}'...")
-                _MODEL = SentenceTransformer(config['model_name'])
-    return _MODEL
+    return get_model(model_id)
 
 
 def embed_query_safe(query: str, model_id: str = None) -> np.ndarray:

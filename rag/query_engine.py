@@ -48,8 +48,9 @@ USE_FAISS_SUBPROCESS = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS", "0") == "1"
 
 __all__ = ["answer_query"]  # Only export answer_query as the canonical entry point
 
-_MODEL = None
-_MODEL_LOCK = threading.Lock()
+# Remove local model caching - use cached version from rag.cache
+# _MODEL = None
+# _MODEL_LOCK = threading.Lock()
 _INDEX = None
 _METADATA = None
 _INDEX_LOCK = threading.Lock()
@@ -59,19 +60,20 @@ KEYWORDS_TRIGGER_EXPANSION = [
     "most", "across", "often", "generally", "usually", "style", "styles"
 ]
 
-def get_model(model_id: str = None) -> SentenceTransformer:
-    """
-    Singleton loader for the embedding model specified by model_id.
-    Uses centralized config for model name.
-    """
-    global _MODEL
-    if _MODEL is None:
-        with _MODEL_LOCK:
-            if _MODEL is None:
-                config = get_model_config(model_id)
-                logger.info(f"Loading embedding model '{config['model_name']}'...")
-                _MODEL = SentenceTransformer(config['model_name'])
-    return _MODEL
+# Remove local get_model function - use cached version from rag.cache
+# def get_model(model_id: str = None) -> SentenceTransformer:
+#     """
+#     Singleton loader for the embedding model specified by model_id.
+#     Uses centralized config for model name.
+#     """
+#     global _MODEL
+#     if _MODEL is None:
+#         with _MODEL_LOCK:
+#             if _MODEL is None:
+#                 config = get_model_config(model_id)
+#                 logger.info(f"Loading embedding model '{config['model_name']}'...")
+#                 _MODEL = SentenceTransformer(config['model_name'])
+#     return _MODEL
 
 
 def get_index_and_metadata(model_id: str = None):
