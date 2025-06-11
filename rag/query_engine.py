@@ -36,7 +36,7 @@ from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from rag.retriever import query_index, load_index_and_metadata, is_invalid_vector, get_mode_aware_retriever, BaseRetriever
+from rag.retriever import query_index, is_invalid_vector, get_mode_aware_retriever, BaseRetriever
 from rag.logging_utils import get_module_logger, log_with_context, QueryContext
 
 dotenv.load_dotenv()
@@ -87,7 +87,7 @@ def get_index_and_metadata(model_id: str = None):
         with _INDEX_LOCK:
             if _INDEX is None or _METADATA is None:
                 model_id = model_id or DEFAULT_MODEL_ID
-                _INDEX, _METADATA = load_index_and_metadata(model_id)
+                _INDEX, _METADATA = get_faiss_index_and_metadata(model_id)
                 config = get_model_config(model_id)
                 # Consistency check
                 if hasattr(_INDEX, 'd') and _INDEX.d != config['embedding_dim']:

@@ -20,18 +20,16 @@ from typing import List, Dict, Tuple, Any, Optional
 import numpy as np
 import faiss
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from sentence_transformers import SentenceTransformer
+from rag.cache import get_model, get_faiss_index_and_metadata
 from rag.dual_process_retriever import retrieve_chunks_dual_process
 from abc import ABC, abstractmethod
 from .utils import filter_top_chunks
 from .faiss_index import load_index, health_check
 from .logging_utils import get_module_logger, log_with_context, QueryContext
+from sentence_transformers import SentenceTransformer
 
 # Get module logger
 logger = get_module_logger(__name__)
-
-# Cache loaded index and metadata to avoid reloading on every call
-_loaded_resources: Dict[str, Tuple[faiss.Index, List[Dict[str, Any]]]] = {}
 
 def is_supported_index(index: faiss.Index) -> bool:
     """
@@ -56,30 +54,6 @@ def is_invalid_vector(vec: np.ndarray) -> bool:
         or np.isinf(vec).any()
         or np.allclose(vec, 0.0)
     )
-
-
-def load_index_and_metadata(model_id: str) -> Tuple[faiss.Index, List[Dict]]:
-    """
-    Loads and caches the FAISS index and metadata for the given model_id.
-    """
-    if model_id in _loaded_resources:
-        return _loaded_resources[model_id]
-
-    config = get_model_config(model_id)
-    index_path = config["index_path"]
-    metadata_path = config["metadata_path"]
-
-    if not os.path.exists(index_path):
-        raise FileNotFoundError(f"Index file not found: {index_path}")
-    if not os.path.exists(metadata_path):
-        raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
-
-    index = faiss.read_index(index_path)
-    with open(metadata_path, 'r', encoding='utf-8') as f:
-        metadata = [json.loads(line) for line in f]
-
-    _loaded_resources[model_id] = (index, metadata)
-    return index, metadata
 
 
 def query_index(
@@ -131,7 +105,7 @@ def query_index(
         query_embedding = query_embedding.astype(np.float32)
 
     if model_id:
-        index, metadata = load_index_and_metadata(model_id)
+        index, metadata = get_faiss_index_and_metadata(model_id)
     else:
         raise ValueError("model_id must be provided")
 
@@ -292,8 +266,8 @@ class BaseRetriever(ABC):
                 )
                 raise ValueError(f"No config found for model_id: {model_id}")
                 
-            # Load model and check dimensions
-            model = SentenceTransformer(config["model_name"])
+            # Load model and check dimensions using centralized cache
+            model = get_model(model_id)
             model_dim = model.get_sentence_embedding_dimension()
             
             # Load index and check dimensions
@@ -335,8 +309,8 @@ class InProcessRetriever(BaseRetriever):
     def __init__(self, model_id: str = None):
         """Initialize the in-process retriever."""
         super().__init__(model_id)
-        # Load index and metadata for in-process retrieval
-        self.index, self.metadata = load_index_and_metadata(self.model_id)
+        # Load index and metadata for in-process retrieval using centralized cache
+        self.index, self.metadata = get_faiss_index_and_metadata(self.model_id)
 
     def retrieve(
         self,
