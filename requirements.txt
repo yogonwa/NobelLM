@@ -10,7 +10,7 @@ sentence-transformers==3.1.1
 transformers<=4.39.3
 scikit-learn
 scipy
-numpy  # do NOT pin version — let transformer stack pull compatible version
+numpy==1.24.4
 faiss-cpu
 
 # Streamlit app
@@ -22,6 +22,6 @@ PyMuPDF
 openai
 
 # NLP stack
-spacy>=3.7.0,<4.0.0
+spacy==3.7.2
 # Explicit model install — Streamlit Cloud supports this syntax:
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
