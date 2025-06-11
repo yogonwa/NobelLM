@@ -176,13 +176,16 @@ cython_debug/
 # Ignore all data by default
 /data/
 
-# But do NOT ignore the FAISS index and chunk metadata files
+# Critical metadata files that must be tracked
+!data/nobel_literature.json
+
+# FAISS index and chunk metadata files that must be tracked
 !data/faiss_index/
 !data/faiss_index/index.faiss
 !data/faiss_index/chunk_metadata.jsonl
 !data/faiss_index/metadata.json
 
-# Also track the BGE-Large index files
+# BGE-Large index files that must be tracked
 !data/faiss_index_bge-large/
 !data/faiss_index_bge-large/index.faiss
 !data/faiss_index_bge-large/chunk_metadata.jsonl
