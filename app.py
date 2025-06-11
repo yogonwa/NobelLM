@@ -31,9 +31,13 @@ import sys
 from config.threading import configure_threading
 configure_threading()
 
-# Ensure spaCy model is available by running setup.sh
-setup_path = os.path.join(os.path.dirname(__file__), "setup.sh")
-subprocess.run(["bash", setup_path], check=True)
+import spacy
+
+# Ensure en_core_web_sm is available
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    st.error("spaCy model en_core_web_sm not installed — please check deployment!")
 
 # Now continue with the rest of the app setup
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
