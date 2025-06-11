@@ -26,7 +26,7 @@ pytest
 streamlit
 
 # Spacy NLP stack (safe versions)
-spacy==3.6.1
+spacy>=3.7.2,<3.8.0
 blis==0.7.9
 
 # Explicit spacy model wheel install — Streamlit Cloud supports this syntax
