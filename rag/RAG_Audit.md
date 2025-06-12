@@ -64,14 +64,14 @@ Phase 1: Resilient Interfaces and Input Handling ✅ COMPLETED
 
  Add validation early to catch all-zero vectors, shape mismatches. ✅
 
-Phase 2: Intent Classifier Modernization
- Return structured object: IntentResult { intent, confidence, matched_terms, scoped_entity }
+Phase 2: Intent Classifier Modernization ✅ COMPLETED
+ Return structured object: IntentResult { intent, confidence, matched_terms, scoped_entity } ✅
 
- Load keywords from JSON configs.
+ Load keywords from JSON configs. ✅
 
- Log decision trace (terms matched, score, fallback reason).
+ Log decision trace (terms matched, score, fallback reason). ✅
 
- Add test coverage for scoped queries and ambiguous inputs.
+ Add test coverage for scoped queries and ambiguous inputs. ✅
 
 Phase 3: Thematic Reformulation Expansion
  Refactor theme dictionary into config file.
