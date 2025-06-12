@@ -467,6 +467,9 @@ def answer_query(
                 }
             )
             
+            # Memory cleanup after heavy operations
+            gc.collect()
+            
             return result
             
         except Exception as e:
