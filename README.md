@@ -174,6 +174,63 @@ chunks = retriever.retrieve("What did laureates say about justice?", top_k=10)
 
 This refactor makes the pipeline robust, testable, and future-ready for multi-backend or hybrid search.
 
+## 🎯 Intent Classifier Modernization (Phase 2 - June 2025)
+
+**New as of June 2025:** NobelLM now features a modern, config-driven intent classification system with hybrid confidence scoring and enhanced transparency.
+
+### Key Features
+
+**1. Structured Intent Classification**
+- Returns `IntentResult` objects with intent, confidence, matched terms, scoped entities, and decision trace
+- Configurable keyword/phrase weights via `data/intent_keywords.json`
+- Hybrid confidence scoring: pattern strength × (1 - ambiguity penalty)
+- Support for multiple laureate detection in single queries
+
+**2. Enhanced Transparency**
+- Clear decision traces showing which patterns matched and why
+- Confidence scores (0.1-1.0) indicating classification certainty
+- Detailed logging for debugging and optimization
+- Backward compatibility with legacy string/dict returns
+
+**3. Robust Text Processing**
+- Integration with existing `ThemeReformulator` for lemmatization
+- Graceful fallback when spaCy is unavailable
+- Improved matching for word variations (e.g., "themes" → "theme")
+
+**Example Usage:**
+```python
+from rag.intent_classifier import IntentClassifier
+
+classifier = IntentClassifier()
+result = classifier.classify("Compare the themes of hope in Toni Morrison and Gabriel García Márquez")
+
+print(f"Intent: {result.intent}")  # "thematic"
+print(f"Confidence: {result.confidence}")  # 0.87
+print(f"Matched terms: {result.matched_terms}")  # ["compare", "theme"]
+print(f"Scoped entities: {result.scoped_entities}")  # ["Toni Morrison", "Gabriel García Márquez"]
+```
+
+**Configuration-Driven:**
+```json
+{
+  "intents": {
+    "thematic": {
+      "keywords": {"theme": 0.6, "compare": 0.7, "patterns": 0.8},
+      "phrases": {"what are": 0.5, "how does": 0.6}
+    }
+  },
+  "settings": {
+    "min_confidence": 0.3,
+    "ambiguity_threshold": 0.2,
+    "fallback_intent": "factual",
+    "max_laureate_matches": 3,
+    "use_lemmatization": true
+  }
+}
+```
+
+This modernization provides better transparency, maintainability, and extensibility for the intent classification system.
+
 ---
 
 ## 🔎 RAG Pipeline Overview

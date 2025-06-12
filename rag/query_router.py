@@ -116,14 +116,15 @@ class QueryRouter:
             )
             
             try:
-                # Get intent from classifier
-                classified = self.intent_classifier.classify(query)
-                if isinstance(classified, dict):
-                    intent_str = classified.get("intent")
-                    scoped_entity = classified.get("scoped_entity")
-                else:
-                    intent_str = classified
-                    scoped_entity = None
+                # Get intent from classifier (now returns IntentResult)
+                intent_result = self.intent_classifier.classify(query)
+                
+                # Extract information from IntentResult
+                intent_str = intent_result.intent
+                confidence = intent_result.confidence
+                matched_terms = intent_result.matched_terms
+                scoped_entities = intent_result.scoped_entities
+                decision_trace = intent_result.decision_trace
                 
                 # Convert string intent to enum and validate
                 try:
@@ -139,9 +140,14 @@ class QueryRouter:
                     )
                     raise ValueError(error_msg)
                 
-                logs['intent'] = intent_str
-                if scoped_entity:
-                    logs['scoped_entity'] = scoped_entity
+                # Log detailed intent information
+                logs.update({
+                    'intent': intent_str,
+                    'confidence': confidence,
+                    'matched_terms': matched_terms,
+                    'scoped_entities': scoped_entities,
+                    'decision_trace': decision_trace
+                })
                 
                 log_with_context(
                     logger,
@@ -151,9 +157,26 @@ class QueryRouter:
                     {
                         "query": query,
                         "intent": intent,
-                        "scoped_entity": scoped_entity
+                        "confidence": confidence,
+                        "matched_terms": matched_terms,
+                        "scoped_entities": scoped_entities
                     }
                 )
+                
+                # Handle low confidence cases
+                if confidence < 0.5:
+                    log_with_context(
+                        logger,
+                        logging.WARNING,
+                        "QueryRouter",
+                        "Low confidence intent classification",
+                        {
+                            "query": query,
+                            "intent": intent,
+                            "confidence": confidence,
+                            "decision_trace": decision_trace
+                        }
+                    )
                 
                 # First check if this is a metadata query
                 if intent == QueryIntent.FACTUAL and self.metadata is not None:
@@ -201,8 +224,15 @@ class QueryRouter:
                         'thematic_canonical_themes': themes,
                         'thematic_expanded_terms': expanded_terms
                     })
-                    # If scoped_entity, filter by laureate
-                    filters = {"laureate": scoped_entity} if scoped_entity else None
+                    # Handle multiple scoped entities
+                    filters = None
+                    if scoped_entities:
+                        if len(scoped_entities) == 1:
+                            # Single entity - use direct filter
+                            filters = {"laureate": scoped_entities[0]}
+                        else:
+                            # Multiple entities - will be handled by ThematicRetriever
+                            logs['multiple_laureates'] = scoped_entities
                     config = RetrievalConfig(top_k=15, filters=filters, score_threshold=None)
                 else:  # generative
                     config = RetrievalConfig(top_k=10, score_threshold=None)

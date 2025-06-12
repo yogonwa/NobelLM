@@ -437,4 +437,91 @@ These improvements ensure that:
 - The retriever interface is consistent regardless of mode
 - Edge cases like zero vectors and shape mismatches are caught early
 
-The validation system is now fully integrated and tested, with comprehensive unit tests in `tests/test_validation.py`. 
+The validation system is now fully integrated and tested, with comprehensive unit tests in `tests/test_validation.py`.
+
+## RAG Pipeline Audit - Phase 2 Completion
+
+### Phase 2: Intent Classifier Modernization
+
+The Phase 2 improvements from the RAG Audit have been successfully implemented:
+
+1. **Structured IntentResult Object**
+   - Created `IntentResult` dataclass with intent, confidence, matched_terms, scoped_entities, and decision_trace
+   - Replaced string/dict return types with structured, typed objects
+   - Added comprehensive decision trace logging for transparency
+
+2. **Config-Driven Intent Classification**
+   - Created `data/intent_keywords.json` for configurable keyword/phrase weights
+   - Implemented hybrid confidence scoring: pattern strength × (1 - ambiguity penalty)
+   - Added support for both keywords and phrases with individual weights
+   - Enabled easy tuning and extension without code changes
+
+3. **Hybrid Confidence Scoring**
+   - Pattern-based scoring using weighted keyword/phrase matches
+   - Ambiguity penalty when multiple intents have similar scores
+   - Confidence range: 0.1 (fallback) to 1.0 (high confidence)
+   - Clear decision trace showing pattern scores and ambiguity
+
+4. **Lemmatization Integration**
+   - Integrated with existing `ThemeReformulator` for robust text processing
+   - Graceful fallback to basic lowercase when spaCy is unavailable
+   - Improved matching for variations (e.g., "themes" → "theme")
+
+5. **Multiple Laureate Support**
+   - Enhanced laureate detection to find multiple entities in single query
+   - Configurable maximum laureate matches (default: 3)
+   - Support for both full names and last names with proper deduplication
+   - Backward compatibility with single laureate queries
+
+6. **Enhanced QueryRouter Integration**
+   - Updated `QueryRouter` to handle `IntentResult` objects
+   - Added confidence-based logging and warning for low-confidence classifications
+   - Enhanced logging with matched terms, scoped entities, and decision trace
+   - Support for multiple laureate filtering in thematic queries
+
+7. **Backward Compatibility**
+   - Maintained `classify_legacy()` method for existing code
+   - Preserved string/dict return format for legacy consumers
+   - No breaking changes to existing API contracts
+
+**Example Usage:**
+```python
+from rag.intent_classifier import IntentClassifier
+
+classifier = IntentClassifier()
+result = classifier.classify("Compare the themes of hope in Toni Morrison and Gabriel García Márquez")
+
+print(f"Intent: {result.intent}")  # "thematic"
+print(f"Confidence: {result.confidence}")  # 0.87
+print(f"Matched terms: {result.matched_terms}")  # ["compare", "theme"]
+print(f"Scoped entities: {result.scoped_entities}")  # ["Toni Morrison", "Gabriel García Márquez"]
+print(f"Decision trace: {result.decision_trace}")  # Detailed logging info
+```
+
+**Configuration Example:**
+```json
+{
+  "intents": {
+    "thematic": {
+      "keywords": {"theme": 0.6, "compare": 0.7, "patterns": 0.8},
+      "phrases": {"what are": 0.5, "how does": 0.6}
+    }
+  },
+  "settings": {
+    "min_confidence": 0.3,
+    "ambiguity_threshold": 0.2,
+    "fallback_intent": "factual",
+    "max_laureate_matches": 3,
+    "use_lemmatization": true
+  }
+}
+```
+
+These improvements provide:
+- **Transparency**: Clear decision traces and confidence scores
+- **Maintainability**: Config-driven approach for easy tuning
+- **Robustness**: Lemmatization and ambiguity handling
+- **Extensibility**: Easy to add new intents, keywords, or scoring methods
+- **Compatibility**: Backward compatibility with existing code
+
+The Phase 2 implementation is fully tested with comprehensive unit tests in `tests/test_intent_classifier_phase2.py`. 

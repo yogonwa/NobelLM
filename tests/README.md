@@ -45,7 +45,7 @@ Tests must:
 
 The test suite follows the core pipeline flow:
 1. Extraction & Parsing
-2. Intent Classification
+2. Intent Classification (including Phase 2 modernization)
 3. Metadata Direct Answer
 4. Chunking/Embeddings
 5. Retrieval
@@ -53,6 +53,11 @@ The test suite follows the core pipeline flow:
 7. RAG Pipeline
 8. Frontend E2E
 9. Cross-Cutting Tests
+
+**Phase 2 Intent Classifier Tests:**
+- `test_intent_classifier_phase2.py`: Comprehensive coverage of new structured intent classification
+- Tests for hybrid confidence scoring, config-driven weights, multiple laureate detection
+- Validation of decision traces, lemmatization integration, and backward compatibility
 
 ## Test Categories
 
@@ -71,6 +76,18 @@ The test suite follows the core pipeline flow:
 - Laureate scoping
 - Precedence rules
 - Edge cases
+
+#### `test_intent_classifier_phase2.py` (NEW)
+- **Phase 2 Intent Classifier Modernization Tests**
+- Structured `IntentResult` object validation
+- Hybrid confidence scoring with pattern strength and ambiguity penalty
+- Config-driven keyword/phrase weight testing
+- Multiple laureate detection and deduplication
+- Lemmatization integration and fallback behavior
+- Decision trace logging and transparency
+- Backward compatibility with legacy `classify_legacy()` method
+- Confidence threshold validation and edge cases
+- Comprehensive test coverage for all new Phase 2 features
 
 #### `test_query_router.py`
 - Fallback strategies (metadata to RAG)
