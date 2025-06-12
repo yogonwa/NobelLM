@@ -13,6 +13,23 @@ from rag.logging_utils import get_module_logger, log_with_context, QueryContext
 logger = get_module_logger(__name__)
 
 
+def is_invalid_vector(vec: np.ndarray) -> bool:
+    """
+    Check if a vector is invalid (NaN, inf, or zero).
+    
+    Args:
+        vec: The vector to check
+        
+    Returns:
+        True if the vector is invalid, False otherwise
+    """
+    return (
+        np.isnan(vec).any()
+        or np.isinf(vec).any()
+        or np.allclose(vec, 0.0)
+    )
+
+
 def validate_query_string(query: str, context: str = "query") -> None:
     """
     Validate a query string before processing.
@@ -311,6 +328,13 @@ def safe_faiss_scoring(
         # Ensure 2D arrays
         assert filtered_vectors.ndim == 2, f"filtered_vectors shape: {filtered_vectors.shape}"
         assert query_embedding.ndim == 2, f"query_embedding shape: {query_embedding.shape}"
+        
+        # Check dimension consistency before dot product
+        if filtered_vectors.shape[1] != query_embedding.shape[1]:
+            raise ValueError(
+                f"Dimension mismatch: filtered_vectors has {filtered_vectors.shape[1]} dimensions, "
+                f"query_embedding has {query_embedding.shape[1]} dimensions"
+            )
         
         # Compute scores
         scores = np.dot(filtered_vectors, query_embedding[0])

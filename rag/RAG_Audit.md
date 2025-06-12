@@ -55,14 +55,14 @@ Goal: Make fallback behavior explicit and tunable.
 Refactor target: retrieve_chunks, post-retrieval logic.
 
 🛠️ Proposed Phases
-Phase 1: Resilient Interfaces and Input Handling
- Wrap retriever in mode-aware abstraction (Retriever.get_top_k_chunks(query: str) always).
+Phase 1: Resilient Interfaces and Input Handling ✅ COMPLETED
+ Wrap retriever in mode-aware abstraction (Retriever.get_top_k_chunks(query: str) always). ✅
 
- Patch thematic retriever to pass strings, not embeddings.
+ Patch thematic retriever to pass strings, not embeddings. ✅
 
- Ensure FAISS subprocess receives only valid inputs.
+ Ensure FAISS subprocess receives only valid inputs. ✅
 
- Add validation early to catch all-zero vectors, shape mismatches.
+ Add validation early to catch all-zero vectors, shape mismatches. ✅
 
 Phase 2: Intent Classifier Modernization
  Return structured object: IntentResult { intent, confidence, matched_terms, scoped_entity }
@@ -107,7 +107,7 @@ Phase 5: Prompt Builder Improvements
 
  Developer doc: docs/pipeline_audit_summary.md
 
- Optional blog: “How I Made My RAG Pipeline Smarter (and Safer)”
+ Optional blog: "How I Made My RAG Pipeline Smarter (and Safer)"
 
 ⏳ Timeline (Suggested)
 Phase	Focus	Est. Effort
@@ -119,7 +119,7 @@ Phase	Focus	Est. Effort
 
 🔄 Next Step
 Create one umbrella GitHub issue or Notion epic for this project:
-“RAG Pipeline Strategic Refactor & Robustness Initiative”
+"RAG Pipeline Strategic Refactor & Robustness Initiative"
 
 Break each phase into atomic PRs for clarity and testability.
 
@@ -160,7 +160,7 @@ This leads to:
 - Add `build_generative_prompt(task_description, chunks)` function
 - Template includes:
   - Identity statement (e.g., "You are a Nobel laureate…")
-  - Human-written task (e.g., “Draft a job acceptance email…”)
+  - Human-written task (e.g., "Draft a job acceptance email…")
   - Clear markers: `--- EXCERPTS START ---` and `--- EXCERPTS END ---`
 
 ### 2. Chunk Metadata Formatting
@@ -219,7 +219,7 @@ This leads to:
 
 > **Prompt:** Draft a job acceptance email in the style of a Nobel Prize winner.  
 > **Generated Response:**  
-> “It is with great humility and solemn joy that I accept this role. Like those who came before me, I do not regard this moment as a triumph, but as a commitment…”
+> "It is with great humility and solemn joy that I accept this role. Like those who came before me, I do not regard this moment as a triumph, but as a commitment…"
 
 ---
 

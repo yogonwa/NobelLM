@@ -36,8 +36,9 @@ from rag.thematic_retriever import ThematicRetriever
 from rag.utils import format_chunks_for_prompt
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from rag.retriever import query_index, is_invalid_vector, get_mode_aware_retriever, BaseRetriever
+from rag.retriever import query_index, get_mode_aware_retriever, BaseRetriever
 from rag.logging_utils import get_module_logger, log_with_context, QueryContext
+from rag.validation import validate_query_string, validate_model_id, validate_retrieval_parameters, validate_embedding_vector, validate_filters, is_invalid_vector
 
 dotenv.load_dotenv()
 
@@ -129,8 +130,30 @@ def retrieve_chunks(
     Returns:
         List of top-k chunks with metadata and scores
     """
-    if is_invalid_vector(query_embedding):
+    # Early validation of all inputs
+    # For subprocess mode, query_embedding is actually a string
+    if USE_FAISS_SUBPROCESS:
+        if not isinstance(query_embedding, str):
+            raise ValueError("In subprocess mode, query_embedding must be a string")
+        validate_query_string(query_embedding, context="retrieve_chunks")
+    else:
+        validate_embedding_vector(query_embedding, context="retrieve_chunks")
+    
+    validate_retrieval_parameters(
+        top_k=k,
+        score_threshold=score_threshold,
+        min_return=min_k,
+        context="retrieve_chunks"
+    )
+    
+    validate_filters(filters, context="retrieve_chunks")
+    
+    if model_id is not None:
+        validate_model_id(model_id, context="retrieve_chunks")
+    
+    if not USE_FAISS_SUBPROCESS and is_invalid_vector(query_embedding):
         raise ValueError("Cannot retrieve: embedding is invalid (zero vector).")
+    
     if USE_FAISS_SUBPROCESS:
         # Subprocess mode: avoids PyTorch/FAISS segfaults on Mac/Intel
         from rag.dual_process_retriever import retrieve_chunks_dual_process
@@ -355,6 +378,21 @@ def answer_query(
             metadata_answer: Dict for metadata answers, None for RAG
             sources: List of source chunks with metadata
     """
+    # Early validation of all inputs
+    validate_query_string(query_string, context="answer_query")
+    if model_id is not None:
+        validate_model_id(model_id, context="answer_query")
+    
+    # Infer top_k for validation based on query type
+    inferred_top_k = infer_top_k_from_query(query_string)
+    validate_retrieval_parameters(
+        top_k=inferred_top_k,
+        score_threshold=score_threshold,
+        min_return=min_return or 3,
+        max_return=max_return,
+        context="answer_query"
+    )
+    
     with QueryContext(model_id) as ctx:
         log_with_context(
             logger,

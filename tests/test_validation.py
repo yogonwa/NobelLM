@@ -474,7 +474,7 @@ class TestSafeFaissScoring:
         filtered_vectors = np.random.rand(5, 384).astype(np.float32)
         query_embedding = np.random.rand(1, 512).astype(np.float32)  # Wrong dimension
         
-        with pytest.raises(ValueError, match="dimension mismatch"):
+        with pytest.raises(ValueError, match="Dimension mismatch"):
             safe_faiss_scoring(filtered_vectors, query_embedding, context="test")
     
     def test_scalar_output_handling(self):
