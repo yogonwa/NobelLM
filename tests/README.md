@@ -66,6 +66,15 @@ The test suite follows the core pipeline flow:
 - Tests for pre-computed embeddings, model-aware storage, quality filtering
 - Validation of hybrid keyword extraction, fallback behavior, and performance benchmarks
 
+**Phase 3B Enhanced ThematicRetriever Tests:**
+- `test_thematic_retriever_phase3.py`: Enhanced ThematicRetriever with weighted retrieval functionality
+- Tests for similarity-based ranked expansion integration, exponential weight scaling
+- Validation of weighted chunk merging, deduplication, and sorting
+- Backward compatibility testing with legacy retrieval methods
+- Performance monitoring and logging validation
+- Error handling and fallback behavior testing
+- Comprehensive coverage of dual retrieval architecture (weighted vs legacy)
+
 ## Test Categories
 
 ### 1. Extraction & Parsing Tests 
@@ -160,12 +169,19 @@ The test suite follows the core pipeline flow:
 #### `test_context_formatting.py`
 - Context formatting helpers
 
-**Recommended Addition:**
-- `test_thematic_retriever.py` for:
-  - Deduplication
-  - Score filtering
-  - Expanded terms
-  - Output schema validation
+#### `test_thematic_retriever_phase3.py` (NEW - Phase 3B)
+- **Phase 3B Enhanced ThematicRetriever Tests**
+- Weighted retrieval with similarity-based ranked expansion integration
+- Exponential weight scaling validation (`exp(2 * similarity_score)`)
+- Weighted chunk merging, deduplication, and sorting logic
+- Backward compatibility testing with legacy retrieval methods
+- Dual retrieval architecture testing (weighted vs legacy modes)
+- Source term attribution and performance monitoring validation
+- Error handling and fallback behavior testing
+- Comprehensive logging and debugging functionality
+- Model-aware functionality (bge-large vs miniLM)
+- Performance benchmarks and monitoring validation
+- Integration testing between Phase 3A theme embeddings and Phase 3B weighted retrieval
 
 ### 7. RAG Pipeline & Prompt Assembly
 #### `test_answer_compiler.py`
@@ -215,9 +231,8 @@ def test_chunking_output_schema(model_id):
 6. Avoid catching broad exceptions
 
 ## Future Improvements
-1. Implement `test_thematic_retriever.py`
-2. Add comprehensive model-aware validation tests:
+1. Add comprehensive model-aware validation tests:
    - `test_chunking.py`
    - `test_embeddings.py`
    - `test_index_build.py`
-3. Add `test_rag_pipeline.py` for stable RAG result validation
+2. Add `test_rag_pipeline.py` for stable RAG result validation

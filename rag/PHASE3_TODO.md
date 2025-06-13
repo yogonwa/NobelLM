@@ -42,26 +42,26 @@
 
 ---
 
-## 🚀 **Phase 3B: ThematicRetriever Updates (Day 1-2)**
+## 🚀 **Phase 3B: ThematicRetriever Updates (Day 1-2)** ✅ **COMPLETED**
 
-### **3. Enhanced ThematicRetriever**
-- [ ] **Update `rag/thematic_retriever.py`**
-  - [ ] Modify `_expand_thematic_query()` to use `expand_query_terms_ranked()`
-  - [ ] Add `_weighted_retrieval(ranked_terms: List[Tuple[str, float]]) -> List[Dict]`
-  - [ ] Implement exponential weight scaling: `exp(2 * normalized_score)`
-  - [ ] Add `_merge_weighted_chunks(chunks: List[Dict]) -> List[Dict]`
+### **3. Enhanced ThematicRetriever** ✅
+- [x] **Update `rag/thematic_retriever.py`**
+  - [x] Modify `_expand_thematic_query()` to use `expand_query_terms_ranked()`
+  - [x] Add `_weighted_retrieval(ranked_terms: List[Tuple[str, float]]) -> List[Dict]`
+  - [x] Implement exponential weight scaling: `exp(2 * normalized_score)`
+  - [x] Add `_merge_weighted_chunks(chunks: List[Dict]) -> List[Dict]`
 
-- [ ] **Implement weighted retrieval logic**
-  - [ ] Apply term weights to chunk scores during retrieval
-  - [ ] Boost final scores based on term importance
-  - [ ] Maintain chunk deduplication with weighted scoring
-  - [ ] Add source term attribution to chunks
+- [x] **Implement weighted retrieval logic**
+  - [x] Apply term weights to chunk scores during retrieval
+  - [x] Boost final scores based on term importance
+  - [x] Maintain chunk deduplication with weighted scoring
+  - [x] Add source term attribution to chunks
 
-- [ ] **Enhanced logging and monitoring**
-  - [ ] Log term weights and retrieval performance
-  - [ ] Track expansion quality metrics
-  - [ ] Monitor fallback usage rates
-  - [ ] Add performance benchmarks
+- [x] **Enhanced logging and monitoring**
+  - [x] Log term weights and retrieval performance
+  - [x] Track expansion quality metrics
+  - [x] Monitor fallback usage rates
+  - [x] Add performance benchmarks
 
 ---
 
