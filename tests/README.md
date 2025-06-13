@@ -46,18 +46,25 @@ Tests must:
 The test suite follows the core pipeline flow:
 1. Extraction & Parsing
 2. Intent Classification (including Phase 2 modernization)
-3. Metadata Direct Answer
-4. Chunking/Embeddings
-5. Retrieval
-6. Thematic Analysis
-7. RAG Pipeline
-8. Frontend E2E
-9. Cross-Cutting Tests
+3. **Theme Embedding Infrastructure (Phase 3A - NEW)**
+4. Metadata Direct Answer
+5. Chunking/Embeddings
+6. Retrieval
+7. Thematic Analysis
+8. RAG Pipeline
+9. Frontend E2E
+10. Cross-Cutting Tests
 
 **Phase 2 Intent Classifier Tests:**
 - `test_intent_classifier_phase2.py`: Comprehensive coverage of new structured intent classification
 - Tests for hybrid confidence scoring, config-driven weights, multiple laureate detection
 - Validation of decision traces, lemmatization integration, and backward compatibility
+
+**Phase 3A Theme Embedding Infrastructure Tests:**
+- `test_phase3_infrastructure.py`: Core theme embedding and similarity computation infrastructure
+- `test_theme_reformulator_phase3.py`: Enhanced ThemeReformulator with ranked expansion
+- Tests for pre-computed embeddings, model-aware storage, quality filtering
+- Validation of hybrid keyword extraction, fallback behavior, and performance benchmarks
 
 ## Test Categories
 
@@ -88,6 +95,30 @@ The test suite follows the core pipeline flow:
 - Backward compatibility with legacy `classify_legacy()` method
 - Confidence threshold validation and edge cases
 - Comprehensive test coverage for all new Phase 2 features
+
+#### `test_theme_reformulator_phase3.py` (NEW - Phase 3A)
+- **Phase 3A Theme Embedding Infrastructure Tests**
+- Enhanced ThemeReformulator with ranked expansion functionality
+- Similarity-based expansion with quality filtering and threshold validation
+- Hybrid keyword extraction (theme keywords → preprocessed → full query)
+- Backward compatibility with existing `expand_query_terms()` method
+- Fallback behavior when similarity computation fails
+- Performance testing (<100ms expansion time for typical queries)
+- Model-aware functionality (bge-large vs miniLM)
+- Lazy loading of theme embeddings and embedding models
+- Comprehensive logging and monitoring validation
+- Expansion statistics and debugging functionality
+
+#### `test_phase3_infrastructure.py` (NEW - Phase 3A)
+- **Phase 3A Core Infrastructure Tests**
+- ThemeEmbeddings class with model-aware storage and validation
+- Theme similarity computation using existing safe_faiss_scoring pattern
+- Pre-computed embedding storage and retrieval from disk
+- Health checks for embedding quality and dimension consistency
+- Model switching between bge-large and miniLM
+- Error handling and edge cases for similarity computation
+- Performance benchmarks and monitoring
+- Integration testing between theme embeddings and similarity computation
 
 #### `test_query_router.py`
 - Fallback strategies (metadata to RAG)

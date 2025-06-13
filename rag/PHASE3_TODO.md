@@ -5,9 +5,9 @@
 
 ---
 
-## 🎯 **Phase 3A: Core Infrastructure (Day 1)**
+## 🎯 **Phase 3A: Core Infrastructure (Day 1)** ✅ **COMPLETED**
 
-### **1. Theme Embedding Infrastructure**
+### **1. Theme Embedding Infrastructure** ✅
 - [x] **Create `config/theme_embeddings.py`**
   - [x] Pre-compute embeddings for all theme keywords in `config/themes.json`
   - [x] Store embeddings in model-aware configuration (bge-large, miniLM)
@@ -21,24 +21,24 @@
   - [x] Add similarity threshold validation
   - [x] Implement similarity score logging
 
-### **2. Enhanced ThemeReformulator**
-- [ ] **Add new methods to `config/theme_reformulator.py`**
-  - [ ] `expand_query_terms_ranked(query: str, similarity_threshold: float = 0.3) -> List[Tuple[str, float]]`
-  - [ ] `_get_theme_focused_embedding(query: str) -> np.ndarray`
-  - [ ] `_preprocess_query_for_themes(query: str) -> str`
-  - [ ] `_rank_and_prune_expansions(expansions: Set[str], similarities: Dict[str, float], threshold: float) -> List[Tuple[str, float]]`
+### **2. Enhanced ThemeReformulator** ✅
+- [x] **Add new methods to `config/theme_reformulator.py`**
+  - [x] `expand_query_terms_ranked(query: str, similarity_threshold: float = 0.3) -> List[Tuple[str, float]]`
+  - [x] `_get_theme_focused_embedding(query: str) -> np.ndarray`
+  - [x] `_preprocess_query_for_themes(query: str) -> str`
+  - [x] `_rank_and_prune_expansions(expansions: Set[str], similarities: Dict[str, float], threshold: float) -> List[Tuple[str, float]]`
 
-- [ ] **Implement hybrid keyword extraction**
-  - [ ] Extract theme keywords first using existing `extract_theme_keywords()`
-  - [ ] If theme keywords found: embed only those keywords
-  - [ ] If no theme keywords: use preprocessed query (remove stopwords)
-  - [ ] Fallback to full query if preprocessing fails
+- [x] **Implement hybrid keyword extraction**
+  - [x] Extract theme keywords first using existing `extract_theme_keywords()`
+  - [x] If theme keywords found: embed only those keywords
+  - [x] If no theme keywords: use preprocessed query (remove stopwords)
+  - [x] Fallback to full query if preprocessing fails
 
-- [ ] **Add enhanced logging**
-  - [ ] Log similarity scores for each theme keyword
-  - [ ] Log pruning decisions and thresholds
-  - [ ] Log fallback usage (preprocessing vs full query)
-  - [ ] Add performance metrics (embedding time, similarity computation time)
+- [x] **Add enhanced logging**
+  - [x] Log similarity scores for each theme keyword
+  - [x] Log pruning decisions and thresholds
+  - [x] Log fallback usage (preprocessing vs full query)
+  - [x] Add performance metrics (embedding time, similarity computation time)
 
 ---
 
