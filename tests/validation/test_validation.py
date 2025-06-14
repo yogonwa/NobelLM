@@ -17,9 +17,11 @@ from rag.validation import (
 )
 
 
+@pytest.mark.validation
 class TestValidateQueryString:
     """Test query string validation."""
     
+    @pytest.mark.validation
     def test_valid_query_string(self):
         """Test that valid query strings pass validation."""
         valid_queries = [
@@ -37,6 +39,7 @@ class TestValidateQueryString:
             # Should not raise any exception
             validate_query_string(query, context="test")
     
+    @pytest.mark.validation
     def test_empty_query_string(self):
         """Test that empty query strings are rejected."""
         invalid_queries = [
@@ -51,6 +54,7 @@ class TestValidateQueryString:
             with pytest.raises(ValueError, match="must be a non-empty string"):
                 validate_query_string(query, context="test")
     
+    @pytest.mark.validation
     def test_whitespace_only_query(self):
         """Test that whitespace-only queries are rejected."""
         whitespace_queries = [
@@ -64,6 +68,7 @@ class TestValidateQueryString:
             with pytest.raises(ValueError, match="cannot be whitespace-only"):
                 validate_query_string(query, context="test")
     
+    @pytest.mark.validation
     def test_too_short_query(self):
         """Test that queries shorter than 2 characters are rejected."""
         short_queries = [
@@ -76,6 +81,7 @@ class TestValidateQueryString:
             with pytest.raises(ValueError, match="must be at least 2 characters long"):
                 validate_query_string(query, context="test")
     
+    @pytest.mark.validation
     def test_suspicious_patterns(self):
         """Test that suspicious patterns are rejected."""
         suspicious_queries = [
@@ -88,9 +94,11 @@ class TestValidateQueryString:
                 validate_query_string(query, context="test")
 
 
+@pytest.mark.validation
 class TestValidateEmbeddingVector:
     """Test embedding vector validation."""
     
+    @pytest.mark.validation
     def test_valid_embedding_vector(self):
         """Test that valid embedding vectors pass validation."""
         # Valid 1D vector
@@ -104,6 +112,7 @@ class TestValidateEmbeddingVector:
         # Valid vector with expected dimension
         validate_embedding_vector(vec_1d, expected_dim=384, context="test")
     
+    @pytest.mark.validation
     def test_invalid_vector_types(self):
         """Test that non-numpy arrays are rejected."""
         invalid_vectors = [
@@ -118,6 +127,7 @@ class TestValidateEmbeddingVector:
             with pytest.raises(ValueError, match="must be a numpy array"):
                 validate_embedding_vector(vec, context="test")
     
+    @pytest.mark.validation
     def test_empty_vector(self):
         """Test that empty vectors are rejected."""
         empty_vectors = [
@@ -130,6 +140,7 @@ class TestValidateEmbeddingVector:
             with pytest.raises(ValueError, match="cannot be empty"):
                 validate_embedding_vector(vec, context="test")
     
+    @pytest.mark.validation
     def test_nan_values(self):
         """Test that vectors with NaN values are rejected."""
         vec_with_nan = np.array([1.0, np.nan, 3.0], dtype=np.float32)
@@ -137,6 +148,7 @@ class TestValidateEmbeddingVector:
         with pytest.raises(ValueError, match="contains NaN values"):
             validate_embedding_vector(vec_with_nan, context="test")
     
+    @pytest.mark.validation
     def test_infinite_values(self):
         """Test that vectors with infinite values are rejected."""
         vec_with_inf = np.array([1.0, np.inf, 3.0], dtype=np.float32)
@@ -144,6 +156,7 @@ class TestValidateEmbeddingVector:
         with pytest.raises(ValueError, match="contains infinite values"):
             validate_embedding_vector(vec_with_inf, context="test")
     
+    @pytest.mark.validation
     def test_zero_vector(self):
         """Test that zero vectors are rejected."""
         zero_vec = np.zeros(384, dtype=np.float32)
@@ -151,6 +164,7 @@ class TestValidateEmbeddingVector:
         with pytest.raises(ValueError, match="is a zero vector"):
             validate_embedding_vector(zero_vec, context="test")
     
+    @pytest.mark.validation
     def test_scalar_vector(self):
         """Test that scalar vectors are rejected."""
         scalar_vec = np.array(1.0)
@@ -158,6 +172,7 @@ class TestValidateEmbeddingVector:
         with pytest.raises(ValueError, match="is a scalar, expected array"):
             validate_embedding_vector(scalar_vec, context="test")
     
+    @pytest.mark.validation
     def test_high_dimensional_vector(self):
         """Test that vectors with more than 2 dimensions are rejected."""
         high_dim_vec = np.random.rand(1, 384, 1).astype(np.float32)
@@ -165,6 +180,7 @@ class TestValidateEmbeddingVector:
         with pytest.raises(ValueError, match="too many dimensions"):
             validate_embedding_vector(high_dim_vec, context="test")
     
+    @pytest.mark.validation
     def test_dimension_mismatch(self):
         """Test that vectors with wrong dimensions are rejected."""
         vec = np.random.rand(512).astype(np.float32)  # 512 dimensions
@@ -172,6 +188,7 @@ class TestValidateEmbeddingVector:
         with pytest.raises(ValueError, match="dimension mismatch"):
             validate_embedding_vector(vec, expected_dim=384, context="test")
     
+    @pytest.mark.validation
     def test_dtype_conversion(self):
         """Test that non-float32 vectors trigger dtype conversion warning."""
         vec_float64 = np.random.rand(384).astype(np.float64)
@@ -185,9 +202,11 @@ class TestValidateEmbeddingVector:
             assert "dtype is float64, converting to float32" in warning_call
 
 
+@pytest.mark.validation
 class TestValidateFilters:
     """Test filter validation."""
     
+    @pytest.mark.validation
     def test_valid_filters(self):
         """Test that valid filters pass validation."""
         valid_filters = [
@@ -201,6 +220,7 @@ class TestValidateFilters:
         for filters in valid_filters:
             validate_filters(filters, context="test")
     
+    @pytest.mark.validation
     def test_invalid_filter_types(self):
         """Test that non-dict filters are rejected."""
         invalid_filters = [
@@ -216,6 +236,7 @@ class TestValidateFilters:
                 with pytest.raises(ValueError, match="must be a dictionary or None"):
                     validate_filters(filters, context="test")
     
+    @pytest.mark.validation
     def test_invalid_filter_keys(self):
         """Test that filters with invalid keys are rejected."""
         invalid_key_filters = [
@@ -239,6 +260,7 @@ class TestValidateFilters:
                     warning_call = mock_logger.warning.call_args[0][0]
                     assert "has None value" in warning_call
     
+    @pytest.mark.validation
     def test_filter_key_validation(self):
         """Test validation against valid keys list."""
         valid_keys = ["source_type", "laureate", "year_awarded"]
@@ -251,9 +273,11 @@ class TestValidateFilters:
             validate_filters({"invalid_key": "value"}, valid_keys=valid_keys, context="test")
 
 
+@pytest.mark.validation
 class TestValidateRetrievalParameters:
     """Test retrieval parameter validation."""
     
+    @pytest.mark.validation
     def test_valid_parameters(self):
         """Test that valid parameters pass validation."""
         # All parameters valid
@@ -273,6 +297,7 @@ class TestValidateRetrievalParameters:
             context="test"
         )
     
+    @pytest.mark.validation
     def test_invalid_top_k(self):
         """Test that invalid top_k values are rejected."""
         invalid_top_k_values = [
@@ -292,6 +317,7 @@ class TestValidateRetrievalParameters:
                     context="test"
                 )
     
+    @pytest.mark.validation
     def test_invalid_score_threshold(self):
         """Test that invalid score_threshold values are rejected."""
         invalid_thresholds = [
@@ -309,6 +335,7 @@ class TestValidateRetrievalParameters:
                     context="test"
                 )
     
+    @pytest.mark.validation
     def test_invalid_min_return(self):
         """Test that invalid min_return values are rejected."""
         invalid_min_returns = [
@@ -328,6 +355,7 @@ class TestValidateRetrievalParameters:
                     context="test"
                 )
     
+    @pytest.mark.validation
     def test_invalid_max_return(self):
         """Test that invalid max_return values are rejected."""
         invalid_max_returns = [
@@ -347,6 +375,7 @@ class TestValidateRetrievalParameters:
                     context="test"
                 )
     
+    @pytest.mark.validation
     def test_max_return_less_than_min_return(self):
         """Test that max_return cannot be less than min_return."""
         with pytest.raises(ValueError, match="max_return.*cannot be less than min_return"):
@@ -358,6 +387,7 @@ class TestValidateRetrievalParameters:
                 context="test"
             )
     
+    @pytest.mark.validation
     def test_min_return_greater_than_top_k(self):
         """Test that min_return cannot be greater than top_k."""
         with pytest.raises(ValueError, match="min_return.*cannot be greater than top_k"):
@@ -369,9 +399,11 @@ class TestValidateRetrievalParameters:
             )
 
 
+@pytest.mark.validation
 class TestValidateModelId:
     """Test model ID validation."""
     
+    @pytest.mark.validation
     def test_valid_model_ids(self):
         """Test that valid model IDs pass validation."""
         valid_ids = [
@@ -386,6 +418,7 @@ class TestValidateModelId:
         for model_id in valid_ids:
             validate_model_id(model_id, context="test")
     
+    @pytest.mark.validation
     def test_invalid_model_ids(self):
         """Test that invalid model IDs are rejected."""
         invalid_ids = [
@@ -420,9 +453,11 @@ class TestValidateModelId:
                     validate_model_id(model_id, context="test")
 
 
+@pytest.mark.validation
 class TestSafeFaissScoring:
     """Test safe FAISS scoring function."""
     
+    @pytest.mark.validation
     def test_valid_scoring(self):
         """Test that valid inputs produce correct scores."""
         # Create test vectors
@@ -441,6 +476,7 @@ class TestSafeFaissScoring:
         assert len(scores) == 5
         assert all(score >= -1.0 and score <= 1.0 for score in scores)
     
+    @pytest.mark.validation
     def test_1d_vector_handling(self):
         """Test that 1D vectors are properly reshaped."""
         # 1D vectors
@@ -453,6 +489,7 @@ class TestSafeFaissScoring:
         assert scores.ndim == 1
         assert len(scores) == 1
     
+    @pytest.mark.validation
     def test_invalid_inputs(self):
         """Test that invalid inputs are rejected."""
         # Invalid filtered vectors
@@ -468,6 +505,7 @@ class TestSafeFaissScoring:
         with pytest.raises(ValueError, match="is a zero vector"):
             safe_faiss_scoring(zero_vec, np.random.rand(384), context="test")
     
+    @pytest.mark.validation
     def test_shape_mismatch(self):
         """Test that shape mismatches are handled properly."""
         # Different dimensions
@@ -477,6 +515,7 @@ class TestSafeFaissScoring:
         with pytest.raises(ValueError, match="Dimension mismatch"):
             safe_faiss_scoring(filtered_vectors, query_embedding, context="test")
     
+    @pytest.mark.validation
     def test_scalar_output_handling(self):
         """Test that scalar outputs are properly converted to arrays."""
         # Single vector case that might produce scalar
@@ -490,9 +529,11 @@ class TestSafeFaissScoring:
         assert len(scores) == 1
 
 
+@pytest.mark.validation
 class TestValidationIntegration:
     """Integration tests for validation functions."""
     
+    @pytest.mark.validation
     def test_validation_chain(self):
         """Test that validation functions work together correctly."""
         # Valid inputs should pass all validations
@@ -514,6 +555,7 @@ class TestValidationIntegration:
             context="integration"
         )
     
+    @pytest.mark.validation
     def test_validation_error_propagation(self):
         """Test that validation errors propagate correctly."""
         # Invalid inputs should fail validation
