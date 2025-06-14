@@ -12,6 +12,7 @@ def force_inprocess(monkeypatch):
     # Force in-process mode so tests are consistent unless explicitly testing subprocess
     monkeypatch.setenv("NOBELLM_USE_FAISS_SUBPROCESS", "0")
 
+@pytest.mark.integration
 def test_retrieve_chunks_dual_process_path(monkeypatch):
     # Patch the module-level variable directly, not just the environment
     with patch("rag.query_engine.USE_FAISS_SUBPROCESS", True), \
@@ -22,6 +23,7 @@ def test_retrieve_chunks_dual_process_path(monkeypatch):
         mock_dual.assert_called_once()
         assert result == [{"chunk_id": "dummy", "score": 0.9}]
 
+@pytest.mark.integration
 def test_retrieve_chunks_calls_query_index_with_correct_args():
     embedding = np.ones(1024, dtype=np.float32)
     mock_chunks = [
@@ -37,6 +39,7 @@ def test_retrieve_chunks_calls_query_index_with_correct_args():
         assert kwargs["filters"] is None
         assert result == mock_chunks
 
+@pytest.mark.integration
 def test_retrieve_chunks_propagates_filters():
     embedding = np.ones(1024, dtype=np.float32)
     filters = {"country": "USA", "source_type": "nobel_lecture"}
@@ -50,6 +53,7 @@ def test_retrieve_chunks_propagates_filters():
         assert kwargs["filters"] == filters
         assert result == mock_chunks
 
+@pytest.mark.integration
 def test_retrieve_chunks_handles_no_results():
     embedding = np.ones(1024, dtype=np.float32)
     with patch("rag.retriever.query_index", return_value=[]) as mock_query_index:
@@ -57,6 +61,7 @@ def test_retrieve_chunks_handles_no_results():
         mock_query_index.assert_called_once()
         assert result == []
 
+@pytest.mark.integration
 def test_retrieve_chunks_output_schema():
     embedding = np.ones(1024, dtype=np.float32)
     mock_chunks = [
@@ -69,6 +74,7 @@ def test_retrieve_chunks_output_schema():
             assert required_fields.issubset(chunk.keys())
 
 # Note: retrieve_chunks does not apply post-filtering by score_threshold. That logic is only in the main query function.
+@pytest.mark.integration
 def test_retrieve_chunks_respects_score_threshold():
     embedding = np.ones(1024, dtype=np.float32)
     mock_chunks = [
@@ -83,6 +89,7 @@ def test_retrieve_chunks_respects_score_threshold():
         assert result == mock_chunks
     # To test post-filtering, use the main query() function instead.
 
+@pytest.mark.integration
 def test_retrieve_chunks_fallbacks_to_min_k_when_needed():
     embedding = np.ones(1024, dtype=np.float32)
     mock_chunks = [
@@ -96,6 +103,7 @@ def test_retrieve_chunks_fallbacks_to_min_k_when_needed():
         # Even though no chunk passes score threshold, min_k fallback should return original
         assert len(result) == 2
 
+@pytest.mark.integration
 def test_retrieve_chunks_rejects_invalid_embedding():
     embedding = np.zeros(1024, dtype=np.float32)  # Invalid vector
     with pytest.raises(ValueError, match="zero vector"):
