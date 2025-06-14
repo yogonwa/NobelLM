@@ -248,12 +248,46 @@ Full workflow validation with minimal mocking.
 - Failure mode validation
 
 ### 4. Validation Tests (`validation/`)
-Data quality and schema validation.
+Data quality, schema validation, and system sanity checks. **Total: 52 tests**
 
-#### `test_data_validation.py`
-- Data schema validation
-- Metadata completeness checks
-- Embedding quality validation
+#### `test_validation.py` (35 tests)
+**Core validation function testing:**
+- Query string validation (valid/invalid patterns, length, suspicious content)
+- Embedding vector validation (dimensions, types, NaN/inf values, normalization)
+- Filter validation (valid keys, types, edge cases)
+- Retrieval parameter validation (top_k, score_threshold, min/max_return)
+- Model ID validation (format, allowed values)
+- Safe FAISS scoring validation (vector handling, shape matching, error cases)
+- Integration validation (chain testing, error propagation)
+
+#### `test_faiss_index_sanity.py` (4 tests)
+**FAISS index health and functionality validation:**
+- Index loading and basic properties verification
+- Search functionality with random vectors
+- Dimension consistency validation (1024 for bge-large)
+- Vector count validation and bounds checking
+- Error handling for missing or corrupted indices
+
+#### `test_embedder_sanity.py` (7 tests)
+**Embedding model health and functionality validation:**
+- Model loading and basic properties verification
+- Embedding generation and shape validation
+- Dimension consistency (1024 for bge-large)
+- Embedding normalization verification
+- Multiple text handling and batch processing
+- Empty text and edge case handling
+- Model consistency and deterministic output
+
+#### `test_e2e_embed_faiss_sanity.py` (6 tests)
+**End-to-end pipeline validation:**
+- Full pipeline loading (model + index)
+- Complete embed-and-search workflow
+- Dimension consistency between model and index
+- Multiple query handling and processing
+- Search result quality validation
+- Error handling for edge cases (long/short text)
+
+> **Note**: Validation tests are designed to be lightweight and can be run independently. Heavy model tests may be skipped in memory-constrained environments using `pytest.skip()`.
 
 ## Running Tests
 
@@ -272,7 +306,7 @@ pytest tests/validation/   # Validation tests only
 pytest -m unit             # Unit tests
 pytest -m integration      # Integration tests
 pytest -m e2e             # End-to-end tests
-pytest -m validation      # Validation tests
+pytest -m validation      # Validation tests (52 tests)
 ```
 
 ### Test Configuration
@@ -299,6 +333,21 @@ pytest -m slow
 # Test with specific model
 pytest --model-id bge-large
 pytest --model-id miniLM
+```
+
+### Validation Test Specifics
+```bash
+# Run only core validation functions (lightweight)
+pytest tests/validation/test_validation.py -m validation
+
+# Run FAISS index sanity checks
+pytest tests/validation/test_faiss_index_sanity.py -m validation
+
+# Run embedder sanity checks (requires model loading)
+pytest tests/validation/test_embedder_sanity.py -m validation
+
+# Run end-to-end sanity checks (requires model + index)
+pytest tests/validation/test_e2e_embed_faiss_sanity.py -m validation
 ```
 
 ## Best Practices
@@ -331,6 +380,31 @@ def test_component_integration():
         assert result == expected_result
 ```
 
+### Validation Test Structure
+```python
+@pytest.mark.validation
+class TestComponentSanity:
+    """Test component health and functionality."""
+    
+    @pytest.mark.validation
+    def test_component_loading(self):
+        """Test that component can be loaded successfully."""
+        # Test loading and basic properties
+        pass
+    
+    @pytest.mark.validation
+    def test_component_functionality(self):
+        """Test core functionality with realistic inputs."""
+        # Test main functionality
+        pass
+    
+    @pytest.mark.validation
+    def test_error_handling(self):
+        """Test error handling and edge cases."""
+        # Test error scenarios
+        pass
+```
+
 ### Key Guidelines
 1. **Model Awareness**: Avoid hardcoding model names, file paths, or dimensions
 2. **Config-Driven**: Use `get_model_config()` for all model-specific values
@@ -341,12 +415,14 @@ def test_component_integration():
 7. **Mocking**: Use appropriate mocking levels for each test category
 8. **Performance**: Keep integration tests under 30 seconds each
 9. **Documentation**: Document complex test scenarios and edge cases
+10. **Validation Tests**: Use `@pytest.mark.validation` decorator for all validation tests
+11. **Sanity Checks**: Include proper error handling and skip conditions for missing resources
 
 ### Test Naming Conventions
 - Unit tests: `test_function_name_scenario`
 - Integration tests: `test_component_to_component_integration`
 - E2E tests: `test_full_workflow_scenario`
-- Validation tests: `test_data_quality_validation`
+- Validation tests: `test_component_sanity` or `test_validation_function`
 
 ## Future Improvements
 
@@ -365,6 +441,11 @@ def test_component_integration():
    - More edge cases in component interactions
    - Error propagation testing
    - Performance regression testing
+
+4. **Enhance validation test coverage:**
+   - Add more sanity checks for critical components
+   - Performance benchmarks for validation tests
+   - Automated health checks for production deployment
 
 ### Long-term Enhancements
 1. **Automated Performance Testing:**
@@ -386,3 +467,8 @@ def test_component_integration():
 5. **Parallel Test Execution:**
    - Optimize test suite for parallel execution
    - Reduce overall test execution time
+
+6. **Validation Test Automation:**
+   - Automated health checks for production systems
+   - Continuous monitoring of system components
+   - Alerting for validation test failures
