@@ -120,7 +120,7 @@ def query_index(
 
     logger.info(f"FAISS index is trained: {getattr(index, 'is_trained', 'N/A')}, total vectors: {getattr(index, 'ntotal', 'N/A')}")
     logger.info(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
-    logger.info(f"First few values: {query_embedding[0][:5]}")
+    logger.info(f"First few values: {query_embedding[:5] if query_embedding.ndim == 1 else query_embedding[0][:5]}")
     faiss.normalize_L2(query_embedding)
 
     # --- Pre-retrieval metadata filtering ---

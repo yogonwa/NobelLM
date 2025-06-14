@@ -34,12 +34,19 @@
         "recurring": 0.8,
         "across": 0.5,
         "motif": 0.8,
-        "motifs": 0.8
+        "motifs": 0.8,
+        "topics": 0.6,
+        "changed": 0.5,
+        "time": 0.3,
+        "justice": 0.6,
+        "laureates": 0.4
       },
       "phrases": {
         "what are": 0.5,
         "what do": 0.5,
         "how does": 0.6,
+        "how do": 0.6,
+        "how have": 0.6,
         "describe the": 0.7,
         "say about": 0.6,
         "talk about": 0.6
@@ -59,6 +66,7 @@
       "phrases": {
         "in the style of": 0.95,
         "like a laureate": 0.9,
+        "like a nobel winner": 0.9,
         "as if you were": 0.8,
         "as a nobel laureate": 0.9,
         "write me": 0.8

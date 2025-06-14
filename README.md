@@ -116,15 +116,49 @@ NobelLM/
    ```bash
    pip install -r requirements.txt
    ```
-4. **Set up environment variables**
+4. **Set up critical data files**
+   ```bash
+   python scripts/setup_data.py
+   ```
+5. **Set up environment variables**
    ```bash
    cp .env.example .env
    # Add your OpenAI API key to the .env file
    ```
-5. **Run an example module**
+6. **Run an example module**
    ```bash
    python -m scraper.scrape_literature
    ```
+
+---
+
+## 📊 Data Management Strategy
+
+NobelLM uses a multi-layered approach to ensure critical data files are always available:
+
+### **Critical Files**
+- `data/nobel_literature.json` - Core laureate metadata (tracked via Git LFS)
+- `data/intent_keywords.json` - Intent classification configuration
+- `data/nobel_literature_facts_urls.json` - Factual query patterns
+
+### **Large Generated Files (Not Tracked)**
+- `data/literature_embeddings*.json` - Embedding vectors (generated)
+- `data/faiss_index/*.faiss` - FAISS index files (generated)
+- `data/chunks_*.jsonl` - Chunk metadata (generated)
+
+### **Fallback Mechanisms**
+1. **Git LFS**: Critical files are tracked via Git LFS for version control
+2. **Backup Restoration**: Missing files are restored from timestamped backups
+3. **Minimal Generation**: If no backup exists, minimal test data is generated
+4. **Runtime Fallbacks**: Code includes fallback data for testing scenarios
+
+### **Setup Process**
+The `scripts/setup_data.py` script ensures all critical files exist:
+```bash
+python scripts/setup_data.py
+```
+
+This approach balances version control needs with repository size constraints while ensuring the pipeline never breaks due to missing data.
 
 ---
 

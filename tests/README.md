@@ -56,18 +56,18 @@ The test suite follows the core pipeline flow:
 10. Cross-Cutting Tests
 
 **Phase 2 Intent Classifier Tests:**
-- `test_intent_classifier_phase2.py`: Comprehensive coverage of new structured intent classification
+- `test_intent_classifier.py`: Comprehensive coverage of new structured intent classification
 - Tests for hybrid confidence scoring, config-driven weights, multiple laureate detection
 - Validation of decision traces, lemmatization integration, and backward compatibility
 
 **Phase 3A Theme Embedding Infrastructure Tests:**
-- `test_phase3_infrastructure.py`: Core theme embedding and similarity computation infrastructure
+- `test_theme_embedding_infrastructure.py`: Core theme embedding and similarity computation infrastructure
 - `test_theme_reformulator_phase3.py`: Enhanced ThemeReformulator with ranked expansion
 - Tests for pre-computed embeddings, model-aware storage, quality filtering
 - Validation of hybrid keyword extraction, fallback behavior, and performance benchmarks
 
 **Phase 3B Enhanced ThematicRetriever Tests:**
-- `test_thematic_retriever_phase3.py`: Enhanced ThematicRetriever with weighted retrieval functionality
+- `test_thematic_retriever.py`: Enhanced ThematicRetriever with weighted retrieval functionality
 - Tests for similarity-based ranked expansion integration, exponential weight scaling
 - Validation of weighted chunk merging, deduplication, and sorting
 - Backward compatibility testing with legacy retrieval methods
@@ -92,8 +92,6 @@ The test suite follows the core pipeline flow:
 - Laureate scoping
 - Precedence rules
 - Edge cases
-
-#### `test_intent_classifier_phase2.py` (NEW)
 - **Phase 2 Intent Classifier Modernization Tests**
 - Structured `IntentResult` object validation
 - Hybrid confidence scoring with pattern strength and ambiguity penalty
@@ -118,17 +116,6 @@ The test suite follows the core pipeline flow:
 - Comprehensive logging and monitoring validation
 - Expansion statistics and debugging functionality
 
-#### `test_phase3_infrastructure.py` (NEW - Phase 3A)
-- **Phase 3A Core Infrastructure Tests**
-- ThemeEmbeddings class with model-aware storage and validation
-- Theme similarity computation using existing safe_faiss_scoring pattern
-- Pre-computed embedding storage and retrieval from disk
-- Health checks for embedding quality and dimension consistency
-- Model switching between bge-large and miniLM
-- Error handling and edge cases for similarity computation
-- Performance benchmarks and monitoring
-- Integration testing between theme embeddings and similarity computation
-
 #### `test_query_router.py`
 - Fallback strategies (metadata to RAG)
 - Intent routing
@@ -150,17 +137,14 @@ The test suite follows the core pipeline flow:
 - `test_index_build.py` (FAISS index integrity)
 
 ### 5. Retrieval Layer Tests
-#### `test_retriever.py`
-- Standard retrieval functionality
-- Dual-process vs single-process retrieval
-- Model-aware retrieval
-- I/O error handling
-
 #### `test_retriever_to_query_index.py`
 - Integration: `retrieve_chunks` → `query_index`
 - Filter propagation
 - Score threshold + min_k fallback
 - Invalid embedding handling
+- Dual-process vs single-process retrieval
+- Model-aware retrieval
+- I/O error handling
 
 ### 6. Thematic Retrieval & Context Formatting
 #### `test_utils.py`
@@ -169,7 +153,7 @@ The test suite follows the core pipeline flow:
 #### `test_context_formatting.py`
 - Context formatting helpers
 
-#### `test_thematic_retriever_phase3.py` (NEW - Phase 3B)
+#### `test_thematic_retriever.py` (NEW - Phase 3B)
 - **Phase 3B Enhanced ThematicRetriever Tests**
 - Weighted retrieval with similarity-based ranked expansion integration
 - Exponential weight scaling validation (`exp(2 * similarity_score)`)
@@ -193,7 +177,7 @@ The test suite follows the core pipeline flow:
   - Full (non-mocked) RAG query validation
   - End-to-end RAG flow verification
 
-### 8. End-to-End Frontend Contract Tests
+### 8. End-to-End Tests
 #### `test_e2e_frontend_contract.py`
 - Full user query → answer flow validation:
   - Factual queries
@@ -203,8 +187,22 @@ The test suite follows the core pipeline flow:
   - Error scenarios
 - Frontend output contract stability
 
+#### `test_theme_embedding_infrastructure.py` (NEW - Phase 3A E2E)
+- **Phase 3A Core Infrastructure E2E Tests**
+- ThemeEmbeddings class with model-aware storage and validation
+- Theme similarity computation using existing safe_faiss_scoring pattern
+- Pre-computed embedding storage and retrieval from disk
+- Health checks for embedding quality and dimension consistency
+- Model switching between bge-large and miniLM
+- Error handling and edge cases for similarity computation
+- Performance benchmarks and monitoring
+- Integration testing between theme embeddings and similarity computation
+
+#### `test_failures.py`
+- Error scenario testing
+- Failure mode validation
+
 ### 9. Cross-Cutting Tests
-- `test_retriever.py`: Dual-process path switching
 - `test_query_router.py`: Path switching and fallback consistency
 - `test_retriever_to_query_index.py`: Filter propagation and retrieval behavior
 
