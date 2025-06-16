@@ -42,7 +42,11 @@ def is_supported_index(index: faiss.Index) -> bool:
     """
     Check if the FAISS index type is supported for metadata filtering.
     
-    Currently, only IndexFlatIP is supported because it provides:
+    Currently supports:
+    1. IndexFlatIP (cosine similarity) - preferred for normalized embeddings
+    2. IndexFlat (L2 distance) - works when vectors are normalized with L2
+    
+    Both provide:
     1. Direct similarity search (no quantization)
     2. Support for reconstruct_n() needed for metadata filtering
     3. Guaranteed score consistency
@@ -51,9 +55,9 @@ def is_supported_index(index: faiss.Index) -> bool:
         index: The FAISS index to check
         
     Returns:
-        bool: True if the index is IndexFlatIP, False otherwise
+        bool: True if the index is supported, False otherwise
     """
-    return isinstance(index, faiss.IndexFlatIP)
+    return isinstance(index, (faiss.IndexFlatIP, faiss.IndexFlat))
 
 
 def query_index(
@@ -114,13 +118,18 @@ def query_index(
     if not is_supported_index(index):
         raise ValueError(
             f"Unsupported FAISS index type: {type(index).__name__}. "
-            "Only IndexFlatIP (cosine similarity) is supported as it guarantees "
+            "Only IndexFlat and IndexFlatIP are supported as they guarantee "
             "reconstruct_n support and direct similarity search."
         )
 
     logger.info(f"FAISS index is trained: {getattr(index, 'is_trained', 'N/A')}, total vectors: {getattr(index, 'ntotal', 'N/A')}")
     logger.info(f"Query embedding shape: {query_embedding.shape}, dtype: {query_embedding.dtype}")
     logger.info(f"First few values: {query_embedding[:5] if query_embedding.ndim == 1 else query_embedding[0][:5]}")
+    
+    # Ensure query_embedding is 2D for FAISS operations
+    if query_embedding.ndim == 1:
+        query_embedding = query_embedding.reshape(1, -1)
+    
     faiss.normalize_L2(query_embedding)
 
     # --- Pre-retrieval metadata filtering ---
