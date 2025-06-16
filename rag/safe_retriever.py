@@ -21,6 +21,7 @@ from rag.dual_process_retriever import retrieve_chunks_dual_process
 from rag.retriever import query_index
 from rag.logging_utils import get_module_logger, log_with_context, QueryContext
 from rag.cache import get_model  # Add import for cached model
+from rag.validation import is_invalid_vector  # Use centralized validation
 
 logger = get_module_logger(__name__)
 
@@ -171,21 +172,4 @@ def safe_retrieve_chunks(
                     "error_type": type(e).__name__
                 }
             )
-            raise RuntimeError(f"Safe retrieval failed: {e}")
-
-
-def is_invalid_vector(vec: np.ndarray) -> bool:
-    """
-    Check if a vector is invalid (NaN, inf, or zero).
-    
-    Args:
-        vec: The vector to check
-        
-    Returns:
-        True if the vector is invalid, False otherwise
-    """
-    return (
-        np.isnan(vec).any()
-        or np.isinf(vec).any()
-        or np.allclose(vec, 0.0)
-    ) 
+            raise RuntimeError(f"Safe retrieval failed: {e}") 

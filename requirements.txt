@@ -2,7 +2,7 @@
 requests
 beautifulsoup4
 sentence-transformers==2.2.2
-faiss-cpu
+faiss-cpu==1.7.4  # compatible with numpy 1.23.5
 streamlit
 python-dotenv
 PyMuPDF
@@ -11,7 +11,8 @@ tqdm
 numpy==1.23.5  # safe with this torch/thinc stack
 scikit-learn
 scipy
-transformers==4.21.1
+transformers==4.29.2  # compatible with huggingface-hub 0.16.4
+huggingface-hub==0.16.4  # compatible with sentence-transformers 2.2.2
 openai
 spacy==3.5.4
 thinc==8.1.10
