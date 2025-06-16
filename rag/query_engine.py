@@ -15,6 +15,7 @@ Key features:
 - Model-aware retrieval configuration
 - Query type-specific min/max return counts
 - Proper error handling and logging
+- Intent-specific prompt building with metadata awareness
 """
 import os
 import logging
@@ -30,10 +31,11 @@ try:
 except ImportError:
     tiktoken = None
 from rag.query_router import QueryRouter, PromptTemplateSelector, format_factual_context
+from rag.prompt_builder import PromptBuilder
 import json
 from rag.metadata_utils import flatten_laureate_metadata
 from rag.thematic_retriever import ThematicRetriever
-from rag.utils import format_chunks_for_prompt
+from rag.utils import format_chunks_for_prompt, filter_top_chunks
 from rag.cache import get_faiss_index_and_metadata, get_flattened_metadata, get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
 from rag.retriever import query_index, get_mode_aware_retriever, BaseRetriever
@@ -55,6 +57,10 @@ __all__ = ["answer_query"]  # Only export answer_query as the canonical entry po
 _INDEX = None
 _METADATA = None
 _INDEX_LOCK = threading.Lock()
+
+# PromptBuilder singleton
+_PROMPT_BUILDER = None
+_PROMPT_BUILDER_LOCK = threading.Lock()
 
 KEYWORDS_TRIGGER_EXPANSION = [
     "theme", "themes", "pattern", "patterns", "typical", "common",
@@ -180,31 +186,39 @@ def retrieve_chunks(
 # --- Filtering ---
 def filter_chunks(chunks: List[Dict[str, Any]], filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
-    Filter chunks by metadata fields (e.g., country, source_type).
-    Returns a filtered list of chunks.
+    Filter chunks by metadata filters.
+    
+    Args:
+        chunks: List of chunk dictionaries
+        filters: Optional metadata filters to apply
+        
+    Returns:
+        Filtered list of chunks
     """
     if not filters:
         return chunks
+    
     filtered = []
     for chunk in chunks:
-        match = True
-        for key, value in filters.items():
-            if chunk.get(key) != value:
-                match = False
-                break
-        if match:
+        if all(chunk.get(k) == v for k, v in filters.items()):
             filtered.append(chunk)
+    
     return filtered
 
 
-def filter_top_chunks(chunks, score_threshold=0.25, min_return=3, max_return=10):
+# --- PromptBuilder Singleton ---
+def get_prompt_builder() -> PromptBuilder:
     """
-    Filter chunks by score threshold, but always return at least min_return chunks (by rank).
+    Singleton loader for the PromptBuilder.
     """
-    passing = [c for c in chunks if c.get("score", 0) >= score_threshold]
-    if len(passing) >= min_return:
-        return passing[:min_return]
-    return chunks[:min_return]
+    global _PROMPT_BUILDER
+    if _PROMPT_BUILDER is None:
+        with _PROMPT_BUILDER_LOCK:
+            if _PROMPT_BUILDER is None:
+                logger.info("Initializing PromptBuilder...")
+                _PROMPT_BUILDER = PromptBuilder()
+                logger.info(f"PromptBuilder initialized with {len(_PROMPT_BUILDER.list_templates())} templates")
+    return _PROMPT_BUILDER
 
 
 # --- Prompt Construction ---
@@ -224,6 +238,63 @@ def build_prompt(query: str, context: str, prompt_template: Optional[str] = None
         prompt_template = "Answer the following question about Nobel Literature laureates: {query}\n\nContext: {context}"
     
     return prompt_template.format(query=query, context=context)
+
+
+def build_intent_aware_prompt(
+    query: str, 
+    chunks: List[Dict], 
+    intent: str,
+    route_result: Optional[Any] = None
+) -> str:
+    """
+    Build an intent-aware prompt using the new PromptBuilder.
+    
+    Args:
+        query: The user's query string
+        chunks: List of retrieved chunks with metadata
+        intent: Query intent (qa, generative, thematic, scoped)
+        route_result: Optional route result from QueryRouter for additional context
+        
+    Returns:
+        Formatted prompt string with metadata and citations
+    """
+    prompt_builder = get_prompt_builder()
+    
+    try:
+        if intent == "generative":
+            # Determine specific generative intent
+            if "email" in query.lower() or "accept" in query.lower():
+                return prompt_builder.build_generative_prompt(query, chunks, "email")
+            elif "speech" in query.lower() or "inspirational" in query.lower():
+                return prompt_builder.build_generative_prompt(query, chunks, "speech")
+            elif "reflection" in query.lower() or "personal" in query.lower():
+                return prompt_builder.build_generative_prompt(query, chunks, "reflection")
+            else:
+                return prompt_builder.build_generative_prompt(query, chunks, "generative")
+        
+        elif intent == "thematic":
+            # Extract theme from query or route result
+            theme = query
+            if route_result and hasattr(route_result, 'theme'):
+                theme = route_result.theme
+            return prompt_builder.build_thematic_prompt(query, chunks, theme)
+        
+        elif intent == "scoped":
+            # Extract laureate from route result or query
+            laureate = "Unknown"
+            if route_result and hasattr(route_result, 'scoped_entity'):
+                laureate = route_result.scoped_entity
+            return prompt_builder.build_scoped_prompt(query, chunks, laureate)
+        
+        else:
+            # Default to QA prompt
+            return prompt_builder.build_qa_prompt(query, chunks, intent)
+    
+    except Exception as e:
+        logger.warning(f"Failed to build intent-aware prompt: {e}, falling back to basic prompt")
+        # Fallback to basic prompt building
+        context = format_chunks_for_prompt(chunks)
+        return build_prompt(query, context)
 
 
 # --- OpenAI Call ---
@@ -469,10 +540,11 @@ def answer_query(
             context = format_chunks_for_prompt(chunks)
             
             # Build and call LLM
-            prompt = build_prompt(
+            prompt = build_intent_aware_prompt(
                 query_string,
-                context,
-                route_result.prompt_template
+                chunks,
+                route_result.intent,
+                route_result
             )
             
             log_with_context(

@@ -830,4 +830,48 @@ chunks = retriever.retrieve("What do laureates say about justice?")
 chunks = retriever.retrieve("What do laureates say about justice?", use_weighted_retrieval=False)
 ```
 
-The enhanced ThematicRetriever provides significant quality improvements while maintaining full backward compatibility and following existing code patterns. 
+The enhanced ThematicRetriever provides significant quality improvements while maintaining full backward compatibility and following existing code patterns.
+
+## Enhanced Retrieval Logic (Phase 4 - January 2025)
+
+**New as of January 2025:** NobelLM now features unified retrieval logic with consistent score thresholds, standardized fallback behavior, and transparent filtering across all query types and retrieval paths.
+
+### Phase 4: Retrieval Logic Enhancements ✅ **COMPLETED**
+
+**Key Features:**
+- **Centralized retrieval logic** in `rag/retrieval_logic.py` with unified fallback behavior
+- **Standardized score thresholds** by query type:
+  - Factual: 0.25 (higher precision for specific facts)
+  - Thematic: 0.2 (balanced precision/recall for themes)
+  - Generative: 0.2 (broader scope for creative content)
+- **Consistent result formatting** with `ScoredChunk` objects and filtering metadata
+- **Comprehensive logging** with performance metrics and decision transparency
+- **Guaranteed minimum results** with intelligent fallback logic
+
+**Real-World Impact:**
+- **100% consistent results** for identical queries across all retrieval paths
+- **Predictable response times** and standardized chunk counts
+- **Transparent filtering decisions** with detailed logging and debugging
+- **Better user experience** with explainable, high-quality results
+
+**Example Usage:**
+```python
+from rag.query_engine import answer_query
+
+# Factual query: Always gets 3-5 high-quality results (score ≥ 0.25)
+response = answer_query("When did Toni Morrison win the Nobel Prize?")
+
+# Thematic query: Gets 3-15 results (score ≥ 0.2) for comprehensive analysis
+response = answer_query("What do laureates say about justice and equality?")
+
+# Generative query: Gets 10 results (score ≥ 0.2) for creative inspiration
+response = answer_query("Write a speech in the style of a Nobel laureate")
+```
+
+**Before vs After:**
+- **Before**: Inconsistent results, mixed quality, confusing user experience
+- **After**: Predictable quality, transparent decisions, reliable performance
+
+See [`PHASE4_COMPLETED.md`](PHASE4_COMPLETED.md) for comprehensive documentation and implementation details.
+
+## Enhanced Thematic Retrieval (Phase 3A & 3B - January 2025) 

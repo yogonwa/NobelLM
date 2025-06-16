@@ -82,7 +82,7 @@ Phase 3: Thematic Reformulation Expansion
 
  Optional: Add paraphraser model to generate richer term variants.
 
-Phase 4: Retrieval Logic Enhancements
+Phase 4: Retrieval Logic Enhancements ✅ COMPLETED
  Consolidate score threshold handling and fallback logic.
 
  Add logging of top_k scores and filtering reasons.

@@ -233,9 +233,9 @@ class QueryRouter:
                         else:
                             # Multiple entities - will be handled by ThematicRetriever
                             logs['multiple_laureates'] = scoped_entities
-                    config = RetrievalConfig(top_k=15, filters=filters, score_threshold=None)
+                    config = RetrievalConfig(top_k=15, filters=filters, score_threshold=0.2)
                 else:  # generative
-                    config = RetrievalConfig(top_k=10, score_threshold=None)
+                    config = RetrievalConfig(top_k=10, score_threshold=0.2)
                 
                 # Get prompt template
                 template = PromptTemplateSelector.get_template(intent)

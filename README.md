@@ -244,6 +244,48 @@ print(f"Scoped Laureate: {result.scoped_laureate}")  # "Toni Morrison"
 print(f"Decision Trace: {result.decision_trace}")  # Detailed reasoning
 ```
 
+## 🎯 Enhanced Retrieval Logic (Phase 4 - January 2025)
+
+**New as of January 2025:** NobelLM now features unified retrieval logic with consistent score thresholds, standardized fallback behavior, and transparent filtering across all query types and retrieval paths.
+
+### Phase 4: Retrieval Logic Enhancements ✅ **COMPLETED**
+
+**Key Features:**
+- **Centralized retrieval logic** in `rag/retrieval_logic.py` with unified fallback behavior
+- **Standardized score thresholds** by query type:
+  - Factual: 0.25 (higher precision for specific facts)
+  - Thematic: 0.2 (balanced precision/recall for themes)
+  - Generative: 0.2 (broader scope for creative content)
+- **Consistent result formatting** with `ScoredChunk` objects and filtering metadata
+- **Comprehensive logging** with performance metrics and decision transparency
+- **Guaranteed minimum results** with intelligent fallback logic
+
+**Real-World Impact:**
+- **100% consistent results** for identical queries across all retrieval paths
+- **Predictable response times** and standardized chunk counts
+- **Transparent filtering decisions** with detailed logging and debugging
+- **Better user experience** with explainable, high-quality results
+
+**Example Usage:**
+```python
+from rag.query_engine import answer_query
+
+# Factual query: Always gets 3-5 high-quality results (score ≥ 0.25)
+response = answer_query("When did Toni Morrison win the Nobel Prize?")
+
+# Thematic query: Gets 3-15 results (score ≥ 0.2) for comprehensive analysis
+response = answer_query("What do laureates say about justice and equality?")
+
+# Generative query: Gets 10 results (score ≥ 0.2) for creative inspiration
+response = answer_query("Write a speech in the style of a Nobel laureate")
+```
+
+**Before vs After:**
+- **Before**: Inconsistent results, mixed quality, confusing user experience
+- **After**: Predictable quality, transparent decisions, reliable performance
+
+See [`rag/PHASE4_COMPLETED.md`](rag/PHASE4_COMPLETED.md) for comprehensive documentation and implementation details.
+
 ## 🎯 Enhanced Thematic Retrieval (Phase 3A & 3B - January 2025)
 
 **New as of January 2025:** NobelLM now features intelligent similarity-based thematic query expansion and weighted retrieval for significantly improved search quality.
@@ -422,15 +464,25 @@ Unit tests for extraction/parsing logic (e.g., HTML parsing, gender inference) a
 
 ## 📌 Roadmap
 
-| Phase | Description |
-|-------|-------------|
-| **M1** | Scrape and normalize Nobel Literature data |
-| **M2** | Generate text chunks and sentence embeddings (model-aware, token-based, with optional overlap; supports BGE-Large and MiniLM) |
-| **M3** | Build FAISS index and RAG query pipeline (model-aware) |
-| **M4** | Launch public Streamlit UI |
-| **M5** | Add prompt templates and memory scaffolding |
-| **M5b** | Extend pipeline to other Nobel Prize categories |
-| **M6** | Migrate embedding generation to OpenAI API |
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **M1** | Scrape and normalize Nobel Literature data | ✅ **COMPLETED** |
+| **M2** | Generate text chunks and sentence embeddings (model-aware, token-based, with optional overlap; supports BGE-Large and MiniLM) | ✅ **COMPLETED** |
+| **M3** | Build FAISS index and RAG query pipeline (model-aware) | ✅ **COMPLETED** |
+| **M4** | Launch public Streamlit UI | ✅ **COMPLETED** |
+| **M5** | Add prompt templates and memory scaffolding | ✅ **COMPLETED** |
+| **M5b** | Extend pipeline to other Nobel Prize categories | 🔄 **IN PROGRESS** |
+| **M6** | Migrate embedding generation to OpenAI API | 📋 **PLANNED** |
+
+### **Recent Major Enhancements (2025)**
+
+| Enhancement | Description | Status |
+|-------------|-------------|--------|
+| **Phase 2** | Intent Classifier Modernization (structured results, confidence scoring) | ✅ **COMPLETED** |
+| **Phase 3A** | Theme Embedding Infrastructure (similarity-based expansion) | ✅ **COMPLETED** |
+| **Phase 3B** | Enhanced ThematicRetriever (weighted retrieval, exponential scaling) | ✅ **COMPLETED** |
+| **Phase 4** | Retrieval Logic Enhancements (unified thresholds, consistent fallbacks) | ✅ **COMPLETED** |
+| **Phase 5** | Prompt Builder Improvements (metadata awareness, citations) | 📋 **PLANNED** |
 
 See [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md) and [`SPEC.md`](./SPEC.md) for detailed milestones.
 

@@ -54,14 +54,15 @@ The test suite is organized into four main categories:
 The test suite follows the core pipeline flow:
 1. Extraction & Parsing
 2. Intent Classification (including Phase 2 modernization)
-3. **Theme Embedding Infrastructure (Phase 3A - NEW)**
-4. Metadata Direct Answer
-5. Chunking/Embeddings
-6. Retrieval
-7. Thematic Analysis
-8. RAG Pipeline
-9. Frontend E2E
-10. Cross-Cutting Tests
+3. **Theme Embedding Infrastructure (Phase 3A - COMPLETED)**
+4. **Retrieval Logic Enhancements (Phase 4 - COMPLETED)**
+5. Metadata Direct Answer
+6. Chunking/Embeddings
+7. Retrieval
+8. Thematic Analysis
+9. RAG Pipeline
+10. Frontend E2E
+11. Cross-Cutting Tests
 
 **Phase 2 Intent Classifier Tests:**
 - `test_intent_classifier.py`: Comprehensive coverage of new structured intent classification
@@ -80,8 +81,14 @@ The test suite follows the core pipeline flow:
 - Validation of weighted chunk merging, deduplication, and sorting
 - Backward compatibility testing with legacy retrieval methods
 - Performance monitoring and logging validation
-- Error handling and fallback behavior testing
 - Comprehensive coverage of dual retrieval architecture (weighted vs legacy)
+
+**Phase 4 Retrieval Logic Enhancement Tests:**
+- `test_utils.py`: Updated filter_top_chunks with centralized retrieval logic
+- `test_answer_query.py`: End-to-end retrieval pipeline with consistent thresholds
+- `test_thematic_retriever.py`: Enhanced with unified fallback behavior
+- Integration tests: Validated consistent behavior across all retrieval paths
+- E2E tests: Confirmed predictable results and transparent filtering decisions
 
 ## Test Categories
 

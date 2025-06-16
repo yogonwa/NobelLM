@@ -146,12 +146,19 @@ def query_index(
         indices = indices[0]
         results = []
         for rank, (score, idx) in enumerate(zip(scores, indices)):
-            if score >= score_threshold:
-                result = metadata[idx].copy()
-                result["score"] = float(score)
-                result["rank"] = rank
-                results.append(result)
-        return results
+            result = metadata[idx].copy()
+            result["score"] = float(score)
+            result["rank"] = rank
+            results.append(result)
+        
+        # Apply centralized filtering logic
+        from rag.retrieval_logic import apply_retrieval_fallback
+        return apply_retrieval_fallback(
+            chunks=results,
+            score_threshold=score_threshold,
+            min_return=min_return or 3,
+            max_return=max_return
+        )
     else:
         # With filters, we need to reconstruct vectors and do manual scoring
         # This is safe because we verified index type is IndexFlatIP
@@ -165,17 +172,23 @@ def query_index(
         top_indices = scores.argsort()[::-1][:top_k]
         logger.info(f"Top 10 scores: {scores[top_indices][:10]}")
         logger.info(f"Top 10 chunk IDs: {[filtered_metadata[i]['chunk_id'] for i in top_indices[:10]]}")
-        logger.info(f"Number of chunks before score threshold: {len(filtered_metadata)}")
-        logger.info(f"Number of chunks after score threshold: {len([s for s in scores if s >= score_threshold])}")
         
+        # Build results without filtering (filtering will be applied by centralized logic)
         results = []
         for rank, i in enumerate(top_indices):
-            if scores[i] >= score_threshold:
-                result = filtered_metadata[i].copy()
-                result["score"] = float(scores[i])
-                result["rank"] = rank
-                results.append(result)
-        return results
+            result = filtered_metadata[i].copy()
+            result["score"] = float(scores[i])
+            result["rank"] = rank
+            results.append(result)
+        
+        # Apply centralized filtering logic
+        from rag.retrieval_logic import apply_retrieval_fallback
+        return apply_retrieval_fallback(
+            chunks=results,
+            score_threshold=score_threshold,
+            min_return=min_return or 3,
+            max_return=max_return
+        )
 
 
 class BaseRetriever(ABC):
