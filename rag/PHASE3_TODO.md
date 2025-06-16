@@ -65,20 +65,22 @@
 
 ---
 
-## 🔧 **Phase 3C: Optional Paraphraser (Day 2)**
+## 🔧 **Phase 3C: Optional Paraphraser (Day 2)** ❌ **DEFERRED**
 
-### **4. Semantic Term Generation**
-- [ ] **Create `config/theme_paraphraser.py`**
-  - [ ] Implement `generate_semantic_variants(theme: str) -> List[str]`
-  - [ ] Add paraphraser model integration (e.g., T5-small for paraphrasing)
-  - [ ] Implement caching for paraphraser outputs
-  - [ ] Add fallback mechanisms for paraphraser failures
+### **4. Semantic Term Generation** ❌ **DEFERRED - NOT PLANNED**
+- [ ] **Create `config/theme_paraphraser.py`** ❌ **DEFERRED**
+  - [ ] Implement `generate_semantic_variants(theme: str) -> List[str]` ❌ **DEFERRED**
+  - [ ] Add paraphraser model integration (e.g., T5-small for paraphrasing) ❌ **DEFERRED**
+  - [ ] Implement caching for paraphraser outputs ❌ **DEFERRED**
+  - [ ] Add fallback mechanisms for paraphraser failures ❌ **DEFERRED**
 
-- [ ] **Integrate with ThemeReformulator**
-  - [ ] Add `use_paraphraser: bool = False` parameter to `expand_query_terms_ranked()`
-  - [ ] Generate semantic variants for high-similarity themes
-  - [ ] Include variants in similarity ranking
-  - [ ] Add paraphraser performance logging
+- [ ] **Integrate with ThemeReformulator** ❌ **DEFERRED**
+  - [ ] Add `use_paraphraser: bool = False` parameter to `expand_query_terms_ranked()` ❌ **DEFERRED**
+  - [ ] Generate semantic variants for high-similarity themes ❌ **DEFERRED**
+  - [ ] Include variants in similarity ranking ❌ **DEFERRED**
+  - [ ] Add paraphraser performance logging ❌ **DEFERRED**
+
+**Note:** The paraphraser project has been explicitly deferred and is not planned for implementation. The current similarity-based expansion system provides sufficient semantic coverage without the complexity and performance overhead of a paraphraser model.
 
 ---
 
