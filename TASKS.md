@@ -1,5 +1,5 @@
 # TASKS – Nobel Laureate Speech Explorer  
-_Last updated: 2025-05-22_
+_Last updated: 2025-06-21_
 
 This file defines modular, numbered tasks for Cursor to execute. Each task includes:
 
@@ -12,6 +12,37 @@ Cursor must always:
 - Read and follow `.cursorrules`
 - Update the relevant folder's `README.md` with a summary of new files or logic added
 - Avoid editing outside the task's scope
+
+---
+
+## Task 0 – FastAPI Migration (Phase 2) **[COMPLETE]**
+
+**Goal**: Migrate from Streamlit to FastAPI + Vite architecture for production deployment.
+
+**Status**: Complete. FastAPI backend is fully functional with RAG pipeline integration.
+
+**Target Files**: 
+- `backend/app/main.py` - FastAPI application entry point
+- `backend/app/routes.py` - API route handlers
+- `backend/app/deps.py` - Dependency injection
+- `backend/app/config.py` - Environment configuration
+- `backend/requirements.txt` - Python dependencies
+
+**Input**: Existing RAG pipeline and FAISS index
+**Output**: 
+- ✅ FastAPI server with endpoints: `/`, `/api/health`, `/api/query`, `/api/models`
+- ✅ Pydantic request/response models with validation
+- ✅ RAG pipeline integration with dependency injection
+- ✅ Environment configuration management
+- ✅ Comprehensive error handling and logging
+
+**Technical Achievements**:
+- Fixed Pydantic import issues (updated to pydantic-settings)
+- Resolved function signature mismatches in RAG integration
+- Avoided Streamlit caching conflicts with direct FAISS/model loading
+- Implemented proper async/await patterns for FastAPI
+
+**Next**: Phase 3 - Docker Environment Setup
 
 ---
 
