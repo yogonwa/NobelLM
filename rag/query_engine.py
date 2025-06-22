@@ -20,6 +20,7 @@ Key features:
 import os
 import logging
 import warnings
+import gc
 from typing import List, Dict, Optional, Any
 import numpy as np
 from sentence_transformers import SentenceTransformer
