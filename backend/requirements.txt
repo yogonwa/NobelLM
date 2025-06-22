@@ -1,0 +1,27 @@
+# FastAPI and web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings
+
+# RAG pipeline dependencies (from main requirements.txt)
+sentence-transformers==3.1.1
+transformers<=4.39.3
+faiss-cpu
+openai
+numpy==1.23.5
+scikit-learn
+scipy
+tqdm
+python-dotenv
+Pillow
+
+# Spacy NLP stack
+spacy>=3.7.2,<3.8.0
+blis==0.7.9
+
+# Explicit spacy model wheel install
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+
+# Additional utilities
+python-multipart 
