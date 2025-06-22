@@ -129,23 +129,29 @@ NobelLM/
 
 ## 📋 Migration Tasks
 
-### **Phase 1: Clean Up and Pre-Migration** ⬜️
+### **Phase 1: Clean Up and Pre-Migration** ✅
 
-- [ ] **Confirm environment setup**
-  - [ ] Verify `.env` file configuration
-  - [ ] Confirm Git LFS tracking for large files
-  - [ ] Validate local FAISS index locations
-  - [ ] Test RAG pipeline functionality
+- [x] **Confirm environment setup**
+  - [x] Verify `.env` file configuration
+  - [x] Confirm Git LFS tracking for large files
+  - [x] Validate local FAISS index locations
+  - [x] Test RAG pipeline functionality
 
-- [ ] **Archive current deployment**
-  - [ ] Document current Streamlit Cloud setup
-  - [ ] Backup current configuration
-  - [ ] Update documentation to reflect migration
+- [x] **Archive current deployment**
+  - [x] Document current Streamlit Cloud setup
+  - [x] Backup current configuration
+  - [x] Update documentation to reflect migration
 
-- [ ] **Review project structure**
-  - [ ] Audit existing code against `.cursorrules`
-  - [ ] Identify components to migrate vs. refactor
-  - [ ] Plan test coverage for new components
+- [x] **Review project structure**
+  - [x] Audit existing code against `.cursorrules`
+  - [x] Identify components to migrate vs. refactor
+  - [x] Plan test coverage for new components
+
+- [x] **Theme embeddings LFS integration**
+  - [x] Regenerate theme embeddings for both models
+  - [x] Add to Git LFS tracking
+  - [x] Test persistence across branch switches
+  - [x] Commit to migration branch
 
 ### **Phase 2: Backend Setup (FastAPI)** ⬜️
 
