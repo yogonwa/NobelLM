@@ -106,7 +106,8 @@ async def process_query(
             query,
             model_id,
             request.score_threshold or settings.default_score_threshold,
-            request.top_k or settings.default_top_k
+            None,  # min_return (use default)
+            request.top_k or settings.default_top_k  # max_return
         )
         
         # Extract sources from result
