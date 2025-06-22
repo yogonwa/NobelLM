@@ -9,7 +9,7 @@ faiss-cpu
 openai
 
 # Data / utils
-numpy==1.23.5
+numpy==1.23.5  # safe with this torch/thinc stack
 scikit-learn
 scipy
 tqdm

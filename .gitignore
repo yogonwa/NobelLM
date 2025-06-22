@@ -173,20 +173,30 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Ignore all data by default
+# Ignore all data by default (but exceptions below will still be tracked)
 /data/
 
-# Critical metadata files that must be tracked
+# Critical metadata files that must be tracked (tracked via Git LFS)
 !data/nobel_literature.json
 
-# FAISS index and chunk metadata files that must be tracked
+# FAISS index and chunk metadata files that must be tracked (metadata only, not index files)
 !data/faiss_index/
-!data/faiss_index/index.faiss
 !data/faiss_index/chunk_metadata.jsonl
 !data/faiss_index/metadata.json
 
-# BGE-Large index files that must be tracked
+# Also track BGE-Large metadata files (but not the large index)
 !data/faiss_index_bge-large/
-!data/faiss_index_bge-large/index.faiss
 !data/faiss_index_bge-large/chunk_metadata.jsonl
 !data/faiss_index_bge-large/metadata.json
+
+# Track important configuration files for production deployments
+!data/intent_keywords.json
+!data/nobel_literature_facts_urls.json
+
+# Track theme embeddings via Git LFS (pre-computed for performance)
+!data/theme_embeddings/
+!data/theme_embeddings/*.npz
+
+# Note: nobel_literature.json is now tracked via Git LFS for critical pipeline functionality
+# Note: literature_embeddings*.json are large generated files and should NOT be tracked
+# Note: FAISS index files (*.faiss) should be handled via Git LFS, not regular tracking

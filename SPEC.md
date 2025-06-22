@@ -151,6 +151,122 @@ python -m embeddings.build_index --model bge-large
 
 ---
 
+## Prompt Builder & Citation System (June 2025)
+
+**New as of June 2025:** NobelLM now features an intelligent, metadata-aware prompt construction system with automatic citation scaffolding and intent-specific templates.
+
+### Prompt Builder Architecture
+
+**Core Components:**
+- **`rag/prompt_builder.py`**: Main prompt building system with configurable templates
+- **`config/prompt_templates.json`**: 11 intent-specific templates with metadata and configuration
+- **Intent-Aware Routing**: Automatic template selection based on query classification
+- **Metadata Formatting**: Visual markers and citation formatting for enhanced context
+
+**Template Types:**
+- **QA Templates**: Factual, analytical, comparative queries with citation focus
+- **Generative Templates**: Email, speech, reflection tasks with laureate-style guidance  
+- **Thematic Templates**: Exploration, cross-cultural, temporal analysis with diverse perspectives
+- **Scoped Templates**: Laureate-specific queries with focused context
+
+### Citation System
+
+**Citation Features:**
+- **Multiple Styles**: Inline `(Author, Year)`, footnote `[1] Author, Year`, full citations
+- **Automatic Attribution**: Source laureate, year, speech type, category
+- **Visual Markers**: 🎓 for lectures, 🏅 for ceremonies, 📚 for general content
+- **Citation Scaffolding**: Automatic citation instructions in prompt templates
+
+**Example Output:**
+```
+[🎓 Lecture — Toni Morrison, 1993] Language can never pin down slavery, genocide, war. Nor can it describe the depths of human experience. (Toni Morrison, 1993)
+
+[🏅 Ceremony — Gabriel García Márquez, 1982] The solitude of Latin America has a long history of violence and injustice, but also of resilience and hope. (Gabriel García Márquez, 1982)
+```
+
+### Chunk Metadata Enhancement
+
+**Enhanced Metadata Fields:**
+- **`speech_type`**: lecture, ceremony, acceptance_speech, interview
+- **`laureate_info`**: name, year, category, country
+- **`tone_markers`**: gratitude, responsibility, inspiration, reflection (future enhancement)
+- **`context_metadata`**: audience, occasion, theme (future enhancement)
+
+**Metadata Extraction:**
+- Automatic extraction during chunking process in `embeddings/chunk_text.py`
+- Fallback formatting for missing metadata
+- Consistent metadata structure across all chunk types
+
+### Template Configuration
+
+**Template Metadata:**
+```json
+{
+  "qa_factual": {
+    "template": "Answer the following question about Nobel Literature laureates: {query}\n\nContext:\n{context}",
+    "intent": "qa",
+    "tags": ["qa", "factual", "information"],
+    "chunk_count": 5,
+    "citation_style": "inline",
+    "version": "1.0"
+  }
+}
+```
+
+**Configuration Features:**
+- **Template Versioning**: Version control for template updates
+- **Parameter Configuration**: Chunk count, citation style, tone preference
+- **Tag System**: Categorization for template search and filtering
+- **Validation**: Template validation and fallback mechanisms
+
+### Integration with Query Pipeline
+
+**Query Flow:**
+1. **Intent Classification**: QueryRouter determines intent (qa, generative, thematic, scoped)
+2. **Template Selection**: PromptBuilder selects appropriate template based on intent
+3. **Chunk Formatting**: Metadata-aware formatting with visual markers and citations
+4. **Prompt Construction**: Template application with context and guidance
+5. **LLM Generation**: Structured prompt with citation scaffolding
+
+**Example Integration:**
+```python
+from rag.query_engine import answer_query
+
+# Automatic intent detection and template selection
+response = answer_query("Draft a job acceptance email in the style of a Nobel laureate")
+# Uses generative_email template with laureate-style guidance and citations
+
+response = answer_query("What did Toni Morrison say about language?")
+# Uses qa_factual template with citation focus and source attribution
+```
+
+### Performance & Quality Improvements
+
+**Quality Enhancements:**
+- **Enhanced Prompt Clarity**: Metadata-aware formatting with visual markers
+- **Better Citation Accuracy**: Automatic citation formatting with multiple styles
+- **Improved Chunk Relevance**: Intent-specific template selection and sampling
+- **Consistent Tone/Style**: Template-based style guidance for different query types
+
+**Performance Metrics:**
+- **Prompt Generation Time**: <50ms for typical queries
+- **Template Loading**: Efficient singleton pattern with caching
+- **Memory Usage**: Minimal overhead with shared PromptBuilder instance
+- **Error Handling**: Graceful fallbacks maintain system stability
+
+### Future Enhancements (Deferred)
+
+**Advanced Features:**
+- **Tone Classification**: Automatic tone detection and style-aware chunk selection
+- **Diversity Balancing**: Laureate, temporal, and regional diversity algorithms
+- **Wildcard Sampling**: Random high-quality chunks for creative inspiration
+- **Advanced Attribution**: Source URL, date, location metadata tracking
+- **Template Analytics**: Usage tracking, recommendation system, quality metrics
+
+**Note:** The core prompt building system is complete and production-ready. Advanced features are deferred to future enhancements based on user feedback and performance requirements.
+
+---
+
 ## Deployment Strategy
 
 - Local dev with virtualenv

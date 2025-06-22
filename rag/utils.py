@@ -10,6 +10,7 @@ This ensures that every chunk passed to the LLM includes not just the text, but 
 from typing import List, Dict, Any, Optional
 import logging
 import numpy as np
+from .retrieval_logic import apply_retrieval_fallback, log_retrieval_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,12 @@ def filter_top_chunks(
     """
     Filter chunks by score threshold while ensuring minimum and maximum return counts.
     
-    This function is used consistently across all retrieval paths to ensure
-    uniform chunk filtering behavior. It:
-    1. Sorts chunks by score in descending order
-    2. Applies the score threshold
-    3. Returns at least min_return chunks (if specified)
-    4. Limits to max_return chunks (if specified)
+    This function uses the centralized retrieval logic to ensure consistent behavior
+    across all retrieval paths. It:
+    1. Applies score threshold filtering
+    2. Guarantees minimum return count when possible
+    3. Respects maximum return limits
+    4. Provides comprehensive logging of filtering decisions
     
     The function is used in:
     - answer_query() for all query types
@@ -86,41 +87,15 @@ def filter_top_chunks(
         logger.warning("[RAG][Filter] No chunks provided to filter")
         return []
 
-    # Sort by score descending
-    sorted_chunks = sorted(chunks, key=lambda x: x["score"], reverse=True)
-    
-    # Get initial score distribution
-    scores = [c["score"] for c in sorted_chunks]
-    logger.info(
-        f"[RAG][Filter] Initial {len(scores)} chunks — "
-        f"mean score: {np.mean(scores):.3f}, stddev: {np.std(scores):.3f}, "
-        f"min: {min(scores):.3f}, max: {max(scores):.3f}"
+    # Use centralized retrieval logic for consistent behavior
+    filtered_chunks = apply_retrieval_fallback(
+        chunks=chunks,
+        score_threshold=score_threshold,
+        min_return=min_return or 3,
+        max_return=max_return
     )
-
-    # Apply score threshold
-    filtered_chunks = [c for c in sorted_chunks if c["score"] >= score_threshold]
     
-    # If we don't have enough chunks above threshold, take top min_return by rank
-    if len(filtered_chunks) < min_return:
-        logger.warning(
-            f"[RAG][Filter] Only {len(filtered_chunks)} chunks above threshold {score_threshold}, "
-            f"taking top {min_return} by rank"
-        )
-        filtered_chunks = sorted_chunks[:min_return]
+    # Log final metrics for monitoring
+    log_retrieval_metrics(filtered_chunks, context="filter_top_chunks")
     
-    # Apply max_return if specified
-    if max_return is not None and len(filtered_chunks) > max_return:
-        logger.info(
-            f"[RAG][Filter] Capping at {max_return} chunks (had {len(filtered_chunks)})"
-        )
-        filtered_chunks = filtered_chunks[:max_return]
-
-    # Log final score distribution
-    final_scores = [c["score"] for c in filtered_chunks]
-    logger.info(
-        f"[RAG][Filter] Final {len(final_scores)} chunks — "
-        f"mean score: {np.mean(final_scores):.3f}, stddev: {np.std(final_scores):.3f}, "
-        f"min: {min(final_scores):.3f}, max: {max(final_scores):.3f}"
-    )
-
     return filtered_chunks 

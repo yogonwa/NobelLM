@@ -1,0 +1,93 @@
+{
+  "qa_factual": {
+    "template": "Answer the following question about Nobel Literature laureates: {query}\n\nContext:\n{context}",
+    "intent": "qa",
+    "tags": ["qa", "factual", "information"],
+    "chunk_count": 5,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "qa_analytical": {
+    "template": "Analyze the following question about Nobel Literature laureates: {query}\n\nContext:\n{context}\n\nPlease provide a detailed analysis with specific citations and multiple perspectives.",
+    "intent": "qa",
+    "tags": ["qa", "analytical", "analysis"],
+    "chunk_count": 8,
+    "citation_style": "footnote",
+    "version": "1.0"
+  },
+  "qa_comparative": {
+    "template": "Compare and contrast the perspectives on '{query}' from the following Nobel laureates:\n{context}\n\nProvide a structured comparison with specific examples from each laureate.",
+    "intent": "qa",
+    "tags": ["qa", "comparative", "comparison"],
+    "chunk_count": 10,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "generative_email": {
+    "template": "You are a Nobel laureate responding to a professional opportunity. {query}\n\nUse the following excerpts as inspiration for your response:\n{context}\n\nWrite in the style of a Nobel laureate with appropriate humility, gratitude, and sense of responsibility. Structure your response as a formal email.",
+    "intent": "generative",
+    "tags": ["generative", "email", "acceptance", "laureate-style"],
+    "chunk_count": 10,
+    "citation_style": "inline",
+    "tone_preference": "humble",
+    "version": "1.0"
+  },
+  "generative_speech": {
+    "template": "You are a Nobel laureate giving an inspirational speech. {query}\n\nUse the following excerpts as inspiration for your speech:\n{context}\n\nWrite in the style of a Nobel laureate with eloquence, wisdom, and inspiration. Structure your response as a formal speech.",
+    "intent": "generative",
+    "tags": ["generative", "speech", "inspirational", "laureate-style"],
+    "chunk_count": 12,
+    "citation_style": "inline",
+    "tone_preference": "inspirational",
+    "version": "1.0"
+  },
+  "generative_reflection": {
+    "template": "You are a Nobel laureate writing a personal reflection. {query}\n\nUse the following excerpts as inspiration for your reflection:\n{context}\n\nWrite in the style of a Nobel laureate with introspection, wisdom, and personal insight. Structure your response as a thoughtful reflection.",
+    "intent": "generative",
+    "tags": ["generative", "reflection", "personal", "laureate-style"],
+    "chunk_count": 8,
+    "citation_style": "inline",
+    "tone_preference": "reflective",
+    "version": "1.0"
+  },
+  "thematic_exploration": {
+    "template": "Explore the theme of '{query}' using the following Nobel laureate perspectives:\n{context}\n\nProvide a comprehensive analysis with diverse viewpoints, historical context, and contemporary relevance.",
+    "intent": "thematic",
+    "tags": ["thematic", "exploration", "analysis"],
+    "chunk_count": 12,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "thematic_cross_cultural": {
+    "template": "Compare perspectives on '{query}' across different cultures and regions represented by these Nobel laureates:\n{context}\n\nAnalyze cultural differences, common themes, and universal human experiences.",
+    "intent": "thematic",
+    "tags": ["thematic", "cross-cultural", "comparison"],
+    "chunk_count": 15,
+    "citation_style": "footnote",
+    "version": "1.0"
+  },
+  "thematic_temporal": {
+    "template": "Analyze how the theme of '{query}' has evolved over time using these Nobel laureate perspectives:\n{context}\n\nTrace the historical development, changing perspectives, and contemporary relevance of this theme.",
+    "intent": "thematic",
+    "tags": ["thematic", "temporal", "evolution"],
+    "chunk_count": 12,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "scoped_laureate": {
+    "template": "Answer the following question specifically about {laureate}: {query}\n\nContext from {laureate}'s works:\n{context}\n\nFocus your response on {laureate}'s unique perspective and contributions.",
+    "intent": "scoped",
+    "tags": ["scoped", "laureate-specific", "focused"],
+    "chunk_count": 6,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "scoped_work": {
+    "template": "Analyze the specific work or speech by {laureate}: {query}\n\nContext from the work:\n{context}\n\nProvide detailed analysis of the specific text, its themes, and its significance.",
+    "intent": "scoped",
+    "tags": ["scoped", "work-specific", "detailed"],
+    "chunk_count": 8,
+    "citation_style": "footnote",
+    "version": "1.0"
+  }
+} 

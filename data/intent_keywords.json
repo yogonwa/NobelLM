@@ -1,0 +1,84 @@
+{
+  "intents": {
+    "factual": {
+      "keywords": {
+        "what": 0.3,
+        "when": 0.4,
+        "who": 0.4,
+        "where": 0.3,
+        "how many": 0.5,
+        "quote": 0.9,
+        "summarize": 0.7,
+        "give me the speech": 0.8
+      },
+      "phrases": {
+        "who won": 0.8,
+        "when did": 0.6,
+        "what year": 0.7
+      }
+    },
+    "thematic": {
+      "keywords": {
+        "theme": 0.6,
+        "themes": 0.6,
+        "pattern": 0.7,
+        "patterns": 0.7,
+        "compare": 0.7,
+        "comparison": 0.7,
+        "similarities": 0.8,
+        "differences": 0.8,
+        "evolution": 0.9,
+        "trend": 0.6,
+        "common": 0.5,
+        "typical": 0.6,
+        "recurring": 0.8,
+        "across": 0.5,
+        "motif": 0.8,
+        "motifs": 0.8,
+        "topics": 0.6,
+        "changed": 0.5,
+        "time": 0.3,
+        "justice": 0.6,
+        "laureates": 0.4
+      },
+      "phrases": {
+        "what are": 0.5,
+        "what do": 0.5,
+        "how does": 0.6,
+        "how do": 0.6,
+        "how have": 0.6,
+        "describe the": 0.7,
+        "say about": 0.6,
+        "talk about": 0.6
+      }
+    },
+    "generative": {
+      "keywords": {
+        "write": 0.8,
+        "compose": 0.9,
+        "mimic": 0.8,
+        "generate": 0.7,
+        "paraphrase": 0.6,
+        "rewrite": 0.6,
+        "draft": 0.8,
+        "emulate": 0.8
+      },
+      "phrases": {
+        "in the style of": 0.95,
+        "like a laureate": 0.9,
+        "like a nobel winner": 0.9,
+        "as if you were": 0.8,
+        "as a nobel laureate": 0.9,
+        "write me": 0.8
+      }
+    }
+  },
+  "settings": {
+    "min_confidence": 0.3,
+    "ambiguity_threshold": 0.2,
+    "fallback_intent": "factual",
+    "max_laureate_matches": 3,
+    "use_lemmatization": true,
+    "lemmatization_fallback": true
+  }
+} 

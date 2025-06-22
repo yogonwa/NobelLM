@@ -24,7 +24,7 @@ import argparse
 import logging
 from rag.retriever import query_index
 from typing import Dict, Any, List, Optional
-from sentence_transformers import SentenceTransformer
+from rag.cache import get_model
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
 from rag.utils import filter_top_chunks
 
@@ -64,8 +64,8 @@ def main(
     if not config:
         raise ValueError(f"No config found for model_id: {model_id}")
 
-    # Load model and check dimensions
-    model = SentenceTransformer(config["model_name"])
+    # Load model and check dimensions using centralized cache
+    model = get_model(model_id)
     model_dim = model.get_sentence_embedding_dimension()
     logger.info(f"[Worker] Loaded model {model_id} with dimension {model_dim}")
 
