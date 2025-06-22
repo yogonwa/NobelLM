@@ -410,6 +410,8 @@ NobelLM/
 | HTTPS and custom domain | ⬜️ | Production ready |
 | Performance monitoring | ⬜️ | Response times acceptable |
 
+- **Backend must be run from the NobelLM project root.** This ensures top-level packages like `rag` are importable. If you see `ModuleNotFoundError: No module named 'rag'`, check your working directory.
+
 ---
 
 ## 🚀 Future Enhancements (Post-Migration)

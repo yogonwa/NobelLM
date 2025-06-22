@@ -676,3 +676,28 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ✍️ Author
 Built by Joe Gonwa as a structured learning project in GenAI and RAG systems.
 Feedback, PRs, and suggestions are always welcome!
+
+## Running the Backend (FastAPI)
+
+To run the backend, always start from the NobelLM project root directory. This ensures that the `rag` module and other top-level packages are importable by Python.
+
+**Example (development):**
+
+```bash
+cd /path/to/NobelLM
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+**If you run from within the `backend/` directory, you will get an error like:**
+
+```
+ModuleNotFoundError: No module named 'rag'
+```
+
+**Troubleshooting:**
+- Always run commands from the NobelLM root.
+- Alternatively, set the `PYTHONPATH` to the project root:
+  ```bash
+  PYTHONPATH=$(pwd) uvicorn backend.app.main:app --reload --port 8000
+  ```
+- This is required for all scripts that import from top-level packages like `rag`, `embeddings`, etc.

@@ -24,6 +24,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+try:
+    import rag  # noqa: F401
+except ModuleNotFoundError:
+    import sys
+    print("\n[ERROR] Could not import 'rag'. Please run the backend from the NobelLM project root or set PYTHONPATH to the project root.\n", file=sys.stderr)
+    sys.exit(1)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
