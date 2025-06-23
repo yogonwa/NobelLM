@@ -1,42 +1,54 @@
-# Nobel Laureate Speech Explorer – Frontend
+# React + TypeScript + Vite
 
-This directory contains the Streamlit web UI for querying and exploring Nobel Prize laureate speeches and metadata.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## How to Launch
+Currently, two official plugins are available:
 
-From the project root, run:
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-```bash
-streamlit run frontend/app.py
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
 
-- The app will open in your browser at http://localhost:8501
-- No manual path adjustments are needed; all scripts are runnable from the project root.
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-## UI Features
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-- **Query Input:**
-  - Enter your question in the input box and press Enter or click the search button.
-  - Example: "What do laureates say about justice?"
-- **Example Prompts:**
-  - When no results are shown, you can click a prebuilt template button to auto-fill and run a sample query.
-- **Results Display:**
-  - The answer is shown at the top.
-  - Below, each source card displays:
-    - Year and laureate name
-    - Source type (Lecture, Ceremony, Speech) as a chip
-    - A snippet of the retrieved text
-- **Try Again:**
-  - Click "Try Again" to clear results and ask a new question.
-- **Navigation:**
-  - Top-right links for Home and About pages
-  - Sidebar is collapsed by default for a minimalist look
-
-## Notes
-- The UI is minimalist and focused on search and exploration.
-- All state is managed via Streamlit's session state for a smooth user experience.
-- For more details on the backend and data pipeline, see the project root README and the `/rag` and `/scraper` directories.
-
----
-
-_Last updated: June 2025_
+export default tseslint.config({
+  plugins: {
+    // Add the react-x and react-dom plugins
+    'react-x': reactX,
+    'react-dom': reactDom,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended typescript rules
+    ...reactX.configs['recommended-typescript'].rules,
+    ...reactDom.configs.recommended.rules,
+  },
+})
+```

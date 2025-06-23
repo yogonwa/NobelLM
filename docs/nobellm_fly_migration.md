@@ -313,6 +313,54 @@ NobelLM/
         - backend
   ```
 
+### 🚨 NOTE (June 2025): Hybrid Development Approach for Local Dev & Docker Builds
+
+Due to local hardware limitations, all developers should use the following workflow for local development and deployment:
+
+#### Backend (FastAPI) – Local Development
+1. Create and activate a virtual environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r backend/requirements.txt
+   ```
+3. Run the backend server:
+   ```bash
+   uvicorn backend.app.main:app --reload
+   ```
+
+#### Frontend (React/Vite) – Local Development
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+#### Docker Builds & Production Deployment
+- **Do NOT build Docker images locally.**
+- For production or staging, use Fly.io's remote builder:
+  ```bash
+  fly deploy --remote-only
+  ```
+  - This applies to both backend and frontend deployments.
+  - This ensures Docker correctness is validated in production, not on local machines.
+
+#### Why this change?
+- Local Docker builds are slow or unreliable on older hardware.
+- This hybrid approach keeps local development fast and easy.
+- Production builds remain reproducible and validated via Fly.io.
+- Future CI/CD (e.g., GitHub Actions) will follow this pattern.
+
 ### **Phase 4: Frontend Setup (React + TypeScript)** ⬜️
 
 - [ ] **Initialize Vite + React project**
