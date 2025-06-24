@@ -1,0 +1,26 @@
+# Fly.io configuration for NobelLM Backend API
+app = "nobellm-api"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  OPENAI_API_KEY = ""
+  TOKENIZERS_PARALLELISM = "false"
+  ENVIRONMENT = "production"
+
+[[mounts]]
+  source = "faiss_data"
+  destination = "/app/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 2048 

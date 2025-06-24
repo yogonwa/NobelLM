@@ -12,6 +12,7 @@ import re
 from typing import Callable, Dict, List, Optional, Pattern, Tuple, Any
 from dataclasses import dataclass
 from collections import Counter
+from utils.country_utils import country_to_flag
 
 # --- Handler Implementations ---
 # Example: "What year did Toni Morrison win?"
@@ -23,11 +24,13 @@ def handle_award_year(match: re.Match, metadata: List[Dict[str, Any]]) -> dict:
             motivation = laureate.get("prize_motivation")
             if motivation:
                 answer += f" The laureate was recognized for: {motivation}"
+            country = laureate.get("country")
             return {
                 "answer": answer,
                 "laureate": laureate["full_name"],
                 "year_awarded": laureate["year_awarded"],
-                "country": laureate.get("country"),
+                "country": country,
+                "country_flag": country_to_flag(country) if country else None,
                 "category": laureate.get("category"),
                 "prize_motivation": laureate.get("prize_motivation"),
             }
@@ -51,11 +54,13 @@ def handle_winner_in_year(match: re.Match, metadata: List[Dict[str, Any]]) -> di
             motivation = laureate.get("prize_motivation")
             if motivation:
                 answer += f" The laureate was recognized for: {motivation}"
+            country = laureate.get("country")
             return {
                 "answer": answer,
                 "laureate": laureate["full_name"],
                 "year_awarded": laureate["year_awarded"],
-                "country": laureate.get("country"),
+                "country": country,
+                "country_flag": country_to_flag(country) if country else None,
                 "category": laureate.get("category"),
                 "prize_motivation": laureate.get("prize_motivation"),
             }
@@ -70,7 +75,7 @@ def handle_most_awarded_country(_: re.Match, metadata: List[Dict[str, Any]]) -> 
     most_common = counter.most_common(1)
     if most_common:
         country, count = most_common[0]
-        return {"answer": f"{country} has the most Nobel Prize in Literature winners with {count}.", "country": country, "count": count}
+        return {"answer": f"{country} has the most Nobel Prize in Literature winners with {count}.", "country": country, "country_flag": country_to_flag(country) if country else None, "count": count}
     return {"answer": "Could not determine the most awarded country."}
 
 # Example: "What country is Kazuo Ishiguro from?"
@@ -87,7 +92,8 @@ def handle_country_of_laureate(match: re.Match, metadata: List[Dict[str, Any]]) 
                 "answer": answer,
                 "laureate": laureate["full_name"],
                 "year_awarded": laureate["year_awarded"],
-                "country": laureate.get("country"),
+                "country": country,
+                "country_flag": country_to_flag(country) if country else None,
                 "category": laureate.get("category"),
                 "prize_motivation": laureate.get("prize_motivation"),
             }
@@ -112,11 +118,13 @@ def handle_first_last_gender_laureate(match: re.Match, metadata: List[Dict[str, 
     motivation = laureate.get("prize_motivation")
     if motivation:
         answer += f" The laureate was recognized for: {motivation}"
+    country = laureate.get("country")
     return {
         "answer": answer,
         "laureate": laureate["full_name"],
         "year_awarded": laureate["year_awarded"],
-        "country": laureate.get("country"),
+        "country": country,
+        "country_flag": country_to_flag(country) if country else None,
         "category": laureate.get("category"),
         "prize_motivation": laureate.get("prize_motivation"),
         "gender": gender,
@@ -127,7 +135,7 @@ def handle_first_last_gender_laureate(match: re.Match, metadata: List[Dict[str, 
 def handle_count_laureates_from_country(match: re.Match, metadata: List[Dict[str, Any]]) -> dict:
     country = match.group(1).strip().lower()
     count = sum(1 for l in metadata if l.get("country", "").lower() == country)
-    return {"answer": f"{count} laureates are from {country.title()}.", "country": country.title(), "count": count}
+    return {"answer": f"{count} laureates are from {country.title()}.", "country": country.title(), "country_flag": country_to_flag(country.title()), "count": count}
 
 # Example: "What was the prize motivation for Toni Morrison?"
 def handle_prize_motivation(match: re.Match, metadata: List[Dict[str, Any]]) -> dict:
@@ -135,11 +143,13 @@ def handle_prize_motivation(match: re.Match, metadata: List[Dict[str, Any]]) -> 
     for laureate in metadata:
         if name in laureate.get("full_name", "").lower():
             motivation = laureate.get("prize_motivation", "No motivation found.")
+            country = laureate.get("country")
             return {
                 "answer": f"The prize motivation for {laureate['full_name']} was: {motivation}",
                 "laureate": laureate["full_name"],
                 "year_awarded": laureate["year_awarded"],
-                "country": laureate.get("country"),
+                "country": country,
+                "country_flag": country_to_flag(country) if country else None,
                 "category": laureate.get("category"),
                 "prize_motivation": motivation,
             }
@@ -205,6 +215,7 @@ def handle_first_last_country_laureate(match: re.Match, metadata: List[Dict[str,
         "laureate": laureate["full_name"],
         "year_awarded": laureate["year_awarded"],
         "country": laureate.get("country"),
+        "country_flag": country_to_flag(laureate.get("country")) if laureate.get("country") else None,
         "category": laureate.get("category"),
         "prize_motivation": laureate.get("prize_motivation"),
         "order": order

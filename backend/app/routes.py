@@ -36,6 +36,8 @@ class QueryResponse(BaseModel):
     model_id: str = Field(..., description="Model ID used")
     query: str = Field(..., description="Original query")
     metadata: Dict[str, Any] = Field(..., description="Additional metadata")
+    answer_type: Optional[str] = Field(None, description="Type of answer: 'rag' or 'metadata'")
+    metadata_answer: Optional[Dict[str, Any]] = Field(None, description="Structured metadata answer, if available")
 
 
 class HealthResponse(BaseModel):
@@ -112,14 +114,17 @@ async def process_query(
         
         # Extract sources from result
         sources = []
-        if hasattr(result, 'sources') and result.sources:
+        if isinstance(result, dict):
+            sources = result.get("sources", [])
+        elif hasattr(result, 'sources') and result.sources:
             sources = result.sources
         elif hasattr(result, 'chunks') and result.chunks:
             sources = result.chunks
         
         # Extract answer from result
-        answer = ""
-        if hasattr(result, 'answer') and result.answer:
+        if isinstance(result, dict):
+            answer = result.get("answer", "")
+        elif hasattr(result, 'answer') and result.answer:
             answer = result.answer
         elif hasattr(result, 'response') and result.response:
             answer = result.response
@@ -139,7 +144,9 @@ async def process_query(
                 "top_k": request.top_k or settings.default_top_k,
                 "score_threshold": request.score_threshold or settings.default_score_threshold,
                 "filters_applied": bool(request.filters)
-            }
+            },
+            answer_type=result.get("answer_type"),
+            metadata_answer=result.get("metadata_answer")
         )
         
     except ValueError as e:

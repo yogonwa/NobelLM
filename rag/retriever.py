@@ -34,6 +34,7 @@ from .validation import (
     safe_faiss_scoring
 )
 from sentence_transformers import SentenceTransformer
+from utils.country_utils import country_to_flag
 
 # Get module logger
 logger = get_module_logger(__name__)
@@ -158,6 +159,8 @@ def query_index(
             result = metadata[idx].copy()
             result["score"] = float(score)
             result["rank"] = rank
+            # Add country_flag
+            result["country_flag"] = country_to_flag(result.get("country"))
             results.append(result)
         
         # Apply centralized filtering logic
@@ -188,6 +191,8 @@ def query_index(
             result = filtered_metadata[i].copy()
             result["score"] = float(scores[i])
             result["rank"] = rank
+            # Add country_flag
+            result["country_flag"] = country_to_flag(result.get("country"))
             results.append(result)
         
         # Apply centralized filtering logic

@@ -507,6 +507,62 @@ Due to local hardware limitations, all developers should use the following workf
 
 ---
 
+## 🛠️ Staff Engineer Frontend Production-Readiness Checklist (June 2025)
+
+### 1. Project Structure & Conventions
+- [ ] Move static assets (logo, images) to `public/` for CDN caching and smaller bundles
+- [ ] Ensure all test files are in a `__tests__` or `test/` directory
+- [ ] Remove legacy/unused folders (e.g., `frontend_streamlit_legacy/`) from production build context
+
+### 2. Dockerfile & Build Process
+- [ ] Update Dockerfile to use `COPY . .` in the builder stage for robustness
+- [ ] Ensure Docker build context is set to `frontend/` (not project root)
+- [ ] Add a `.dockerignore` file to exclude `node_modules`, `*.log`, `.DS_Store`, etc.
+- [ ] Confirm `index.html` and all assets are included in the build context
+
+### 3. Dependencies & Package Management
+- [ ] Run `npm ls` and `npm audit` to check for dependency issues and vulnerabilities
+- [ ] Remove unused dependencies; ensure all listed are used in codebase
+- [ ] Run `npm prune` and `npm dedupe` to clean up `node_modules`
+- [ ] Use Renovate or Dependabot for automated dependency updates
+
+### 4. Linting, Formatting, and Type Safety
+- [ ] Run `npx eslint .` and fix all lint errors
+- [ ] Run `npx prettier --check .` and fix formatting issues
+- [ ] Run `npx tsc --noEmit` and fix all type errors
+- [ ] Use `strict` mode in `tsconfig.json` for maximum type safety
+- [ ] Add pre-commit hooks (e.g., with `lint-staged`) to enforce linting/formatting
+- [ ] Add CI step to run `tsc`, `eslint`, and `prettier` on every PR
+
+### 5. Syntax, Import, and Asset Hygiene
+- [ ] Remove unused imports and check for circular dependencies
+- [ ] Ensure all assets referenced in code exist in the repo
+- [ ] Remove all TODOs and placeholder code before production
+- [ ] Run `npm run build` locally before deploying
+
+### 6. Deployment & CI/CD
+- [ ] Add a health check endpoint in `nginx.conf` (already present)
+- [ ] Document build and deploy process in `frontend/README.md`
+- [ ] Set up GitHub Actions workflow to run tests, lint, and build on every PR
+
+### 7. Summary of Actionable Steps
+- [ ] Update Dockerfile and build context
+- [ ] Clean up dependencies
+- [ ] Run and fix all lint, type, and formatting errors
+- [ ] Add `.dockerignore`
+- [ ] Add pre-commit and CI checks
+- [ ] Document build/deploy process
+- [ ] Remove legacy/unused code/assets
+
+---
+
+**Next Steps:**
+- Execute this checklist before the next production deployment.
+- Run a full local build (`npm run build`) and Docker build (`docker build .`) from within `frontend/`.
+- Only then, re-attempt the Fly.io deployment.
+
+---
+
 ## 📚 References
 
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
@@ -517,3 +573,14 @@ Due to local hardware limitations, all developers should use the following workf
 ---
 
 *This migration plan follows the project's cursor rules and maintains the existing RAG pipeline while modernizing the deployment architecture.*
+
+---
+
+## 📝 TODO: Intent Classifier Improvement (Post-Migration)
+
+- **Revisit intent classifier logic/config** so that broad thematic queries (e.g., "what do laureates think about writing?", "what do laureates say about war?") are classified as `thematic` (not `generative`).
+- Goal: These queries should return source cards with relevant excerpts, not just LLM summaries.
+- Action: Update `data/intent_keywords.json` and/or classifier code to:
+  - Lower generative score for broad theme queries
+  - Add patterns for "laureates + theme" to prefer `thematic` intent
+  - Test with queries like "what do laureates think about X?"

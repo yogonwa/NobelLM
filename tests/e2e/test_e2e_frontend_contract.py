@@ -145,6 +145,17 @@ def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
     assert "answer_type" in response
     assert response["answer_type"] in ["rag", "metadata"]
     
+    # For factual/metadata queries, check metadata_answer fields
+    if response["answer_type"] == "metadata":
+        assert response["metadata_answer"] is not None
+        assert response["metadata_answer"]["laureate"]
+        assert response["metadata_answer"]["year_awarded"]
+        assert response["metadata_answer"]["country"]
+        assert response["metadata_answer"]["country_flag"]
+        assert response["metadata_answer"]["category"]
+        assert response["metadata_answer"]["prize_motivation"]
+        assert response["sources"] == []
+    
     # Source count validation
     if expected_k:
         assert len(response["sources"]) <= expected_k

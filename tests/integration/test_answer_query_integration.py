@@ -223,7 +223,15 @@ def test_answer_query_metadata():
         mock_route_result.answer_type = "metadata"
         mock_route_result.intent = "metadata"
         mock_route_result.answer = "Toni Morrison won the Nobel Prize in Literature in 1993."
-        mock_route_result.metadata_answer = "Toni Morrison won the Nobel Prize in Literature in 1993."
+        mock_route_result.metadata_answer = {
+            "answer": "Toni Morrison won the Nobel Prize in Literature in 1993.",
+            "laureate": "Toni Morrison",
+            "year_awarded": 1993,
+            "country": "United States",
+            "country_flag": "🇺🇸",
+            "category": "Literature",
+            "prize_motivation": "for her novels characterized by visionary force and poetic import, gives life to an essential aspect of American reality."
+        }
         mock_router.route_query.return_value = mock_route_result
         mock_get_router.return_value = mock_router
         
@@ -233,7 +241,12 @@ def test_answer_query_metadata():
         # Verify metadata result structure
         assert result["answer_type"] == "metadata"
         assert "Toni Morrison" in result["answer"]
-        assert result["metadata_answer"] == "Toni Morrison won the Nobel Prize in Literature in 1993."
+        assert result["metadata_answer"]["laureate"] == "Toni Morrison"
+        assert result["metadata_answer"]["year_awarded"] == 1993
+        assert result["metadata_answer"]["country"] == "United States"
+        assert result["metadata_answer"]["country_flag"] == "🇺🇸"
+        assert result["metadata_answer"]["category"] == "Literature"
+        assert "poetic import" in result["metadata_answer"]["prize_motivation"]
         assert result["sources"] == []
 
 

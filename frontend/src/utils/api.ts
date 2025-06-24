@@ -1,5 +1,15 @@
 import type { QueryResponse } from '../types';
 
+// API base URL configuration
+const getApiBaseUrl = (): string => {
+  // In production, use the deployed API URL
+  if (import.meta.env.PROD) {
+    return 'https://nobellm-api.fly.dev';
+  }
+  // In development, use the proxy configured in vite.config.ts
+  return '';
+};
+
 // Interface for backend response source
 interface BackendSource {
   year_awarded: string;
@@ -40,12 +50,13 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
 
   // Create a timeout promise
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
+    setTimeout(() => reject(new Error('Request timeout')), 45000); // 45 second timeout
   });
 
   try {
+    const apiUrl = `${getApiBaseUrl()}/api/query`;
     const response = await Promise.race([
-      fetch('/api/query', {
+      fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,17 +92,14 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
     // Transform the backend response to match our frontend interface
     return {
       answer: data.answer || '',
-      sources: data.sources?.map((source: BackendSource, index: number) => ({
-        id: `source-${index}`,
-        year: parseInt(source.year_awarded) || 0,
-        laureate: source.laureate || '',
-        excerpt: source.text_snippet || '',
-        content: source.text_snippet || '',
-        category: source.source_type === 'nobel_lecture' ? 'Nobel Lecture' : 
-                 source.source_type === 'ceremony_speech' ? 'Ceremony Award' : 
-                 source.source_type === 'acceptance_speech' ? 'Acceptance Speech' : 'Metadata'
+      sources: data.sources?.map((source: any, index: number) => ({
+        ...source,
+        id: source.chunk_id || `source-${index}`,
+        year: source.year_awarded || source.year,
       })) || [],
-      error: data.error || undefined
+      error: data.error || undefined,
+      answer_type: data.answer_type,
+      metadata_answer: data.metadata_answer
     };
   } catch (error) {
     console.error('API Error:', error);

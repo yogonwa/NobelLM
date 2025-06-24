@@ -64,6 +64,13 @@ The test suite follows the core pipeline flow:
 10. Frontend E2E
 11. Cross-Cutting Tests
 
+**API Contract for Factual/Metadata Answers (2024):**
+- For factual/metadata queries (e.g., "Who won in 1985?"), the backend and all tests now require:
+  - `answer_type: "metadata"`
+  - `metadata_answer` (object) with the following fields:
+    - `laureate`, `year_awarded`, `country`, `country_flag`, `category`, `prize_motivation`
+- This contract is enforced in all unit, integration, and E2E tests. The frontend expects these fields to render the factual answer card.
+
 **Phase 2 Intent Classifier Tests:**
 - `test_intent_classifier.py`: Comprehensive coverage of new structured intent classification
 - Tests for hybrid confidence scoring, config-driven weights, multiple laureate detection
@@ -193,7 +200,7 @@ Component interaction testing with realistic data flow.
 - Retriever selection and execution
 - LLM integration and response handling
 - Error handling and logging validation
-- Metadata answer path testing
+- **Metadata answer path testing: asserts `answer_type: "metadata"` and all required fields in `metadata_answer`**
 - RAG answer path testing
 
 #### `test_faiss_query_worker.py`
@@ -207,7 +214,7 @@ Component interaction testing with realistic data flow.
 - Prompt building to answer compilation integration
 - Query router to retriever integration
 - Thematic retriever usage
-- Metadata answer handling
+- **Metadata answer handling: asserts all required fields in `metadata_answer`**
 - Error handling and empty result scenarios
 
 #### `test_query_router_to_retriever_integration.py`
@@ -217,6 +224,7 @@ Component interaction testing with realistic data flow.
 - Dual process retrieval toggle testing
 - Consistency validation
 - Min/max return parameter propagation
+- **Factual/metadata answer contract: asserts all required fields in `metadata_answer`**
 
 #### `test_retriever_to_query_index.py`
 - Integration: `retrieve_chunks` → `query_index`
@@ -232,7 +240,7 @@ Full workflow validation with minimal mocking.
 
 #### `test_e2e_frontend_contract.py`
 - Full user query → answer flow validation:
-  - Factual queries
+  - Factual queries: **asserts `answer_type: "metadata"` and all required fields in `metadata_answer`**
   - Thematic queries
   - Generative queries
   - No-results handling
@@ -430,6 +438,10 @@ class TestComponentSanity:
 - Integration tests: `test_component_to_component_integration`
 - E2E tests: `test_full_workflow_scenario`
 - Validation tests: `test_component_sanity` or `test_validation_function`
+
+### API Contract Enforcement
+- For factual/metadata queries, always assert `answer_type: "metadata"` and that `metadata_answer` includes all required fields (`laureate`, `year_awarded`, `country`, `country_flag`, `category`, `prize_motivation`).
+- For RAG/generative/thematic queries, assert `answer_type: "rag"` and `metadata_answer` is `None` or omitted.
 
 ## Future Improvements
 

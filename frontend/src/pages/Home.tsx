@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import QueryInput from '../components/QueryInput';
 import ResponseDisplay from '../components/ResponseDisplay';
 import SourceCitation from '../components/SourceCitation';

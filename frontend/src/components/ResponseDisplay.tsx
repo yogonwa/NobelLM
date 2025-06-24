@@ -1,7 +1,8 @@
 import React from 'react';
-import { Loader2, Search, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Loader2, Search, AlertTriangle } from 'lucide-react';
 import type { QueryResponse } from '../types';
 import nobelLogo from '../assets/nobel_logo.png';
+import FactualAnswerCard from './FactualAnswerCard';
 
 interface ResponseDisplayProps {
   response: QueryResponse | null;
@@ -58,6 +59,12 @@ const ResponseDisplay: React.FC<ResponseDisplayProps> = ({
     );
   }
 
+  // Render FactualAnswerCard for factual/metadata answers
+  if (response.answer_type === 'metadata' && response.metadata_answer) {
+    return <FactualAnswerCard metadata={response.metadata_answer} />;
+  }
+
+  // Default: RAG/other answer types
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8 transition-all duration-300 ease-in-out hover-lift animate-fade-in">
       <div className="flex items-center gap-3 mb-4">

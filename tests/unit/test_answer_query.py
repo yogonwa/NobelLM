@@ -57,7 +57,11 @@ def test_answer_query_factual(caplog):
             mock_router.return_value.metadata_answer = {
                 "answer": "Toni Morrison won in 1993.",
                 "laureate": "Toni Morrison",
-                "year_awarded": 1993
+                "year_awarded": 1993,
+                "country": "United States",
+                "country_flag": "🇺🇸",
+                "category": "Literature",
+                "prize_motivation": "for her novels characterized by visionary force and poetic import, gives life to an essential aspect of American reality."
             }
             mock_router.return_value.intent = QueryIntent.FACTUAL  # Use enum instead of string
             mock_router.return_value.logs = {
@@ -74,6 +78,10 @@ def test_answer_query_factual(caplog):
             assert "1993" in result["answer"]
             assert result["metadata_answer"]["laureate"] == "Toni Morrison"
             assert result["metadata_answer"]["year_awarded"] == 1993
+            assert result["metadata_answer"]["country"] == "United States"
+            assert result["metadata_answer"]["country_flag"] == "🇺🇸"
+            assert result["metadata_answer"]["category"] == "Literature"
+            assert "poetic import" in result["metadata_answer"]["prize_motivation"]
             assert result["sources"] == []  # No sources for metadata answers
             
             # Verify log content - metadata answers return early, so no "Query completed successfully"
