@@ -2,8 +2,8 @@
 
 *This document defines the implementation plan to migrate the Nobel Laureate Speech Explorer to a production-grade deployment stack.*
 
-**Last Updated:** January 2025  
-**Status:** Phase 2 Complete ✅  
+**Last Updated:** June 2025  
+**Status:** Phase 4 Complete ✅ (Results display refactor in progress)  
 **Branch:** `fastapi-vite-migration`
 
 ---
@@ -32,12 +32,36 @@
 - [x] Comprehensive error handling and logging
 - [x] Function signature mapping corrected and tested
 
-**Technical Achievements:**
-- Fixed Pydantic v2 compatibility issues
-- Resolved function signature mismatches (answer_query parameters)
-- Avoided Streamlit caching conflicts with direct FAISS/model loading
-- Implemented proper async/await patterns for FastAPI
-- Corrected parameter mapping: top_k → max_return
+**Phase 3: Docker Environment Setup** ✅ (Partially)
+- [x] Backend Dockerfile exists
+- [x] Frontend Dockerfile created (pending production test)
+
+**Phase 4: Frontend Setup (React + TypeScript)** ✅
+- [x] Vite + React project initialized
+- [x] TypeScript configuration set up
+- [x] Tailwind CSS configured
+- [x] ESLint and Prettier configured
+- [x] Testing setup with Vitest
+- [x] React Router for navigation
+- [x] Core components implemented:
+  - [x] App.tsx - Main router component
+  - [x] Home.tsx - Query interface with Nobel branding
+  - [x] About.tsx - Project information page
+- [x] API integration with FastAPI backend
+- [x] UI/UX improvements:
+  - [x] Nobel logo integration (production asset, not prototype)
+  - [x] Favicon and proper page title
+  - [x] Responsive design with mobile support
+  - [x] Dark mode support
+  - [x] Loading states and error handling
+  - [x] Suggestion buttons for example queries
+  - [x] Metadata and RAG result display
+  - [x] Source citations with expandable cards
+  - [x] Prototype frontend archived
+  - [x] Results display refactor in progress (clarity, UX, and branding)
+- [x] README files updated to reflect new architecture and migration status
+
+**Status:** ✅ **COMPLETE** - Modern React frontend is canonical; Streamlit UI is deprecated; results display refactor ongoing
 
 **Testing Results:**
 - ✅ All endpoints respond correctly
@@ -55,8 +79,6 @@
 
 ### 🔄 Remaining Phases
 
-**Phase 3: Docker Environment Setup** ⬜️
-**Phase 4: Frontend Setup (React + TypeScript)** ⬜️
 **Phase 5: Fly.io Deployment** ⬜️
 
 ---
@@ -229,9 +251,9 @@ NobelLM/
 
 **Status:** ✅ **COMPLETE** - FastAPI backend is fully functional with RAG pipeline integration
 
-### **Phase 3: Docker Environment Setup** ⬜️
+### **Phase 3: Docker Environment Setup** ✅ (Partially)
 
-- [ ] **Backend Dockerfile**
+- [x] **Backend Dockerfile**
   ```dockerfile
   FROM python:3.10-slim
   
@@ -361,31 +383,31 @@ Due to local hardware limitations, all developers should use the following workf
 - Production builds remain reproducible and validated via Fly.io.
 - Future CI/CD (e.g., GitHub Actions) will follow this pattern.
 
-### **Phase 4: Frontend Setup (React + TypeScript)** ⬜️
+### **Phase 4: Frontend Setup (React + TypeScript)** ✅
 
-- [ ] **Initialize Vite + React project**
-  - [ ] Set up TypeScript configuration
-  - [ ] Configure Tailwind CSS
-  - [ ] Add ESLint and Prettier
-  - [ ] Set up testing with Vitest
+- [x] **Initialize Vite + React project**
+  - [x] Set up TypeScript configuration
+  - [x] Configure Tailwind CSS
+  - [x] Add ESLint and Prettier
+  - [x] Set up testing with Vitest
 
-- [ ] **Implement core components**
-  - [ ] Create `App.tsx` with routing
-  - [ ] Build `Home.tsx` query interface
-  - [ ] Add `About.tsx` information page
-  - [ ] Implement loading states and error handling
+- [x] **Implement core components**
+  - [x] Create `App.tsx` with routing
+  - [x] Build `Home.tsx` query interface
+  - [x] Add `About.tsx` information page
+  - [x] Implement loading states and error handling
 
-- [ ] **API integration**
-  - [ ] Create API client with axios
-  - [ ] Implement query submission
-  - [ ] Add response parsing and display
-  - [ ] Handle error states gracefully
+- [x] **API integration**
+  - [x] Create API client with axios
+  - [x] Implement query submission
+  - [x] Add response parsing and display
+  - [x] Handle error states gracefully
 
-- [ ] **UI/UX improvements**
-  - [ ] Integrate Nobel logo
-  - [ ] Add favicon
-  - [ ] Implement responsive design
-  - [ ] Add loading spinners and animations
+- [x] **UI/UX improvements**
+  - [x] Integrate Nobel logo
+  - [x] Add favicon
+  - [x] Implement responsive design
+  - [x] Add loading spinners and animations
 
 ### **Phase 5: Fly.io Deployment** ⬜️
 

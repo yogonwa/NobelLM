@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2, Search, AlertTriangle, Lightbulb } from 'lucide-react';
 import type { QueryResponse } from '../types';
+import nobelLogo from '../assets/nobel_logo.png';
 
 interface ResponseDisplayProps {
   response: QueryResponse | null;
@@ -60,8 +61,15 @@ const ResponseDisplay: React.FC<ResponseDisplayProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8 transition-all duration-300 ease-in-out hover-lift animate-fade-in">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-          <Lightbulb className="w-4 h-4 text-amber-600" />
+        <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center group transition-shadow duration-200">
+          <img
+            src={nobelLogo}
+            alt="Nobel Logo"
+            className="w-4 h-4 rounded-full object-cover transition-transform duration-200"
+            style={{ transition: 'filter 0.2s', filter: 'none' }}
+            onMouseOver={e => e.currentTarget.style.filter = 'drop-shadow(0 4px 12px rgba(0,0,0,0.35))'}
+            onMouseOut={e => e.currentTarget.style.filter = 'none'}
+          />
         </div>
         <h2 className="text-xl font-semibold text-gray-800">Answer</h2>
       </div>

@@ -6,6 +6,7 @@ import SourceCitation from '../components/SourceCitation';
 import SuggestedPrompts from '../components/SuggestedPrompts';
 import type { QueryResponse, SuggestedPrompt } from '../types';
 import { fetchQueryResponse } from '../utils/api';
+import nobelLogo from '../assets/nobel_logo.png';
 
 const Home: React.FC = () => {
   const [response, setResponse] = useState<QueryResponse | null>(null);
@@ -63,8 +64,15 @@ const Home: React.FC = () => {
           <div className="flex items-center gap-6">
             {/* Logo and title - fixed width */}
             <div className="flex items-center gap-3 flex-shrink-0 animate-scale-in">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-md hover-lift">
-                <Award className="w-5 h-5 text-white" />
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center group transition-shadow duration-200">
+                <img
+                  src={nobelLogo}
+                  alt="Nobel Logo"
+                  className="w-10 h-10 rounded-full object-cover transition-transform duration-200"
+                  style={{ transition: 'filter 0.2s', filter: 'none' }}
+                  onMouseOver={e => e.currentTarget.style.filter = 'drop-shadow(0 4px 12px rgba(0,0,0,0.35))'}
+                  onMouseOut={e => e.currentTarget.style.filter = 'none'}
+                />
               </div>
               <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap">NobelLM</h1>
             </div>
@@ -127,15 +135,22 @@ const Home: React.FC = () => {
       {/* Hero section positioned at ~40% viewport height */}
       <div className="flex flex-col items-center justify-center min-h-[40vh] mb-8">
         {/* Logo */}
-        <div className="w-32 h-32 mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center shadow-lg animate-scale-in hover-lift">
-          <Award className="w-16 h-16 text-white" />
+        <div className="w-32 h-32 mb-6 flex items-center justify-center bg-gray-50 rounded-full group transition-transform duration-200">
+          <img
+            src={nobelLogo}
+            alt="Nobel Logo"
+            className="w-32 h-32 rounded-full object-cover transition-transform duration-200 hover:-translate-y-1"
+            style={{ transition: 'filter 0.2s', filter: 'none' }}
+            onMouseOver={e => e.currentTarget.style.filter = 'drop-shadow(0 8px 32px rgba(0,0,0,0.35))'}
+            onMouseOut={e => e.currentTarget.style.filter = 'none'}
+          />
         </div>
         <h1 className="text-4xl font-bold text-gray-800 mb-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>NobelLM</h1>
         <p className="text-gray-600 text-center max-w-2xl mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           Ask questions and discover insights from over a century of Nobel Prize lectures and acceptance speeches.
         </p>
         
-        <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        <div className="w-full animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <QueryInput onSubmit={handleSubmit} isLoading={isLoading} />
         </div>
       </div>

@@ -1,5 +1,10 @@
 # Query Engine – NobelLM RAG
 
+**🚨 Migration Notice (June 2025):**
+- NobelLM now uses a React/Vite frontend (see `/frontend`) and FastAPI backend.
+- The Streamlit UI is deprecated.
+- All RAG logic remains in this module, but UI and API integration are now handled by the new frontend/backend stack.
+
 **Status: COMPLETE as of June 2025.**
 
 This module provides a modular, extensible, and testable interface for querying the Nobel Literature corpus using retrieval-augmented generation (RAG).
