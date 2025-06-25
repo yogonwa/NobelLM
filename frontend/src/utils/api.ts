@@ -4,19 +4,11 @@ import type { QueryResponse } from '../types';
 const getApiBaseUrl = (): string => {
   // In production, use the deployed API URL
   if (import.meta.env.PROD) {
-    return 'https://nobellm-api.fly.dev';
+    return 'https://api.nobellm.com';
   }
   // In development, use the proxy configured in vite.config.ts
   return '';
 };
-
-// Interface for backend response source
-interface BackendSource {
-  year_awarded: string;
-  laureate: string;
-  text_snippet: string;
-  source_type: string;
-}
 
 // Mock sources for development/testing
 export const mockSources = [

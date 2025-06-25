@@ -36,7 +36,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # CORS Configuration
-    cors_origins: list = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins: list = [
+        "http://localhost:3000", 
+        "http://localhost:5173",
+        "https://nobellm-web.fly.dev",
+        "https://nobellm-web.fly.dev/",
+        "https://www.nobellm.com",
+        "https://nobellm.com"
+    ]
     
     @validator("openai_api_key")
     def validate_openai_key(cls, v):
