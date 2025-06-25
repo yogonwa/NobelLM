@@ -411,76 +411,52 @@ Due to local hardware limitations, all developers should use the following workf
 
 ### **Phase 5: Fly.io Deployment** ⬜️
 
-- [ ] **Backend deployment**
-  ```toml
-  # fly.toml
-  app = "nobellm-api"
-  
-  [build]
-    dockerfile = "backend/Dockerfile"
-  
-  [env]
-    OPENAI_API_KEY = ""
-    TOKENIZERS_PARALLELISM = "false"
-  
-  [[mounts]]
-    source = "faiss_data"
-    destination = "/app/data"
-  
-  [http_service]
-    internal_port = 8000
-    force_https = true
-    auto_stop_machines = true
-    auto_start_machines = true
-    min_machines_running = 0
-  ```
+- [x] **Backend deployment**
+- [x] **Frontend deployment**
+- [x] **Custom domains added to Fly.io**
+  - www.nobellm.com (frontend)
+  - nobellm.com (frontend, root)
+  - api.nobellm.com (backend)
+- [x] **DNS CNAME records updated at registrar (Cloudflare)**
+  - CNAME www.nobellm.com → nobellm-web.fly.dev
+  - CNAME nobellm.com → nobellm-web.fly.dev (if supported, else ALIAS/ANAME)
+  - CNAME api.nobellm.com → nobellm-api.fly.dev
+- [x] **Frontend and backend configured for custom domains**
+- [x] **CORS and API base URLs updated for custom domains**
+- [ ] **DNS propagation in progress**
+  - www.nobellm.com CNAME is resolving
+  - nobellm.com and api.nobellm.com may take longer or require ALIAS/ANAME
+- [ ] **SSL certificates 'Awaiting configuration' on Fly.io**
+  - Will auto-issue once DNS is fully propagated
+- [ ] **Final end-to-end test via custom domains**
 
-- [ ] **Frontend deployment**
-  ```toml
-  # fly.toml
-  app = "nobellm-web"
-  
-  [build]
-    dockerfile = "frontend/Dockerfile"
-  
-  [http_service]
-    internal_port = 80
-    force_https = true
-    auto_stop_machines = true
-    auto_start_machines = true
-    min_machines_running = 0
-  ```
-
-- [ ] **Deployment commands**
-  ```bash
-  # Set secrets
-  fly secrets set OPENAI_API_KEY=sk-...
-  
-  # Deploy backend
-  fly deploy --remote-only
-  
-  # Deploy frontend
-  fly deploy --remote-only
-  ```
+#### **Caveats & Troubleshooting**
+- Some DNS providers (including Cloudflare) do not allow CNAME at the root domain. Use ALIAS or ANAME if available, or consult provider docs.
+- If using Cloudflare, set proxy to 'DNS only' (gray cloud) for initial setup, or use DNS challenge for SSL if proxying is required.
+- DNS changes may take 5–30 minutes (sometimes longer) to propagate. Use `dig` or `dnschecker.org` to verify.
+- Certificates will show 'Awaiting configuration' on Fly.io until DNS is correct and propagated.
 
 ---
 
-## ✅ Launch Checklist
+## ✅ Launch Checklist (updated)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Dockerfile created and tested | ⬜️ | Backend and frontend |
-| FastAPI endpoint returns results | ⬜️ | `/api/query` functional |
-| Frontend consumes API | ⬜️ | React integration complete |
-| FAISS index bundled correctly | ⬜️ | Data mounted in container |
-| Fly.io secrets configured | ⬜️ | Environment variables set |
-| Tests pass in new environment | ⬜️ | All test suites green |
-| README.md updated | ⬜️ | Documentation current |
-| Logo and favicon render | ⬜️ | UI assets working |
-| HTTPS and custom domain | ⬜️ | Production ready |
-| Performance monitoring | ⬜️ | Response times acceptable |
+| Dockerfile created and tested | ✅ | Backend and frontend |
+| FastAPI endpoint returns results | ✅ | `/api/query` functional |
+| Frontend consumes API | ✅ | React integration complete |
+| FAISS index bundled correctly | ✅ | Data mounted in container |
+| Fly.io secrets configured | ✅ | Environment variables set |
+| Tests pass in new environment | ✅ | All test suites green |
+| README.md updated | ✅ | Documentation current |
+| Logo and favicon render | ✅ | UI assets working |
+| HTTPS and custom domain | ⏳ | DNS propagation/cert pending |
+| Performance monitoring | ⏳ | To be verified after DNS/SSL |
 
-- **Backend must be run from the NobelLM project root.** This ensures top-level packages like `rag` are importable. If you see `ModuleNotFoundError: No module named 'rag'`, check your working directory.
+**Next steps:**
+- Monitor DNS propagation and certificate status
+- Verify SSL and full stack via https://www.nobellm.com, https://nobellm.com, https://api.nobellm.com
+- Run end-to-end test and mark launch checklist complete
 
 ---
 
@@ -584,3 +560,253 @@ Due to local hardware limitations, all developers should use the following workf
   - Lower generative score for broad theme queries
   - Add patterns for "laureates + theme" to prefer `thematic` intent
   - Test with queries like "what do laureates think about X?"
+
+---
+
+## 🏗️ STAFF-LEVEL MODERNIZATION REFACTOR PLAN (Post-Migration)
+
+*This section documents the comprehensive staff-level engineering audit findings and modernization roadmap for transforming NobelLM into an extensible, DRY, modularized modern application.*
+
+**Audit Date:** June 2025  
+**Auditor:** Staff Engineer Review  
+**Priority:** Post-production deployment  
+
+---
+
+## 🔍 CRITICAL STAFF-LEVEL FINDINGS
+
+### **1. SINGLETON PATTERN OVERUSE & GLOBAL STATE ISSUES**
+
+**Problem:** The codebase has excessive use of singleton patterns and global state, creating tight coupling and making testing difficult.
+
+**Examples:**
+- `rag/query_engine.py`: Multiple global singletons (`_INDEX`, `_METADATA`, `_PROMPT_BUILDER`, `_QUERY_ROUTER`)
+- `backend/app/deps.py`: Global `rag_deps` instance
+- `backend/app/config.py`: Global `settings` instance
+- `rag/cache.py`: `ModelCache` singleton
+
+**Impact:** 
+- Hard to test individual components
+- Difficult to mock dependencies
+- Race conditions in concurrent environments
+- Memory leaks from never-cleared caches
+
+**Recommendation:** Implement proper dependency injection container
+
+### **2. VIOLATION OF DRY PRINCIPLES**
+
+**Problem:** Significant code duplication across multiple areas:
+
+**Examples:**
+- **Retrieval Logic Duplication**: `retrieve_chunks()` in `query_engine.py` duplicates logic from `retriever.py`
+- **Validation Duplication**: Similar validation patterns repeated across modules
+- **Pattern Matching**: Multiple regex compilation patterns in `intent_classifier.py` and `metadata_handler.py`
+- **Chunk Filtering**: Similar filtering logic in `retrieval_logic.py`, `utils.py`, and `thematic_retriever.py`
+
+**Recommendation:** Extract common patterns into shared utilities
+
+### **3. POOR ABSTRACTION LAYERS**
+
+**Problem:** The codebase lacks proper abstraction boundaries, leading to tight coupling.
+
+**Examples:**
+- `query_engine.py` directly imports and uses 15+ modules
+- `Home.tsx` component handles both UI state and business logic
+- No clear separation between data access, business logic, and presentation layers
+
+**Recommendation:** Implement proper layered architecture
+
+### **4. INCONSISTENT ERROR HANDLING**
+
+**Problem:** Error handling patterns vary significantly across the codebase.
+
+**Examples:**
+- Some functions return `None`, others raise exceptions
+- Inconsistent error message formats
+- Mixed use of logging levels
+- No centralized error handling strategy
+
+**Recommendation:** Implement consistent error handling strategy
+
+---
+
+## 🎯 STAFF-LEVEL RECOMMENDATIONS
+
+### **1. IMPLEMENT PROPER DEPENDENCY INJECTION**
+
+```python
+# Instead of global singletons, use DI container
+class DIContainer:
+    def __init__(self):
+        self._services = {}
+    
+    def register(self, service_type, factory):
+        self._services[service_type] = factory
+    
+    def resolve(self, service_type):
+        return self._services[service_type]()
+
+# Usage
+container = DIContainer()
+container.register(Retriever, lambda: InProcessRetriever())
+container.register(PromptBuilder, lambda: PromptBuilder())
+```
+
+### **2. CREATE ABSTRACTION LAYERS**
+
+```python
+# Domain layer
+class QueryService:
+    def __init__(self, retriever: Retriever, prompt_builder: PromptBuilder):
+        self.retriever = retriever
+        self.prompt_builder = prompt_builder
+    
+    def process_query(self, query: str) -> QueryResult:
+        # Business logic here
+        pass
+
+# Application layer
+class QueryApplicationService:
+    def __init__(self, query_service: QueryService):
+        self.query_service = query_service
+    
+    def handle_query(self, request: QueryRequest) -> QueryResponse:
+        # Application logic here
+        pass
+```
+
+### **3. EXTRACT COMMON UTILITIES**
+
+```python
+# Shared validation utilities
+class ValidationUtils:
+    @staticmethod
+    def validate_query_string(query: str) -> None:
+        # Centralized validation logic
+        pass
+    
+    @staticmethod
+    def validate_model_id(model_id: str) -> None:
+        # Centralized validation logic
+        pass
+
+# Shared retrieval utilities
+class RetrievalUtils:
+    @staticmethod
+    def apply_filters(chunks: List[Dict], filters: Dict) -> List[Dict]:
+        # Centralized filtering logic
+        pass
+```
+
+### **4. IMPLEMENT PROPER ERROR HANDLING**
+
+```python
+# Custom exception hierarchy
+class NobelLMError(Exception):
+    pass
+
+class ValidationError(NobelLMError):
+    pass
+
+class RetrievalError(NobelLMError):
+    pass
+
+# Centralized error handling
+class ErrorHandler:
+    @staticmethod
+    def handle_error(error: Exception, context: str) -> ErrorResponse:
+        # Centralized error handling logic
+        pass
+```
+
+### **5. FRONTEND ARCHITECTURE IMPROVEMENTS**
+
+```typescript
+// Custom hooks for business logic
+const useQueryService = () => {
+  const [state, dispatch] = useReducer(queryReducer, initialState);
+  
+  const submitQuery = useCallback(async (query: string) => {
+    // Business logic here
+  }, []);
+  
+  return { state, submitQuery };
+};
+
+// Separate UI components from business logic
+const QueryForm: React.FC = () => {
+  const { submitQuery, isLoading } = useQueryService();
+  // Pure UI logic here
+};
+```
+
+### **6. IMPLEMENT PROPER TESTING STRATEGY**
+
+```python
+# Use dependency injection for testability
+class TestQueryService:
+    def test_process_query_with_mock_retriever(self):
+        mock_retriever = Mock()
+        service = QueryService(retriever=mock_retriever)
+        # Test with mocked dependencies
+```
+
+---
+
+## 📋 PRIORITY ACTION PLAN
+
+### **Phase 1: Critical Infrastructure (Week 1-2)**
+1. **Fix PYTHONPATH issue** (blocking deployment)
+2. **Implement DI container** for backend services
+3. **Extract common validation utilities**
+4. **Create proper error handling hierarchy**
+
+### **Phase 2: Architecture Refactoring (Week 3-4)**
+1. **Implement layered architecture** (Domain, Application, Infrastructure)
+2. **Extract business logic** from UI components
+3. **Create proper abstraction boundaries**
+4. **Implement consistent logging strategy**
+
+### **Phase 3: Code Quality (Week 5-6)**
+1. **Remove duplicate code** patterns
+2. **Implement comprehensive testing** with proper mocking
+3. **Add performance monitoring** and metrics
+4. **Document architecture decisions**
+
+---
+
+## 🎯 IMMEDIATE NEXT STEPS
+
+1. **Fix the PYTHONPATH issue** in the Dockerfile (blocking deployment)
+2. **Start with DI container implementation** for the most critical services
+3. **Extract the most duplicated validation logic** into shared utilities
+4. **Implement proper error handling** strategy
+
+---
+
+## 📊 ARCHITECTURE TRANSFORMATION GOALS
+
+### **Current State**
+- Monolithic modules with tight coupling
+- Global state and singleton patterns
+- Duplicated code across modules
+- Inconsistent error handling
+- Mixed concerns in components
+
+### **Target State**
+- Layered architecture with clear boundaries
+- Dependency injection for testability
+- Shared utilities and common patterns
+- Consistent error handling strategy
+- Separation of concerns
+
+### **Success Metrics**
+- 90%+ test coverage with proper mocking
+- Zero global state in business logic
+- <5% code duplication across modules
+- Consistent error response format
+- Clear separation of UI and business logic
+
+---
+
+*This modernization plan will transform NobelLM from a functional prototype into a production-ready, maintainable, and extensible application following modern software engineering best practices.*
