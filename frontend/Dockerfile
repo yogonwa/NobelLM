@@ -9,6 +9,7 @@ COPY package*.json ./
 RUN npm ci
 
 # Copy source code
+COPY index.html ./
 COPY src ./src
 COPY public ./public
 COPY vite.config.ts ./

@@ -38,9 +38,14 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Set PYTHONPATH to include /app for top-level module imports
+ENV PYTHONPATH="/app:$PYTHONPATH"
+
 # Copy application code last (to avoid cache busting earlier layers)
 COPY backend/app ./app
 COPY rag ./rag
+COPY utils ./utils
+COPY config ./config
 COPY data ./data
 
 # Create non-root user for security
