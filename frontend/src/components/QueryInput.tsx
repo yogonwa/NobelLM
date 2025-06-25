@@ -54,7 +54,7 @@ const QueryInput: React.FC<QueryInputProps> = ({
           type="text"
           value={query}
           onChange={handleInputChange}
-          placeholder="Ask a question about Nobel laureate speeches..."
+          placeholder="How do Nobel Laureates talk about technology?"
           className={inputClasses}
           disabled={isLoading}
         />

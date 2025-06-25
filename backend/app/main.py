@@ -66,13 +66,18 @@ def create_app() -> FastAPI:
         lifespan=lifespan
     )
     
-    # Add CORS middleware
+    # Log CORS configuration for debugging
+    logger.info(f"CORS origins configured: {settings.cors_origins}")
+    
+    # Add CORS middleware with best practices configuration
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["*"],
+        allow_origins=settings.cors_origins,  # Explicit list of allowed origins
+        allow_credentials=True,  # Allow cookies and auth headers
+        allow_methods=["GET", "POST", "OPTIONS", "HEAD"],  # Explicit methods
+        allow_headers=["*"],  # Allow all headers
+        expose_headers=["X-Process-Time"],  # Expose custom headers
+        max_age=86400,  # Cache preflight requests for 24 hours
     )
     
     # Add trusted host middleware for production

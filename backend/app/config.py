@@ -6,7 +6,8 @@ and settings for development vs. production environments.
 """
 
 import os
-from typing import Optional
+import json
+from typing import Optional, List
 from pydantic_settings import BaseSettings
 from pydantic import validator
 
@@ -35,12 +36,11 @@ class Settings(BaseSettings):
     # Logging Configuration
     log_level: str = "INFO"
     
-    # CORS Configuration
-    cors_origins: list = [
+    # CORS Configuration - Best Practice: Explicit origins for production
+    cors_origins: List[str] = [
         "http://localhost:3000", 
         "http://localhost:5173",
         "https://nobellm-web.fly.dev",
-        "https://nobellm-web.fly.dev/",
         "https://www.nobellm.com",
         "https://nobellm.com"
     ]
@@ -58,6 +58,37 @@ class Settings(BaseSettings):
         if "ENVIRONMENT" in os.environ:
             return os.environ["ENVIRONMENT"] == "development"
         return v
+    
+    @validator("cors_origins", pre=True)
+    def parse_cors_origins(cls, v):
+        """
+        Parse CORS origins from environment variable.
+        
+        Environment variable should be a JSON array string:
+        CORS_ORIGINS='["https://nobellm.com","https://www.nobellm.com"]'
+        """
+        if isinstance(v, str):
+            try:
+                # Try to parse as JSON array
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+                else:
+                    raise ValueError("CORS_ORIGINS must be a JSON array")
+            except json.JSONDecodeError:
+                # Fallback: try comma-separated string (for backward compatibility)
+                return [origin.strip() for origin in v.split(",") if origin.strip()]
+        elif isinstance(v, list):
+            return v
+        else:
+            # Default origins for production
+            return [
+                "http://localhost:3000", 
+                "http://localhost:5173",
+                "https://nobellm-web.fly.dev",
+                "https://www.nobellm.com",
+                "https://nobellm.com"
+            ]
     
     class Config:
         env_file = ".env"

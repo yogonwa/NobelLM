@@ -7,6 +7,7 @@ import SuggestedPrompts from '../components/SuggestedPrompts';
 import type { QueryResponse, SuggestedPrompt } from '../types';
 import { fetchQueryResponse } from '../utils/api';
 import nobelLogo from '../assets/nobel_logo.png';
+import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
   const [response, setResponse] = useState<QueryResponse | null>(null);
@@ -15,10 +16,11 @@ const Home: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
 
   const suggestedPrompts: SuggestedPrompt[] = [
-    { id: 'prompt1', text: 'What lectures mention war?' },
-    { id: 'prompt2', text: 'Who spoke about solitude?' },
-    { id: 'prompt3', text: 'How have laureates described their creative process?' },
-    { id: 'prompt4', text: 'Which themes appear most often in acceptance speeches?' }
+    { id: 'prompt1', text: 'Who won the Nobel Prize in Literature in 1965?' },
+    { id: 'prompt2', text: 'Which country has the most Nobel literature laureates?' },
+    { id: 'prompt3', text: 'What do laureates say about justice and freedom?' },
+    { id: 'prompt4', text: 'How is hope portrayed in Nobel Prize lectures?' },
+    { id: 'prompt5', text: 'Write a job acceptance email in the tone of a Nobel Prize winner.' }
   ];
 
   const handleSubmit = async (query: string) => {
@@ -62,20 +64,24 @@ const Home: React.FC = () => {
         {/* Top header with logo and search - full width layout */}
         <div className="py-6 border-b border-gray-200 mb-8 animate-fade-in">
           <div className="flex items-center gap-6">
-            {/* Logo and title - fixed width */}
-            <div className="flex items-center gap-3 flex-shrink-0 animate-scale-in">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center group transition-shadow duration-200">
+            {/* Logo and title - fixed width, now clickable */}
+            <Link
+              to="/"
+              className="flex items-center gap-3 flex-shrink-0 animate-scale-in group"
+              title="Go to home page"
+              style={{ textDecoration: 'none' }}
+            >
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center transition-shadow duration-200 group-hover:shadow-lg cursor-pointer">
                 <img
                   src={nobelLogo}
                   alt="Nobel Logo"
                   className="w-10 h-10 rounded-full object-cover transition-transform duration-200"
-                  style={{ transition: 'filter 0.2s', filter: 'none' }}
-                  onMouseOver={e => e.currentTarget.style.filter = 'drop-shadow(0 4px 12px rgba(0,0,0,0.35))'}
-                  onMouseOut={e => e.currentTarget.style.filter = 'none'}
                 />
               </div>
-              <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap">NobelLM</h1>
-            </div>
+              <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap group-hover:text-amber-700 transition-colors cursor-pointer">
+                NobelLM
+              </h1>
+            </Link>
             
             {/* Search input - takes remaining space */}
             <div className="flex-1 animate-fade-in" style={{ animationDelay: '0.1s' }}>
@@ -133,9 +139,9 @@ const Home: React.FC = () => {
   return (
     <main className="max-w-4xl mx-auto px-4">
       {/* Hero section positioned at ~40% viewport height */}
-      <div className="flex flex-col items-center justify-center min-h-[40vh] mb-8">
-        {/* Logo */}
-        <div className="w-32 h-32 mb-6 flex items-center justify-center bg-gray-50 rounded-full group transition-transform duration-200">
+      <div className="flex flex-col items-center justify-center mt-8 mb-6">
+        <h1 className="text-4xl font-bold text-gray-800 mb-4 animate-fade-in text-center">NobelLM</h1>
+        <div className="w-32 h-32 mb-4 flex items-center justify-center bg-gray-50 rounded-full group transition-transform duration-200">
           <img
             src={nobelLogo}
             alt="Nobel Logo"
@@ -145,11 +151,12 @@ const Home: React.FC = () => {
             onMouseOut={e => e.currentTarget.style.filter = 'none'}
           />
         </div>
-        <h1 className="text-4xl font-bold text-gray-800 mb-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>NobelLM</h1>
+        <h2 className="font-bold text-gray-800 mb-2 animate-fade-in text-center" style={{ animationDelay: '0.1s' }}>
+          Meet <span className="font-bold italic">NobelLM</span>, a semantic search engine for Nobel Prize speeches.
+        </h2>
         <p className="text-gray-600 text-center max-w-2xl mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          Ask questions and discover insights from over a century of Nobel Prize lectures and acceptance speeches.
+          What do Nobel Prize winners say about war, hope, or humanity? Ask and discover.
         </p>
-        
         <div className="w-full animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <QueryInput onSubmit={handleSubmit} isLoading={isLoading} />
         </div>
