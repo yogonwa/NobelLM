@@ -36,14 +36,8 @@ class Settings(BaseSettings):
     # Logging Configuration
     log_level: str = "INFO"
     
-    # CORS Configuration - Best Practice: Explicit origins for production
-    cors_origins: List[str] = [
-        "http://localhost:3000", 
-        "http://localhost:5173",
-        "https://nobellm-web.fly.dev",
-        "https://www.nobellm.com",
-        "https://nobellm.com"
-    ]
+    # CORS Configuration - Environment-specific origins
+    cors_origins: List[str] = []
     
     @validator("openai_api_key")
     def validate_openai_key(cls, v):
@@ -59,14 +53,26 @@ class Settings(BaseSettings):
             return os.environ["ENVIRONMENT"] == "development"
         return v
     
+    @validator("cors_origins")
+    def validate_cors_origins(cls, v):
+        """Validate CORS origins are valid URLs."""
+        for origin in v:
+            if not origin.startswith(("http://", "https://")):
+                raise ValueError(f"Invalid CORS origin: {origin}")
+        return v
+    
     @validator("cors_origins", pre=True)
     def parse_cors_origins(cls, v):
         """
-        Parse CORS origins from environment variable.
+        Parse CORS origins from environment variable with environment-specific defaults.
         
         Environment variable should be a JSON array string:
         CORS_ORIGINS='["https://nobellm.com","https://www.nobellm.com"]'
+        
+        Or comma-separated:
+        CORS_ORIGINS=https://nobellm.com,https://www.nobellm.com
         """
+        # If explicitly provided via environment variable, use that
         if isinstance(v, str):
             try:
                 # Try to parse as JSON array
@@ -76,18 +82,28 @@ class Settings(BaseSettings):
                 else:
                     raise ValueError("CORS_ORIGINS must be a JSON array")
             except json.JSONDecodeError:
-                # Fallback: try comma-separated string (for backward compatibility)
+                # Fallback: try comma-separated string
                 return [origin.strip() for origin in v.split(",") if origin.strip()]
         elif isinstance(v, list):
             return v
-        else:
-            # Default origins for production
+        
+        # Environment-specific defaults
+        environment = os.environ.get("ENVIRONMENT", "development")
+        
+        if environment == "production":
             return [
-                "http://localhost:3000", 
-                "http://localhost:5173",
-                "https://nobellm-web.fly.dev",
+                "https://nobellm.com",
                 "https://www.nobellm.com",
-                "https://nobellm.com"
+                "https://nobellm-web.fly.dev"  # Fly.io default domain
+            ]
+        else:
+            # Development/local environment
+            return [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:8080",  # Common dev server port
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173"
             ]
     
     class Config:

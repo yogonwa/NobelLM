@@ -1,9 +1,17 @@
 # ---- Import global threading configuration ----
 import sys
+import os
 from pathlib import Path
 
-# Add parent dir to sys.path to allow running as subprocess
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+# Handle both local development and production environments
+if os.getenv('PYTHONPATH'):
+    # Production: PYTHONPATH is already set to /app
+    pass
+else:
+    # Local development: Add project root to sys.path
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
 
 # Configure threading globally (inherits from parent process)
 from config.threading import configure_threading

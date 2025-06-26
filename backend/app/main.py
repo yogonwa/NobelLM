@@ -82,10 +82,26 @@ def create_app() -> FastAPI:
     
     # Add trusted host middleware for production
     if not settings.debug:
+        # Production trusted hosts
+        trusted_hosts = [
+            "nobellm.com",
+            "www.nobellm.com", 
+            "nobellm-web.fly.dev",
+            "*.fly.dev"  # Allow any Fly.io subdomain
+        ]
+        
         app.add_middleware(
             TrustedHostMiddleware,
-            allowed_hosts=["*"]  # Configure appropriately for production
+            allowed_hosts=trusted_hosts
         )
+        logger.info(f"Trusted hosts configured: {trusted_hosts}")
+    else:
+        # Development: allow all hosts
+        app.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=["*"]
+        )
+        logger.info("Development mode: allowing all hosts")
     
     # Add request timing middleware
     @app.middleware("http")

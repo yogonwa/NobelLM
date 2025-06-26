@@ -15,6 +15,7 @@ scipy
 tqdm
 python-dotenv
 Pillow
+pycountry
 
 # Spacy NLP stack
 spacy>=3.7.2,<3.8.0

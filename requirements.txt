@@ -15,6 +15,7 @@ scipy
 tqdm
 python-dotenv
 Pillow
+pycountry
 
 # PDF handling
 PyMuPDF
