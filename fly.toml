@@ -5,7 +5,6 @@ app = "nobellm-api"
   dockerfile = "backend/Dockerfile"
 
 [env]
-  OPENAI_API_KEY = ""
   TOKENIZERS_PARALLELISM = "false"
   ENVIRONMENT = "production"
 
@@ -23,4 +22,4 @@ app = "nobellm-api"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 2048 
+  memory_mb = 4096 

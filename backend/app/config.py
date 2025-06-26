@@ -89,22 +89,26 @@ class Settings(BaseSettings):
         
         # Environment-specific defaults
         environment = os.environ.get("ENVIRONMENT", "development")
+        print(f"DEBUG: Environment detected as: {environment}")
         
         if environment == "production":
-            return [
+            cors_origins = [
                 "https://nobellm.com",
                 "https://www.nobellm.com",
                 "https://nobellm-web.fly.dev"  # Fly.io default domain
             ]
         else:
             # Development/local environment
-            return [
+            cors_origins = [
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://localhost:8080",  # Common dev server port
                 "http://127.0.0.1:3000",
                 "http://127.0.0.1:5173"
             ]
+        
+        print(f"DEBUG: CORS origins set to: {cors_origins}")
+        return cors_origins
     
     class Config:
         env_file = ".env"
