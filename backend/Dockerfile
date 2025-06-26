@@ -46,7 +46,7 @@ COPY backend/app ./app
 COPY rag ./rag
 COPY utils ./utils
 COPY config ./config
-COPY data ./data
+# Data files are mounted via Fly.io volumes at /app/data
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && \

@@ -20,6 +20,6 @@ app = "nobellm-api"
   min_machines_running = 0
 
 [[vm]]
-  cpu_kind = "shared"
+  cpu_kind = "performance"
   cpus = 1
-  memory_mb = 4096 
+  memory_mb = 2048 

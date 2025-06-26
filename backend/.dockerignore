@@ -28,4 +28,12 @@ env/
 .vscode/
 *.swp
 *.swo
-*~ 
+*~
+
+# Exclude large data files - these are mounted via Fly.io volumes
+data/
+*.faiss
+*.index
+*.bin
+*.pkl
+*.joblib 
