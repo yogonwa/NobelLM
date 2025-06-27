@@ -72,12 +72,10 @@ def create_app() -> FastAPI:
     # Add CORS middleware with best practices configuration
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,  # Explicit list of allowed origins
-        allow_credentials=True,  # Allow cookies and auth headers
-        allow_methods=["GET", "POST", "OPTIONS", "HEAD"],  # Explicit methods
-        allow_headers=["*"],  # Allow all headers
-        expose_headers=["X-Process-Time"],  # Expose custom headers
-        max_age=86400,  # Cache preflight requests for 24 hours
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"]
     )
     
     # Add trusted host middleware for production
@@ -134,6 +132,12 @@ def create_app() -> FastAPI:
             "status": "running",
             "docs": "/docs" if settings.debug else "Documentation disabled in production"
         }
+    
+    # Debug CORS endpoint
+    @app.get("/debug/cors")
+    def debug_cors():
+        """Debug endpoint to check CORS configuration."""
+        return {"cors_origins": settings.cors_origins}
     
     return app
 
