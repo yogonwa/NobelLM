@@ -4,12 +4,10 @@ Configuration management for NobelLM FastAPI backend.
 Handles environment variable loading, validation, and deployment-safe defaults.
 Compatible with Fly.io deployment using string-based env vars.
 """
-
-import os
-from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import validator
-
+from typing import List
+import os
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -36,7 +34,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # --- CORS ---
-    cors_origins: str = ""  # Comma-separated string
+    cors_origins: List[str] = []
 
     @validator("openai_api_key")
     def validate_openai_key(cls, v):
@@ -46,19 +44,17 @@ class Settings(BaseSettings):
 
     @validator("debug")
     def derive_debug_mode(cls, v):
-        # Fly uses ENVIRONMENT=production/development
         return os.environ.get("ENVIRONMENT", "").lower() == "development"
 
     @validator("cors_origins", pre=True)
     def split_cors_origins(cls, v):
         if isinstance(v, str):
             return [s.strip() for s in v.split(",") if s.strip()]
-        return []
+        return v
 
     class Config:
         case_sensitive = False
         extra = "ignore"
-
 
 # Singleton instance
 settings = Settings()
