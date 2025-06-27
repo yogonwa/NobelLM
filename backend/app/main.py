@@ -13,9 +13,9 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 import time
 
-from .config import get_settings, Settings
-from .routes import router
-from .deps import get_rag_dependencies
+from app.config import get_settings, Settings
+from app.routes import router
+from app.deps import get_rag_dependencies
 
 # Configure logging
 logging.basicConfig(
