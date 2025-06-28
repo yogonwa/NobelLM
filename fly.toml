@@ -7,8 +7,8 @@ app = "nobellm-api"
 [env]
   TOKENIZERS_PARALLELISM = "false"
   ENVIRONMENT = "production"
-  ALLOWED_ORIGINS = "https://nobellm.com"  # helpful for local reference
-
+  ALLOWED_ORIGINS = '["https://nobellm.com", "https://www.nobellm.com"]' 
+  
 [[mounts]]
   source = "faiss_data"          # Volume where FAISS index is stored
   destination = "/app/data"      # Must match FAISS load path
