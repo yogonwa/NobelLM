@@ -30,7 +30,7 @@ class IntentClassifier:
     Returns a structured IntentResult with confidence scoring and matched terms.
     """
     
-    def __init__(self, laureate_names_path: str = "data/nobel_literature.json", config_path: str = "data/intent_keywords.json"):
+    def __init__(self, laureate_names_path: str = "config/nobel_literature.json", config_path: str = "config/intent_keywords.json"):
         """
         Initialize the IntentClassifier.
         

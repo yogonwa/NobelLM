@@ -4,6 +4,9 @@ app = "nobellm-web"
 [build]
   dockerfile = "Dockerfile"
 
+[env]
+  VITE_API_URL = "https://nobellm-api.fly.dev"
+
 [http_service]
   internal_port = 80
   force_https = true

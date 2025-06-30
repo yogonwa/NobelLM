@@ -2,9 +2,14 @@ import type { QueryResponse } from '../types';
 
 // API base URL configuration
 const getApiBaseUrl = (): string => {
+  // Use environment variable if available (for production deployments)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
   // In production, use the deployed API URL
   if (import.meta.env.PROD) {
-    return 'https://api.nobellm.com';
+    return 'https://nobellm-api.fly.dev';
   }
   // In development, use the proxy configured in vite.config.ts
   return '';

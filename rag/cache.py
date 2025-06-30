@@ -77,7 +77,7 @@ def get_flattened_metadata() -> List[Dict[str, Any]]:
     Returns:
         List of laureate metadata dicts.
     """
-    return _cache.get_or_load("flattened_metadata", load_laureate_metadata, "data/nobel_literature.json")
+    return _cache.get_or_load("flattened_metadata", load_laureate_metadata, "config/nobel_literature.json")
 
 def get_model(model_id: str = None) -> SentenceTransformer:
     """
