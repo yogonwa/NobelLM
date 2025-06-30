@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting NobelLM FastAPI application...")
     try:
         rag_deps = get_rag_dependencies()
-        # rag_deps.initialize()
+        rag_deps.initialize()
         logger.info("RAG dependencies initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize RAG dependencies: {e}")
