@@ -53,14 +53,13 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     settings = get_settings()
 
-    # Parse ALLOWED_ORIGINS from environment variable
-    allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", '["*"]')
-    try:
-        cors_origins = json.loads(allowed_origins_raw)
-        assert isinstance(cors_origins, list)
-    except Exception as e:
-        logger.warning(f"Invalid ALLOWED_ORIGINS format: {allowed_origins_raw} — defaulting to ['*']")
-        cors_origins = ["*"]
+    # Hardcoded CORS origins for production reliability
+    logger.info("Using hardcoded CORS origins for production")
+    cors_origins = [
+        "https://nobellm.com",
+        "https://www.nobellm.com",
+        "https://nobellm-web.fly.dev"
+    ]
 
     logger.info(f"CORS origins configured: {cors_origins}")
 
