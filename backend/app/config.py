@@ -5,7 +5,7 @@ Handles environment variable loading, validation, and deployment-safe defaults.
 Compatible with Fly.io deployment using string-based env vars.
 """
 from pydantic_settings import BaseSettings
-from pydantic import validator
+from pydantic import field_validator, Field
 from typing import List
 import os
 
@@ -30,33 +30,71 @@ class Settings(BaseSettings):
     default_top_k: int = 5
     default_score_threshold: float = 0.2
 
-    # --- Logging ---
-    log_level: str = "INFO"
+    # --- Weaviate ---
+    use_weaviate: bool = False
+    weaviate_url: str = "https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud"
+    weaviate_api_key: str = ""
 
     # --- CORS ---
-    cors_origins: List[str] = []
+    cors_origins: str = ""
+    
+    # --- Logging ---
+    log_level: str = "INFO"
+    
+    # --- Tokenizers ---
+    tokenizers_parallelism: str = "false"
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS origins from comma-separated string or JSON array."""
+        if not self.cors_origins:
+            return []
+        
+        # Try to parse as JSON array first
+        try:
+            import json
+            origins = json.loads(self.cors_origins)
+            if isinstance(origins, list):
+                return [str(origin).strip() for origin in origins if origin]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        
+        # Fall back to comma-separated string
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return origins
 
-    @validator("openai_api_key")
-    def validate_openai_key(cls, v):
-        if not v or not v.startswith("sk-"):
-            raise ValueError("Invalid OpenAI API key format")
+    @field_validator('weaviate_url')
+    @classmethod
+    def validate_weaviate_url(cls, v: str) -> str:
+        """Validate Weaviate URL format."""
+        if not v:
+            return v
+        if not v.startswith(('http://', 'https://')):
+            raise ValueError('Weaviate URL must start with http:// or https://')
         return v
 
-    @validator("debug")
-    def derive_debug_mode(cls, v):
-        return os.environ.get("ENVIRONMENT", "").lower() == "development"
+    @field_validator('default_score_threshold')
+    @classmethod
+    def validate_score_threshold(cls, v: float) -> float:
+        """Validate score threshold is between 0 and 1."""
+        if not 0 <= v <= 1:
+            raise ValueError('Score threshold must be between 0 and 1')
+        return v
 
-    @validator("cors_origins", pre=True)
-    def split_cors_origins(cls, v):
-        if isinstance(v, str):
-            return [s.strip() for s in v.split(",") if s.strip()]
+    @field_validator('default_top_k')
+    @classmethod
+    def validate_top_k(cls, v: int) -> int:
+        """Validate top_k is positive."""
+        if v <= 0:
+            raise ValueError('top_k must be positive')
         return v
 
     class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
         case_sensitive = False
-        extra = "ignore"
 
-# Singleton instance
+# Create settings instance
 settings = Settings()
 
 

@@ -94,6 +94,21 @@ set_secrets() {
     print_status "Setting secrets for backend..."
     fly secrets set OPENAI_API_KEY="$OPENAI_API_KEY" --app nobellm-api
     
+    # Set Weaviate secrets if available
+    if [ -n "$WEAVIATE_API_KEY" ]; then
+        print_status "Setting Weaviate secrets..."
+        fly secrets set WEAVIATE_API_KEY="$WEAVIATE_API_KEY" --app nobellm-api
+        fly secrets set USE_WEAVIATE="true" --app nobellm-api
+        fly secrets set WEAVIATE_URL="https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud" --app nobellm-api
+    else
+        print_warning "WEAVIATE_API_KEY not set. Weaviate will be disabled."
+        fly secrets set USE_WEAVIATE="false" --app nobellm-api
+    fi
+    
+    # Set CORS origins
+    print_status "Setting CORS origins..."
+    fly secrets set CORS_ORIGINS="https://nobellm.com,https://www.nobellm.com,https://nobellm-web.fly.dev" --app nobellm-api
+    
     print_status "Secrets configured successfully!"
 }
 
@@ -116,6 +131,13 @@ check_status() {
     echo "API Docs: https://nobellm-api.fly.dev/docs"
 }
 
+# Function to start backend
+start_backend() {
+    print_status "Starting backend..."
+    fly machine start app --app nobellm-api
+    print_status "Backend started successfully!"
+}
+
 # Main deployment flow
 main() {
     print_status "Starting deployment process..."
@@ -128,6 +150,9 @@ main() {
     
     # Deploy frontend
     deploy_frontend
+    
+    # Start backend (it might be stopped)
+    start_backend
     
     # Check status
     check_status

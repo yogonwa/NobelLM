@@ -17,6 +17,9 @@ python-dotenv
 Pillow
 pycountry
 
+# Weaviate client for vector database
+weaviate-client>=3.26.0
+
 # Spacy NLP stack
 spacy>=3.7.2,<3.8.0
 blis==0.7.9

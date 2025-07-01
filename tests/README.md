@@ -262,6 +262,23 @@ Full workflow validation with minimal mocking.
 - Error scenario testing
 - Failure mode validation
 
+#### [NEW] Weaviate E2E and Health Check Tests
+
+### E2E: Weaviate Health Check (`tests/e2e/test_weaviate_health.py`)
+- **Purpose:** Quick health check for Weaviate connectivity, authentication, and basic search.
+- **Expectation:** Should pass if Weaviate is up, API key is valid, and some data is present.
+- **Marker:** `@pytest.mark.e2e`
+
+### E2E: Weaviate RAG Pipeline Integration (`tests/e2e/test_weaviate_e2e.py`)
+- **Purpose:** Full end-to-end test of the RAG pipeline (env/config → retrieval → LLM → answer).
+- **Expectation:** Should pass if the entire stack (config, retrieval, LLM, answer formatting) works.
+- **Marker:** `@pytest.mark.e2e`
+
+> **Note:**
+> - Old scripts (`test_weaviate_simple.py`, `test_weaviate_direct.py`, `test_weaviate_bypass.py`, etc.) have been removed.
+> - These two tests are now the canonical E2E tests for Weaviate integration and health.
+> - They follow the best practices and folder structure described below.
+
 ### 4. Validation Tests (`validation/`)
 Data quality, schema validation, and system sanity checks. **Total: 52 tests**
 
