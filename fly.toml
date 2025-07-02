@@ -8,10 +8,6 @@ app = "nobellm-api"
   TOKENIZERS_PARALLELISM = "false"
   ENVIRONMENT = "production"
   ALLOWED_ORIGINS = '["https://nobellm.com", "https://www.nobellm.com"]' 
-  
-[[mounts]]
-  source = "faiss_data"          # Volume where FAISS index is stored
-  destination = "/app/data"      # Must match FAISS load path
 
 [http_service]
   internal_port = 8000

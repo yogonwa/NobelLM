@@ -46,7 +46,8 @@ COPY backend/app ./app
 COPY rag ./rag
 COPY utils ./utils
 COPY config ./config
-# Data files are mounted via Fly.io volumes at /app/data
+COPY data/theme_embeddings ./data/theme_embeddings
+# Theme embeddings and config files included, no FAISS data needed for Weaviate
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && \

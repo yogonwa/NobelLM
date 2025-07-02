@@ -13,17 +13,36 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Function to print colored output
+# Deployment flags
+DEPLOY_BACKEND=true
+DEPLOY_FRONTEND=true
+
+# Parse command line arguments
+for arg in "$@"; do
+  case $arg in
+    --backend-only) DEPLOY_FRONTEND=false ;;
+    --frontend-only) DEPLOY_BACKEND=false ;;
+    --help)
+      echo "Usage: $0 [--backend-only|--frontend-only]"
+      echo "  --backend-only: Deploy only the backend API"
+      echo "  --frontend-only: Deploy only the frontend"
+      echo "  --help: Show this help message"
+      exit 0
+      ;;
+  esac
+done
+
+# Function to print colored output with timestamp
 print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${GREEN}[INFO] [$(date '+%H:%M:%S')]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${YELLOW}[WARNING] [$(date '+%H:%M:%S')]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR] [$(date '+%H:%M:%S')]${NC} $1"
 }
 
 # Check if fly CLI is installed
@@ -48,9 +67,6 @@ deploy_backend() {
         print_status "Creating backend app 'nobellm-api'..."
         fly apps create nobellm-api --org personal
     fi
-    
-    # Skip volume creation for now - can be added later
-    print_status "Skipping volume creation for initial deployment..."
     
     # Deploy backend
     print_status "Deploying backend with remote build..."
@@ -82,32 +98,53 @@ deploy_frontend() {
 set_secrets() {
     print_status "Setting up secrets..."
     
-    # Check if OPENAI_API_KEY is set
-    if [ -z "$OPENAI_API_KEY" ]; then
-        print_warning "OPENAI_API_KEY environment variable not set."
-        print_warning "Please set it before running this script:"
-        print_warning "export OPENAI_API_KEY=your_api_key_here"
-        exit 1
-    fi
+    # Check if secrets already exist
+    existing_secrets=$(fly secrets list --app nobellm-api --json 2>/dev/null | jq -r '.[].Name' | sort)
     
-    # Set secrets for backend
-    print_status "Setting secrets for backend..."
-    fly secrets set OPENAI_API_KEY="$OPENAI_API_KEY" --app nobellm-api
-    
-    # Set Weaviate secrets if available
-    if [ -n "$WEAVIATE_API_KEY" ]; then
-        print_status "Setting Weaviate secrets..."
-        fly secrets set WEAVIATE_API_KEY="$WEAVIATE_API_KEY" --app nobellm-api
-        fly secrets set USE_WEAVIATE="true" --app nobellm-api
-        fly secrets set WEAVIATE_URL="https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud" --app nobellm-api
+    # Set OPENAI_API_KEY if not already set
+    if echo "$existing_secrets" | grep -q "OPENAI_API_KEY"; then
+        print_status "OPENAI_API_KEY already exists in Fly secrets"
     else
-        print_warning "WEAVIATE_API_KEY not set. Weaviate will be disabled."
-        fly secrets set USE_WEAVIATE="false" --app nobellm-api
+        if [ -z "$OPENAI_API_KEY" ]; then
+            print_warning "OPENAI_API_KEY not found in Fly secrets and not set locally."
+            print_warning "Please set it before running this script:"
+            print_warning "export OPENAI_API_KEY=your_api_key_here"
+            exit 1
+        fi
+        print_status "Setting OPENAI_API_KEY..."
+        fly secrets set OPENAI_API_KEY="$OPENAI_API_KEY" --app nobellm-api
     fi
     
-    # Set CORS origins
-    print_status "Setting CORS origins..."
-    fly secrets set CORS_ORIGINS="https://nobellm.com,https://www.nobellm.com,https://nobellm-web.fly.dev" --app nobellm-api
+    # Set Weaviate secrets if needed
+    if echo "$existing_secrets" | grep -q "WEAVIATE_API_KEY"; then
+        print_status "Weaviate secrets already exist"
+    else
+        if [ -n "$WEAVIATE_API_KEY" ]; then
+            print_status "Setting Weaviate secrets..."
+            fly secrets set WEAVIATE_API_KEY="$WEAVIATE_API_KEY" --app nobellm-api
+            fly secrets set USE_WEAVIATE="true" --app nobellm-api
+            fly secrets set WEAVIATE_URL="https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud" --app nobellm-api
+        else
+            print_warning "WEAVIATE_API_KEY not set. Weaviate will be disabled."
+            fly secrets set USE_WEAVIATE="false" --app nobellm-api
+        fi
+    fi
+    
+    # Set CORS origins if not already set
+    if echo "$existing_secrets" | grep -q "CORS_ORIGINS"; then
+        print_status "CORS_ORIGINS already exists"
+    else
+        print_status "Setting CORS origins..."
+        fly secrets set CORS_ORIGINS="https://nobellm.com,https://www.nobellm.com,https://nobellm-web.fly.dev" --app nobellm-api
+    fi
+    
+    # Set debug logging if not already set
+    if echo "$existing_secrets" | grep -q "LOG_LEVEL"; then
+        print_status "LOG_LEVEL already exists"
+    else
+        print_status "Setting debug logging..."
+        fly secrets set LOG_LEVEL="DEBUG" --app nobellm-api
+    fi
     
     print_status "Secrets configured successfully!"
 }
@@ -116,25 +153,44 @@ set_secrets() {
 check_status() {
     print_status "Checking deployment status..."
     
-    echo ""
-    echo "Backend Status:"
-    fly status --app nobellm-api
+    if [ "$DEPLOY_BACKEND" = true ]; then
+        echo ""
+        echo "Backend Status:"
+        fly status --app nobellm-api
+    fi
     
-    echo ""
-    echo "Frontend Status:"
-    fly status --app nobellm-web
+    if [ "$DEPLOY_FRONTEND" = true ]; then
+        echo ""
+        echo "Frontend Status:"
+        fly status --app nobellm-web
+    fi
     
     echo ""
     print_status "Deployment URLs:"
-    echo "Backend API: https://nobellm-api.fly.dev"
-    echo "Frontend: https://nobellm-web.fly.dev"
-    echo "API Docs: https://nobellm-api.fly.dev/docs"
+    if [ "$DEPLOY_BACKEND" = true ]; then
+        echo "Backend API: https://nobellm-api.fly.dev"
+        echo "API Docs: https://nobellm-api.fly.dev/docs"
+        echo "Health Check: https://nobellm-api.fly.dev/health"
+    fi
+    if [ "$DEPLOY_FRONTEND" = true ]; then
+        echo "Frontend: https://nobellm-web.fly.dev"
+    fi
 }
 
 # Function to start backend
 start_backend() {
     print_status "Starting backend..."
-    fly machine start app --app nobellm-api
+    
+    # Get machine ID
+    machine_id=$(fly machines list --app nobellm-api --json | jq -r '.[0].id')
+    
+    if [ -z "$machine_id" ] || [ "$machine_id" = "null" ]; then
+        print_error "No machines found for nobellm-api"
+        return 1
+    fi
+    
+    print_status "Starting machine: $machine_id"
+    fly machine start "$machine_id" --app nobellm-api
     print_status "Backend started successfully!"
 }
 
@@ -142,17 +198,42 @@ start_backend() {
 main() {
     print_status "Starting deployment process..."
     
+    # Show deployment plan
+    echo ""
+    print_status "Deployment Plan:"
+    if [ "$DEPLOY_BACKEND" = true ]; then
+        echo "  ✅ Backend API (nobellm-api)"
+    else
+        echo "  ❌ Backend API (skipped)"
+    fi
+    if [ "$DEPLOY_FRONTEND" = true ]; then
+        echo "  ✅ Frontend (nobellm-web)"
+    else
+        echo "  ❌ Frontend (skipped)"
+    fi
+    echo ""
+    
+    # Confirmation prompt
+    read -p "⚠️  Ready to deploy to Fly.io? (y/n): " confirm
+    if [[ "$confirm" != "y" ]]; then
+        print_warning "Aborted by user."
+        exit 0
+    fi
+    
     # Set secrets first
     set_secrets
     
     # Deploy backend
-    deploy_backend
+    if [ "$DEPLOY_BACKEND" = true ]; then
+        deploy_backend
+        # Start backend (it might be stopped)
+        start_backend
+    fi
     
     # Deploy frontend
-    deploy_frontend
-    
-    # Start backend (it might be stopped)
-    start_backend
+    if [ "$DEPLOY_FRONTEND" = true ]; then
+        deploy_frontend
+    fi
     
     # Check status
     check_status
@@ -160,9 +241,14 @@ main() {
     print_status "🎉 Deployment completed successfully!"
     echo ""
     print_status "Your NobelLM application is now live at:"
-    echo "  Frontend: https://nobellm-web.fly.dev"
-    echo "  Backend API: https://nobellm-api.fly.dev"
-    echo "  API Documentation: https://nobellm-api.fly.dev/docs"
+    if [ "$DEPLOY_FRONTEND" = true ]; then
+        echo "  Frontend: https://nobellm-web.fly.dev"
+    fi
+    if [ "$DEPLOY_BACKEND" = true ]; then
+        echo "  Backend API: https://nobellm-api.fly.dev"
+        echo "  API Documentation: https://nobellm-api.fly.dev/docs"
+        echo "  Health Check: https://nobellm-api.fly.dev/health"
+    fi
 }
 
 # Run main function

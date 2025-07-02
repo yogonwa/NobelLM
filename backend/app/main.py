@@ -125,6 +125,62 @@ def create_app() -> FastAPI:
             "docs": "/docs" if settings.debug else "Documentation disabled in production"
         }
 
+    @app.get("/health")
+    async def health_check():
+        """Comprehensive health check including Weaviate connectivity."""
+        health_status = {
+            "status": "healthy",
+            "timestamp": time.time(),
+            "version": settings.app_version,
+            "checks": {}
+        }
+        
+        # Check Weaviate connectivity if enabled
+        if settings.use_weaviate:
+            try:
+                from rag.query_weaviate import get_weaviate_client
+                client = get_weaviate_client()
+                
+                # Test basic connectivity
+                client.is_ready()
+                health_status["checks"]["weaviate_connectivity"] = "ok"
+                
+                # Perform warmup query
+                try:
+                    from rag.query_weaviate import query_weaviate
+                    warmup_results = query_weaviate(
+                        query_text="test",
+                        top_k=1,
+                        score_threshold=0.0
+                    )
+                    health_status["checks"]["weaviate_query"] = "ok"
+                    health_status["checks"]["weaviate_results"] = len(warmup_results) if warmup_results else 0
+                except Exception as e:
+                    health_status["checks"]["weaviate_query"] = f"error: {str(e)}"
+                    health_status["status"] = "degraded"
+                    
+            except Exception as e:
+                health_status["checks"]["weaviate_connectivity"] = f"error: {str(e)}"
+                health_status["status"] = "unhealthy"
+        else:
+            health_status["checks"]["weaviate"] = "disabled"
+        
+        # Check theme embeddings
+        try:
+            from config.theme_embeddings import ThemeEmbeddings
+            theme_embeddings = ThemeEmbeddings("bge-large")
+            stats = theme_embeddings.get_embedding_stats()
+            health_status["checks"]["theme_embeddings"] = {
+                "status": "ok",
+                "total_keywords": stats.get("total_keywords", 0),
+                "model": stats.get("model_id", "unknown")
+            }
+        except Exception as e:
+            health_status["checks"]["theme_embeddings"] = f"error: {str(e)}"
+            health_status["status"] = "degraded"
+        
+        return health_status
+
     @app.get("/debug/cors")
     def debug_cors():
         return {"cors_origins": cors_origins}

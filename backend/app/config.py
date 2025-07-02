@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     default_score_threshold: float = 0.2
 
     # --- Weaviate ---
-    use_weaviate: bool = False
+    use_weaviate: bool = True
     weaviate_url: str = "https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud"
     weaviate_api_key: str = ""
 
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     
     # --- Logging ---
-    log_level: str = "INFO"
+    log_level: str = "DEBUG"
     
     # --- Tokenizers ---
     tokenizers_parallelism: str = "false"
