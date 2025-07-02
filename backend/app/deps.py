@@ -43,11 +43,20 @@ class RAGDependencies:
         try:
             logger.info(f"Initializing RAG dependencies for model: {model_id}")
             
-            # Load FAISS index and metadata directly (avoid Streamlit cache)
-            self._faiss_index, self._metadata = self._load_faiss_index_and_metadata(model_id)
-            
-            # Load embedding model directly
-            self._model = self._load_model(model_id)
+            # Check if Weaviate is enabled
+            settings = get_settings()
+            if settings.use_weaviate:
+                logger.info("Weaviate is enabled - skipping FAISS index initialization")
+                # Only load the embedding model for Weaviate
+                self._model = self._load_model(model_id)
+                self._faiss_index = None
+                self._metadata = None
+            else:
+                logger.info("FAISS mode - loading index and metadata")
+                # Load FAISS index and metadata directly (avoid Streamlit cache)
+                self._faiss_index, self._metadata = self._load_faiss_index_and_metadata(model_id)
+                # Load embedding model directly
+                self._model = self._load_model(model_id)
             
             self._initialized = True
             logger.info(f"RAG dependencies initialized successfully for model: {model_id}")
@@ -103,6 +112,20 @@ class RAGDependencies:
     def model_id(self) -> str:
         """Get current model ID."""
         return self._model_id
+    
+    @property
+    def is_weaviate_mode(self) -> bool:
+        """Check if running in Weaviate mode."""
+        if not self._initialized:
+            self.initialize()
+        return self._faiss_index is None and self._metadata is None
+    
+    @property
+    def is_faiss_mode(self) -> bool:
+        """Check if running in FAISS mode."""
+        if not self._initialized:
+            self.initialize()
+        return self._faiss_index is not None and self._metadata is not None
 
 
 # Global RAG dependencies instance

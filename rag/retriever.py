@@ -413,6 +413,25 @@ def get_mode_aware_retriever(model_id: str = None) -> BaseRetriever:
     Returns:
         BaseRetriever: The appropriate retriever instance
     """
+    # Check if Weaviate is enabled
+    try:
+        from backend.app.config import get_settings
+        settings = get_settings()
+        if settings.use_weaviate:
+            from rag.retriever_weaviate import WeaviateRetriever
+            log_with_context(
+                logger,
+                logging.INFO,
+                "Retriever",
+                "Using Weaviate retriever",
+                {"use_weaviate": True}
+            )
+            return WeaviateRetriever(model_id)
+    except (ImportError, ModuleNotFoundError):
+        # If we can't import the backend config, fall back to FAISS
+        pass
+    
+    # Fall back to FAISS-based retrievers
     use_subprocess = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS") == "1"
     
     if use_subprocess:

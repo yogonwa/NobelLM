@@ -45,7 +45,15 @@ class WeaviateRetriever(BaseRetriever):
         Args:
             model_id: Model identifier (default: DEFAULT_MODEL_ID)
         """
-        super().__init__(model_id)
+        # Handle None by using default model ID
+        if model_id is None:
+            model_id = DEFAULT_MODEL_ID
+            
+        # Validate model_id
+        from rag.validation import validate_model_id
+        validate_model_id(model_id, context="WeaviateRetriever")
+            
+        self.model_id = model_id
         
         # Load embedding model for query processing
         # Note: This retriever embeds queries locally, not using Weaviate's inference module
