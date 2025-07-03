@@ -1,4 +1,22 @@
-# query_weaviate.py
+"""
+query_weaviate.py
+
+Weaviate query interface for NobelLM RAG pipeline.
+
+- Provides low-level functions to connect to and query a Weaviate vector database.
+- Handles client instantiation, query embedding (using local SentenceTransformer), and result normalization.
+- Used by `WeaviateRetriever` in `rag/retriever_weaviate.py` for backend-agnostic retrieval.
+- Configuration is via environment variables or backend config (see below).
+
+Related files:
+- rag/retriever_weaviate.py: Implements the WeaviateRetriever using this interface.
+- rag/retriever.py: Retriever factory and interface.
+
+Configuration:
+- Set `WEAVIATE_URL` and `WEAVIATE_API_KEY` as environment variables or via backend config.
+- Embedding is always performed locally (not via Weaviate inference module).
+
+"""
 
 import weaviate
 import numpy as np

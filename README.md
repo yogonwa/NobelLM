@@ -38,8 +38,24 @@ NobelLM is a modular, full-stack GenAI project that:
 ## Architecture
 
 - **Backend:** FastAPI (Python) with RAG pipeline
+    - **Vector DB:** Supports both FAISS (default, local/dev) and Weaviate (production, cloud-native)
+    - **Retriever Selection:** The backend dynamically selects between FAISS and Weaviate based on environment/configuration. See `/rag/retriever.py` and `/rag/retriever_weaviate.py` for details.
+    - **RAG Logic:** Modular, model-aware, and backend-agnostic. All retrieval is routed through a unified interface.
+    - **Weaviate Integration:** See `/rag/query_weaviate.py` and `/rag/retriever_weaviate.py` for Weaviate-specific logic and configuration.
 - **Frontend:** React + Vite + TypeScript (see `/frontend`)
 - **Deployment:** Dockerized, Fly.io for production
+
+---
+
+## Weaviate Vector DB Support
+
+- **Production deployments** now support Weaviate as a vector database backend for semantic search and retrieval.
+- **Configuration:**
+    - Set `USE_WEAVIATE=1` (or equivalent) in your backend config or environment to enable Weaviate.
+    - Required environment variables: `WEAVIATE_URL`, `WEAVIATE_API_KEY` (see `/rag/query_weaviate.py`).
+    - Embedding is always performed locally using the configured model (not via Weaviate inference module).
+- **Fallback:** If Weaviate is not enabled/configured, the backend uses FAISS (in-process or subprocess for Mac/Intel).
+- **All retrieval logic is backend-agnostic** and routed through the `BaseRetriever` interface.
 
 ---
 

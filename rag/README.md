@@ -11,6 +11,24 @@ This module provides a modular, extensible, and testable interface for querying 
 
 ---
 
+## 🆕 Weaviate Vector DB Backend (June 2025)
+
+NobelLM now supports **Weaviate** as a production vector database backend for semantic search and retrieval. The retriever selection is automatic and backend-agnostic:
+
+- **Retriever Selection:**
+    - The RAG pipeline dynamically selects between FAISS and Weaviate based on environment/configuration.
+    - See [`rag/retriever.py`](./retriever.py) for the retriever factory and interface.
+    - See [`rag/retriever_weaviate.py`](./retriever_weaviate.py) for the Weaviate retriever implementation.
+    - See [`rag/query_weaviate.py`](./query_weaviate.py) for low-level Weaviate query logic and configuration.
+- **Configuration:**
+    - Enable Weaviate by setting the appropriate config/env vars (e.g., `USE_WEAVIATE=1`, `WEAVIATE_URL`, `WEAVIATE_API_KEY`).
+    - Embedding is always performed locally using the configured model (not via Weaviate inference module).
+    - If Weaviate is not enabled/configured, the pipeline falls back to FAISS (in-process or subprocess for Mac/Intel).
+- **All retrieval logic is backend-agnostic** and routed through the `BaseRetriever` interface.
+- **See also:** `/backend/README.md` for backend setup and `/frontend/README.md` for frontend setup.
+
+---
+
 ## 📂 RAG Module File/Class Overview
 
 | File                      | Main Classes/Functions         | Description                                                                                 |
@@ -19,6 +37,8 @@ This module provides a modular, extensible, and testable interface for querying 
 | `query_router.py`         | `QueryRouter`, `IntentClassifier`, `PromptTemplateSelector` | Classifies queries, selects retrieval config, prompt template, and routes to metadata/RAG.   |
 | `thematic_retriever.py`   | `ThematicRetriever`           | Expands thematic queries, embeds, and retrieves relevant chunks.                             |
 | `retriever.py`            | `BaseRetriever`, `InProcessRetriever`, `SubprocessRetriever`, `query_index` | Retrieves top-k chunks from FAISS index, supports mode-aware (in-process/subprocess) logic. |
+| `retriever_weaviate.py`   | `WeaviateRetriever`           | Weaviate-based retriever, implements `BaseRetriever` interface for backend-agnostic retrieval. |
+| `query_weaviate.py`       | `query_weaviate`, `get_weaviate_client` | Low-level Weaviate query logic and client configuration.                                     |
 | `dual_process_retriever.py`| `retrieve_chunks_dual_process`| Subprocess-based FAISS retrieval for Mac/Intel safety.                                      |
 | `faiss_index.py`          | `load_index`, `reload_index`, `health_check` | Loads, reloads, and checks FAISS index integrity.                                           |
 | `model_config.py`         | `get_model_config`            | Central config for model names, paths, embedding dims.                                      |
