@@ -200,3 +200,4 @@ cython_debug/
 # Note: nobel_literature.json is now tracked via Git LFS for critical pipeline functionality
 # Note: literature_embeddings*.json are large generated files and should NOT be tracked
 # Note: FAISS index files (*.faiss) should be handled via Git LFS, not regular tracking
+.DS_Store
