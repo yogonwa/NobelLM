@@ -105,12 +105,11 @@ def get_index_and_metadata(model_id: str = None):
 
 def embed_query(query: str, model_id: str = None) -> np.ndarray:
     """
-    Embed the user query using the embedding model specified by model_id.
+    Embed the user query using the unified embedding service.
     Returns a numpy array embedding.
     """
-    model = get_model(model_id)
-    emb = model.encode(query, show_progress_bar=False, normalize_embeddings=True)
-    return np.array(emb, dtype=np.float32)
+    from rag.modal_embedding_service import embed_query as modal_embed_query
+    return modal_embed_query(query, model_id)
 
 
 def retrieve_chunks(

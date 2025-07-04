@@ -41,7 +41,7 @@ def get_embedding_model(model_id: str = None) -> SentenceTransformer:
 
 def embed_query_safe(query: str, model_id: str = None) -> np.ndarray:
     """
-    Safely embed a query string using the specified model.
+    Safely embed a query string using the unified embedding service.
     
     Args:
         query: The query string to embed
@@ -50,9 +50,8 @@ def embed_query_safe(query: str, model_id: str = None) -> np.ndarray:
     Returns:
         Normalized query embedding as numpy array
     """
-    model = get_embedding_model(model_id)
-    emb = model.encode(query, show_progress_bar=False, normalize_embeddings=True)
-    return np.array(emb, dtype=np.float32)
+    from rag.modal_embedding_service import embed_query
+    return embed_query(query, model_id)
 
 
 def safe_retrieve_chunks(

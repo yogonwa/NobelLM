@@ -24,6 +24,25 @@ pinned: false
 
 ---
 
+## 🔄 Modal Embedding Service (June 2025)
+
+NobelLM now uses a **unified, environment-aware embedding service** for all user queries:
+
+- **Production:** All queries are embedded via a dedicated Modal microservice (see `modal_embedder.py`).
+- **Development:** Embedding is performed locally using the BGE-Large model.
+- **No more embedding in Weaviate or Fly API.**
+- The embedding logic is centralized in `rag/modal_embedding_service.py` and used by all retrievers.
+- The system automatically detects the environment and routes embedding requests accordingly, with robust fallback logic.
+
+**Benefits:**
+- Consistent, scalable, and cost-effective embedding in production
+- No need to run large models locally in prod containers
+- Simplified architecture and maintenance
+
+See [`rag/README.md`](rag/README.md) for technical details and extension/testing instructions.
+
+---
+
 ## Project Overview
 
 NobelLM is a modular, full-stack GenAI project that:

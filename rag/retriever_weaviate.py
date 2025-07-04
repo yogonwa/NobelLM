@@ -19,15 +19,8 @@ from rag.validation import validate_query_string, validate_retrieval_parameters,
 
 logger = get_module_logger(__name__)
 
-# Model caching to avoid repeated loads
-_model_cache = {}
-
-def get_model(model_id: str):
-    """Get cached embedding model or load it if not cached."""
-    if model_id not in _model_cache:
-        config = get_model_config(model_id)
-        _model_cache[model_id] = SentenceTransformer(config["model_name"])
-    return _model_cache[model_id]
+# Import unified embedding service
+from rag.modal_embedding_service import embed_query
 
 
 class WeaviateRetriever(BaseRetriever):
@@ -55,12 +48,9 @@ class WeaviateRetriever(BaseRetriever):
             
         self.model_id = model_id
         
-        # Load embedding model for query processing
-        # Note: This retriever embeds queries locally, not using Weaviate's inference module
-        self.model = get_model(self.model_id)
-        
         # Get embedding dimension for logging and validation
-        self.embedding_dim = self.model.get_sentence_embedding_dimension()
+        config = get_model_config(self.model_id)
+        self.embedding_dim = config["embedding_dim"]
         
         log_with_context(
             logger,
