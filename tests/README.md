@@ -56,13 +56,14 @@ The test suite follows the core pipeline flow:
 2. Intent Classification (including Phase 2 modernization)
 3. **Theme Embedding Infrastructure (Phase 3A - COMPLETED)**
 4. **Retrieval Logic Enhancements (Phase 4 - COMPLETED)**
-5. Metadata Direct Answer
-6. Chunking/Embeddings
-7. Retrieval
-8. Thematic Analysis
-9. RAG Pipeline
-10. Frontend E2E
-11. Cross-Cutting Tests
+5. **Modal Embedding Service Integration (Latest - COMPLETED)**
+6. Metadata Direct Answer
+7. Chunking/Embeddings
+8. Retrieval
+9. Thematic Analysis
+10. RAG Pipeline
+11. Frontend E2E
+12. Cross-Cutting Tests
 
 **API Contract for Factual/Metadata Answers (2024):**
 - For factual/metadata queries (e.g., "Who won in 1985?"), the backend and all tests now require:
@@ -105,6 +106,23 @@ The test suite follows the core pipeline flow:
 - Error handling and fallback behavior testing
 - Test isolation improvements with global state management
 - Prevents Weaviate fallback and ensures consistent test environment
+
+**Modal Embedding Service Unit Tests (Enhanced):**
+- `test_modal_embedding_service.py`: Comprehensive unit testing with both mock and real embedding tests
+- Mock-based tests for environment detection, error handling, and integration logic
+- Real embedding tests using actual sentence-transformers models for end-to-end validation
+- Model-aware testing across different embedding configurations (bge-large, miniLM)
+- Performance benchmarking and edge case handling
+- Conditional test execution based on dependency availability
+
+**Modal Embedding Service E2E Tests (Latest):**
+- `test_modal_embedding_e2e.py`: Complete end-to-end Modal embedding service testing
+- Production pipeline integration with Modal service
+- Environment detection and routing logic validation
+- Performance testing for both development and production environments
+- Comprehensive error scenario testing (Modal failures, fallbacks, complete failures)
+- Model-aware functionality testing across different model configurations
+- Integration with complete RAG pipeline validation
 
 ## Test Categories
 
@@ -200,6 +218,27 @@ Individual component testing with mocked dependencies.
 - RAG answer compilation logic
 - Output validation (answer, sources, metadata_answer)
 
+#### `test_modal_embedding_service.py` (NEW - Enhanced Unit Tests)
+- **Modal Embedding Service Unit Tests**
+- **Mock-Based Tests:**
+  - Environment detection and routing logic (development vs production)
+  - Modal stub retrieval and error handling
+  - Local embedding fallback behavior
+  - Model-aware embedding with different configurations
+  - Error handling and exception propagation
+  - Logging integration and context management
+  - Comprehensive mocking of external dependencies
+
+- **Real Embedding Tests (NEW):**
+  - `TestModalEmbeddingServiceRealEmbeddings`: Real embedding model testing
+  - Tests actual sentence-transformers models (bge-large, miniLM) without mocking
+  - Validates embedding dimensions, normalization, and determinism
+  - Performance testing with multiple queries
+  - Edge case handling (short/long queries, special characters)
+  - Model switching validation between different embedding models
+  - Comprehensive coverage of real embedding pipeline functionality
+  - Conditional test execution based on sentence-transformers availability
+
 ### 2. Integration Tests (`integration/`)
 Component interaction testing with realistic data flow.
 
@@ -294,6 +333,47 @@ Full workflow validation with minimal mocking.
   - No-results handling
   - Error scenarios
 - Frontend output contract stability
+- **Modal Embedding Service Integration:**
+  - `test_production_embedding_service_integration`: Tests production pipeline with Modal service
+  - Environment-aware testing with proper mocking
+  - Embedding service verification in complete pipeline
+  - Production vs development environment validation
+
+#### `test_modal_embedding_e2e.py` (NEW - Modal E2E)
+- **Complete Modal Embedding Service E2E Tests**
+- **Core Embedding Pipeline Tests:**
+  - `test_development_embedding_pipeline`: Real local model testing in development
+  - `test_production_embedding_pipeline_mock`: Mocked Modal service testing in production
+  - `test_production_fallback_e2e`: Fallback to local when Modal fails
+  - `test_model_awareness_e2e`: Model-aware functionality across different models
+  - `test_environment_detection_e2e`: Environment detection and routing logic
+
+- **RAG Pipeline Integration Tests:**
+  - `test_query_engine_with_modal_service`: Query engine integration with Modal service
+  - `test_environment_switching_e2e`: Development vs production environment switching
+  - `test_production_pipeline_integration`: Complete production pipeline validation
+  - Embedding service verification in full RAG workflow
+
+- **Performance Testing:**
+  - `test_embedding_consistency`: Deterministic embedding validation
+  - `test_embedding_performance`: Performance benchmarking for local models
+  - `test_production_modal_performance_mock`: Modal performance testing (mocked)
+  - Performance thresholds and monitoring validation
+
+- **Error Scenario Testing:**
+  - `test_empty_query_handling`: Empty query handling
+  - `test_long_query_handling`: Very long query processing
+  - `test_special_characters_handling`: Special character handling
+  - `test_production_modal_failure_scenarios`: Various Modal failure scenarios
+  - `test_complete_failure_scenario`: Complete failure handling
+
+- **Key Features:**
+  - Comprehensive production pipeline testing
+  - Environment-aware testing with proper isolation
+  - Performance benchmarking and monitoring
+  - Error handling and fallback validation
+  - Model-aware functionality testing
+  - Complete integration with RAG pipeline
 
 #### `test_theme_embedding_infrastructure.py` (NEW - Phase 3A E2E)
 - **Phase 3A Core Infrastructure E2E Tests**
@@ -431,6 +511,18 @@ pytest tests/validation/test_embedder_sanity.py -m validation
 pytest tests/validation/test_e2e_embed_faiss_sanity.py -m validation
 ```
 
+### Modal Embedding Service Testing
+```bash
+# Run Modal embedding integration tests
+pytest tests/integration/test_modal_embedding_integration.py -m integration
+
+# Run Modal embedding E2E tests
+pytest tests/e2e/test_modal_embedding_e2e.py -m e2e
+
+# Run Modal embedding tests with production environment
+NOBELLM_ENVIRONMENT=production pytest tests/e2e/test_modal_embedding_e2e.py -m e2e
+```
+
 ## Best Practices
 
 ### Model Parameterization Example
@@ -486,6 +578,44 @@ class TestComponentSanity:
         pass
 ```
 
+### Modal Embedding Service Test Patterns
+```python
+@pytest.mark.e2e
+class TestModalEmbeddingE2E:
+    """End-to-end tests for Modal embedding service."""
+    
+    @pytest.fixture(autouse=True)
+    def reset_embedding_service(self):
+        """Reset the global embedding service instance before each test."""
+        import rag.modal_embedding_service
+        rag.modal_embedding_service._embedding_service = None
+        
+        with patch.dict(os.environ, {
+            "NOBELLM_USE_WEAVIATE": "0",
+            "NOBELLM_USE_FAISS_SUBPROCESS": "0"
+        }, clear=False):
+            yield
+    
+    def test_production_embedding_pipeline(self):
+        """Test complete embedding pipeline in production environment."""
+        with patch.dict(os.environ, {"NOBELLM_ENVIRONMENT": "production"}):
+            with patch('rag.modal_embedding_service.modal') as mock_modal:
+                # Mock Modal stub and function
+                mock_stub = Mock()
+                mock_function = Mock()
+                mock_embedding = np.random.rand(1024).astype(np.float32)
+                mock_function.remote.return_value = mock_embedding.tolist()
+                mock_stub.function.return_value = mock_function
+                mock_modal.App.lookup.return_value = mock_stub
+                
+                # Test embedding
+                result = embed_query("Test query")
+                
+                # Verify Modal was called
+                mock_function.remote.assert_called_once_with("Test query")
+                assert result.shape == (1024,)
+```
+
 ### Key Guidelines
 1. **Model Awareness**: Avoid hardcoding model names, file paths, or dimensions
 2. **Config-Driven**: Use `get_model_config()` for all model-specific values
@@ -498,12 +628,16 @@ class TestComponentSanity:
 9. **Documentation**: Document complex test scenarios and edge cases
 10. **Validation Tests**: Use `@pytest.mark.validation` decorator for all validation tests
 11. **Sanity Checks**: Include proper error handling and skip conditions for missing resources
+12. **Modal Service Testing**: Always reset global service instances and set consistent environment variables
+13. **Production Testing**: Mock Modal service for production environment testing
+14. **Fallback Testing**: Test both Modal and local embedding paths with proper error scenarios
 
 ### Test Naming Conventions
 - Unit tests: `test_function_name_scenario`
 - Integration tests: `test_component_to_component_integration`
 - E2E tests: `test_full_workflow_scenario`
 - Validation tests: `test_component_sanity` or `test_validation_function`
+- Modal tests: `test_modal_embedding_scenario` or `test_production_embedding_scenario`
 
 ### API Contract Enforcement
 - For factual/metadata queries, always assert `answer_type: "metadata"` and that `metadata_answer` includes all required fields (`laureate`, `year_awarded`, `country`, `country_flag`, `category`, `prize_motivation`).
@@ -600,6 +734,12 @@ def test_modal_integration():
    - Performance benchmarks for validation tests
    - Automated health checks for production deployment
 
+5. **Modal Embedding Service Enhancements:**
+   - Real Modal service integration tests (with actual Modal deployment)
+   - Performance benchmarking against local models
+   - Load testing and scalability validation
+   - Cost analysis and optimization testing
+
 ### Long-term Enhancements
 1. **Automated Performance Testing:**
    - CI/CD integration for performance regression detection
@@ -625,3 +765,9 @@ def test_modal_integration():
    - Automated health checks for production systems
    - Continuous monitoring of system components
    - Alerting for validation test failures
+
+7. **Modal Service Production Testing:**
+   - Real Modal deployment integration tests
+   - Production environment validation
+   - Cost and performance monitoring
+   - Automated Modal service health checks
