@@ -53,12 +53,14 @@ def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     settings = get_settings()
 
-    # Hardcoded CORS origins for production reliability
-    logger.info("Using hardcoded CORS origins for production")
+    # Comprehensive CORS origins for production reliability
+    logger.info("Configuring CORS for production")
     cors_origins = [
         "https://nobellm.com",
-        "https://www.nobellm.com",
-        "https://nobellm-web.fly.dev"
+        "https://www.nobellm.com", 
+        "https://nobellm-web.fly.dev",
+        "http://localhost:3000",  # For local development
+        "http://localhost:5173",  # For local development
     ]
 
     logger.info(f"CORS origins configured: {cors_origins}")
@@ -72,12 +74,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan
     )
 
+    # Add CORS middleware with comprehensive configuration
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"]
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["*"]
     )
 
     if not settings.debug:
@@ -104,6 +108,18 @@ def create_app() -> FastAPI:
         start_time = time.time()
         response = await call_next(request)
         response.headers["X-Process-Time"] = str(time.time() - start_time)
+        return response
+
+    @app.middleware("http")
+    async def add_cors_debug_headers(request: Request, call_next):
+        """Add CORS debug headers for troubleshooting."""
+        response = await call_next(request)
+        
+        # Add debug headers
+        origin = request.headers.get("origin")
+        response.headers["X-CORS-Origin"] = origin or "none"
+        response.headers["X-CORS-Allowed-Origins"] = ", ".join(cors_origins)
+        
         return response
 
     @app.exception_handler(Exception)
