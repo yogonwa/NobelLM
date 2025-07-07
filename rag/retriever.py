@@ -413,23 +413,40 @@ def get_mode_aware_retriever(model_id: str = None) -> BaseRetriever:
     Returns:
         BaseRetriever: The appropriate retriever instance
     """
-    # Check if Weaviate is enabled
+    # Check if Weaviate is enabled and available
     try:
         from backend.app.config import get_settings
         settings = get_settings()
         if settings.use_weaviate:
-            from rag.retriever_weaviate import WeaviateRetriever
-            log_with_context(
-                logger,
-                logging.INFO,
-                "Retriever",
-                "Using Weaviate retriever",
-                {"use_weaviate": True}
-            )
-            return WeaviateRetriever(model_id)
-    except (ImportError, ModuleNotFoundError):
-        # If we can't import the backend config, fall back to FAISS
-        pass
+            # Check if Weaviate environment variables are available
+            weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
+            if weaviate_api_key:
+                from rag.retriever_weaviate import WeaviateRetriever
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "Retriever",
+                    "Using Weaviate retriever",
+                    {"use_weaviate": True, "api_key_available": True}
+                )
+                return WeaviateRetriever(model_id)
+            else:
+                log_with_context(
+                    logger,
+                    logging.WARNING,
+                    "Retriever",
+                    "Weaviate enabled but API key not available, falling back to FAISS",
+                    {"use_weaviate": True, "api_key_available": False}
+                )
+    except (ImportError, ModuleNotFoundError, Exception) as e:
+        # If we can't import the backend config or there's any error, fall back to FAISS
+        log_with_context(
+            logger,
+            logging.DEBUG,
+            "Retriever",
+            "Backend config not available, using FAISS",
+            {"error": str(e)}
+        )
     
     # Fall back to FAISS-based retrievers
     use_subprocess = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS") == "1"

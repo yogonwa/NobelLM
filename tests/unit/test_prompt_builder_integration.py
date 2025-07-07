@@ -17,6 +17,7 @@ from rag.prompt_builder import PromptBuilder
 from rag.query_engine import get_prompt_builder, build_intent_aware_prompt
 
 
+@pytest.mark.unit
 class TestPromptBuilderIntegration:
     """Test the integration of PromptBuilder with query engine."""
     

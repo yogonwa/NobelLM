@@ -31,6 +31,57 @@ USE_FAISS_SUBPROCESS = os.getenv("NOBELLM_USE_FAISS_SUBPROCESS", "0") == "1"
 # _MODEL = None
 # _MODEL_LOCK = None
 
+class SafeRetriever:
+    """
+    A safe retriever that handles embedding correctly based on environment.
+    
+    This class provides a consistent interface with other retrievers while
+    ensuring proper embedding handling in both subprocess and in-process modes.
+    """
+    
+    def __init__(self, model_id: Optional[str] = None):
+        """
+        Initialize the SafeRetriever.
+        
+        Args:
+            model_id: Optional model identifier. If None, uses DEFAULT_MODEL_ID.
+        """
+        self.model_id = model_id or DEFAULT_MODEL_ID
+    
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+        score_threshold: float = 0.2,
+        min_return: int = 3,
+        max_return: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve chunks using the safe retrieval pattern.
+        
+        Args:
+            query: The query string to retrieve chunks for
+            top_k: Number of results to retrieve
+            filters: Metadata filters to apply
+            score_threshold: Minimum similarity score
+            min_return: Minimum number of results to return
+            max_return: Maximum number of results to return
+            
+        Returns:
+            List of chunks with metadata and scores
+        """
+        return safe_retrieve_chunks(
+            query_string=query,
+            model_id=self.model_id,
+            top_k=top_k,
+            filters=filters,
+            score_threshold=score_threshold,
+            min_return=min_return,
+            max_return=max_return
+        )
+
+
 def get_embedding_model(model_id: str = None) -> SentenceTransformer:
     """
     Get the embedding model for the specified model_id.
@@ -41,7 +92,7 @@ def get_embedding_model(model_id: str = None) -> SentenceTransformer:
 
 def embed_query_safe(query: str, model_id: str = None) -> np.ndarray:
     """
-    Safely embed a query string using the specified model.
+    Safely embed a query string using the unified embedding service.
     
     Args:
         query: The query string to embed
@@ -50,9 +101,8 @@ def embed_query_safe(query: str, model_id: str = None) -> np.ndarray:
     Returns:
         Normalized query embedding as numpy array
     """
-    model = get_embedding_model(model_id)
-    emb = model.encode(query, show_progress_bar=False, normalize_embeddings=True)
-    return np.array(emb, dtype=np.float32)
+    from rag.modal_embedding_service import embed_query
+    return embed_query(query, model_id)
 
 
 def safe_retrieve_chunks(

@@ -47,8 +47,8 @@ def get_weaviate_client():
 # Initialize client
 client = get_weaviate_client()
 
-# Load embedding model
-model = SentenceTransformer("BAAI/bge-large-en-v1.5")
+# Import unified embedding service
+from rag.modal_embedding_service import embed_query
 
 def query_weaviate(
     query_text: str,
@@ -56,8 +56,8 @@ def query_weaviate(
     filters: dict = None,
     score_threshold: float = 0.2
 ):
-    # Embed query
-    embedding = model.encode(query_text, normalize_embeddings=True).tolist()
+    # Embed query using unified service
+    embedding = embed_query(query_text).tolist()
 
     # Build filter if provided
     weaviate_filter = None

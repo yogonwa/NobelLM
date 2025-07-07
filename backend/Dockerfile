@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Copy only requirements file first for better layer caching
 COPY backend/requirements.txt .
 
-# Optional: isolate heavy packages for better debugging/caching
+# Install core packages (excluding heavy ML dependencies for production)
 RUN pip install --no-cache-dir numpy==1.23.5 scipy scikit-learn
 
 # Install remaining packages
@@ -47,7 +47,8 @@ COPY rag ./rag
 COPY utils ./utils
 COPY config ./config
 COPY data/theme_embeddings ./data/theme_embeddings
-# Theme embeddings and config files included, no FAISS data needed for Weaviate
+# Note: No FAISS index or BGE-large model files needed for production
+# Modal embedding service handles all embedding generation
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && \

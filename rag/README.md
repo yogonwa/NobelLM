@@ -100,6 +100,36 @@ response = answer_query(
 
 This refactor makes the pipeline robust, testable, and future-ready for multi-backend or hybrid search.
 
+## 🔄 Unified Modal Embedding Service (June 2025)
+
+**All embedding in NobelLM is now routed through a single, environment-aware service:**
+
+- **Production:** Embedding is performed by a dedicated Modal microservice (`modal_embedder.py`).
+- **Development:** Embedding is performed locally using the BGE-Large model.
+- **No more embedding in Weaviate or Fly API.**
+- The embedding logic is centralized in `rag/modal_embedding_service.py`.
+- All retrievers (FAISS, thematic, etc.) use this service for query embedding.
+- The service automatically detects the environment and routes requests accordingly, with robust fallback to local embedding if Modal is unavailable.
+
+### How it Works
+- The function `embed_query(query: str, model_id: str = None)` is the canonical embedding entry point.
+- In production, it calls the Modal API; in development, it loads the model locally.
+- All retrievers and the RAG pipeline use this function, ensuring consistent behavior.
+
+### Benefits
+- **Consistency:** All embedding is handled in one place, reducing bugs and maintenance overhead.
+- **Scalability:** Modal handles production load and scaling.
+- **Simplicity:** No more forking logic for Weaviate/Fly API embedding.
+- **Fallback:** If Modal is unavailable, the system falls back to local embedding (with logging).
+
+### Extending/Testing
+- To add a new embedding backend, extend `rag/modal_embedding_service.py` and update environment detection logic.
+- To test embedding, use the provided unit and integration tests (see `/tests`).
+- For local testing, run: `python -c "from rag.modal_embedding_service import embed_query; print(embed_query('test query').shape)"`
+- For Modal testing, deploy the service and set the environment to production.
+
+See `rag/MODAL_INTEGRATION_PLAN.md` for a full migration plan and technical details.
+
 ## Theme Embedding Infrastructure (Phase 3A - January 2025)
 
 **New as of January 2025:** NobelLM now features intelligent similarity-based thematic query expansion with pre-computed embeddings and quality filtering.

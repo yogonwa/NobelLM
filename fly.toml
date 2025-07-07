@@ -7,6 +7,7 @@ app = "nobellm-api"
 [env]
   TOKENIZERS_PARALLELISM = "false"
   ENVIRONMENT = "production"
+  NOBELLM_ENVIRONMENT = "production"
   ALLOWED_ORIGINS = '["https://nobellm.com", "https://www.nobellm.com"]' 
 
 [http_service]

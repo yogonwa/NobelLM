@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # --- Environment ---
+    environment: str = "development"  # development, production
+
     # --- RAG Config ---
     default_model: str = "bge-large"
     max_query_length: int = 1000
@@ -35,6 +38,10 @@ class Settings(BaseSettings):
     weaviate_url: str = "https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud"
     weaviate_api_key: str = ""
 
+    # --- Modal Embedding Service ---
+    modal_app_name: str = "nobel-embedder"
+    use_modal_embedding: bool = True
+
     # --- CORS ---
     cors_origins: str = ""
     
@@ -43,6 +50,11 @@ class Settings(BaseSettings):
     
     # --- Tokenizers ---
     tokenizers_parallelism: str = "false"
+    
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.environment.lower() == "production"
     
     @property
     def cors_origins_list(self) -> List[str]:
