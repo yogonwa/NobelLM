@@ -128,15 +128,16 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Comprehensive health check including Weaviate connectivity."""
+        current_settings = get_settings()
         health_status = {
             "status": "healthy",
             "timestamp": time.time(),
-            "version": settings.app_version,
+            "version": current_settings.app_version,
             "checks": {}
         }
         
         # Check Weaviate connectivity if enabled
-        if settings.use_weaviate:
+        if current_settings.use_weaviate:
             try:
                 from rag.query_weaviate import get_weaviate_client
                 client = get_weaviate_client()
