@@ -26,13 +26,16 @@ from sentence_transformers import SentenceTransformer
 def get_weaviate_client():
     """Get Weaviate client with environment-based configuration."""
     try:
-        from backend.app.config import settings
+        from backend.app.config import get_settings
+        settings = get_settings()
         url = settings.weaviate_url
         api_key = settings.weaviate_api_key
+        openai_key = settings.openai_api_key
     except ImportError:
         # Fallback to environment variables if config not available
         url = os.getenv("WEAVIATE_URL", "https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud")
         api_key = os.getenv("WEAVIATE_API_KEY", "")
+        openai_key = os.getenv("OPENAI_API_KEY", "")
     
     if not api_key:
         raise ValueError("WEAVIATE_API_KEY environment variable is required")
@@ -40,7 +43,7 @@ def get_weaviate_client():
     client = weaviate.Client(
         url=url,
         auth_client_secret=weaviate.AuthApiKey(api_key) if api_key else None,
-        additional_headers={"X-OpenAI-Api-Key": settings.openai_api_key} if settings.openai_api_key else None
+        additional_headers={"X-OpenAI-Api-Key": openai_key} if openai_key else None
     )
     return client
 
