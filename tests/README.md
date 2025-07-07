@@ -115,15 +115,6 @@ The test suite follows the core pipeline flow:
 - Performance benchmarking and edge case handling
 - Conditional test execution based on dependency availability
 
-**Modal Embedding Service E2E Tests (Latest):**
-- `test_modal_embedding_e2e.py`: Complete end-to-end Modal embedding service testing
-- Production pipeline integration with Modal service
-- Environment detection and routing logic validation
-- Performance testing for both development and production environments
-- Comprehensive error scenario testing (Modal failures, fallbacks, complete failures)
-- Model-aware functionality testing across different model configurations
-- Integration with complete RAG pipeline validation
-
 ## Test Categories
 
 ### 1. Unit Tests (`unit/`)
@@ -323,9 +314,12 @@ Component interaction testing with realistic data flow.
   - Comprehensive coverage of the unified embedding service architecture
 
 ### 3. End-to-End Tests (`e2e/`)
-Full workflow validation with minimal mocking.
+Full workflow validation with minimal mocking. **Total: 7 focused tests**
 
-#### `test_e2e_frontend_contract.py`
+#### `test_e2e_frontend_contract.py` (3 tests)
+- **`test_realistic_embedding_service_integration`**: True E2E test with real retriever, embedding service, and index
+- **`test_modal_embedding_service_direct`**: Direct embedding service test for debugging
+- **`test_modal_embedding_service_environment_detection`**: Environment detection validation
 - Full user query → answer flow validation:
   - Factual queries: **asserts `answer_type: "metadata"` and all required fields in `metadata_answer`**
   - Thematic queries
@@ -334,48 +328,43 @@ Full workflow validation with minimal mocking.
   - Error scenarios
 - Frontend output contract stability
 - **Modal Embedding Service Integration:**
-  - `test_production_embedding_service_integration`: Tests production pipeline with Modal service
-  - Environment-aware testing with proper mocking
+  - Real embedding service integration with minimal mocking
+  - Environment-aware testing with proper isolation
   - Embedding service verification in complete pipeline
   - Production vs development environment validation
 
-#### `test_modal_embedding_e2e.py` (NEW - Modal E2E)
-- **Complete Modal Embedding Service E2E Tests**
-- **Core Embedding Pipeline Tests:**
-  - `test_development_embedding_pipeline`: Real local model testing in development
-  - `test_production_embedding_pipeline_mock`: Mocked Modal service testing in production
-  - `test_production_fallback_e2e`: Fallback to local when Modal fails
-  - `test_model_awareness_e2e`: Model-aware functionality across different models
-  - `test_environment_detection_e2e`: Environment detection and routing logic
+#### `test_modal_service_live.py` (2 tests)
+- **`test_modal_service_live`**: Live E2E test for deployed Modal embedding service
+  - Comprehensive validation of deployed Modal service
+  - Health check, embedding generation, format validation, performance testing
+  - Consistency testing and error handling
+  - Requires deployed Modal service and `NOBELLM_TEST_MODAL_LIVE=1`
+- **`test_modal_service_health_only`**: Quick health check for Modal service
+  - Lightweight test for service availability
+  - Good for CI/CD validation
+  - Requires deployed Modal service and `NOBELLM_TEST_MODAL_LIVE=1`
 
-- **RAG Pipeline Integration Tests:**
-  - `test_query_engine_with_modal_service`: Query engine integration with Modal service
-  - `test_environment_switching_e2e`: Development vs production environment switching
-  - `test_production_pipeline_integration`: Complete production pipeline validation
-  - Embedding service verification in full RAG workflow
+#### `test_weaviate_e2e.py` (1 test)
+- **`test_weaviate_e2e`**: Full Weaviate RAG pipeline integration test
+  - Complete end-to-end test with Weaviate as vector backend
+  - Environment configuration, query routing, retrieval, LLM integration
+  - Answer compilation and source citation
+  - Requires Weaviate setup and configuration
 
-- **Performance Testing:**
-  - `test_embedding_consistency`: Deterministic embedding validation
-  - `test_embedding_performance`: Performance benchmarking for local models
-  - `test_production_modal_performance_mock`: Modal performance testing (mocked)
-  - Performance thresholds and monitoring validation
+#### `test_weaviate_health.py` (1 test)
+- **`test_weaviate_health`**: Weaviate connectivity and basic functionality test
+  - Connection and authentication validation
+  - Basic vector search functionality
+  - Data availability and quality checks
+  - Environment configuration validation
+  - Quick health check for CI/CD validation
 
-- **Error Scenario Testing:**
-  - `test_empty_query_handling`: Empty query handling
-  - `test_long_query_handling`: Very long query processing
-  - `test_special_characters_handling`: Special character handling
-  - `test_production_modal_failure_scenarios`: Various Modal failure scenarios
-  - `test_complete_failure_scenario`: Complete failure handling
+#### `test_failures.py`
+- Error scenario testing
+- Failure mode validation
+- Edge case handling
 
-- **Key Features:**
-  - Comprehensive production pipeline testing
-  - Environment-aware testing with proper isolation
-  - Performance benchmarking and monitoring
-  - Error handling and fallback validation
-  - Model-aware functionality testing
-  - Complete integration with RAG pipeline
-
-#### `test_theme_embedding_infrastructure.py` (NEW - Phase 3A E2E)
+#### `test_theme_embedding_infrastructure.py`
 - **Phase 3A Core Infrastructure E2E Tests**
 - ThemeEmbeddings class with model-aware storage and validation
 - Theme similarity computation using existing safe_faiss_scoring pattern
@@ -385,27 +374,6 @@ Full workflow validation with minimal mocking.
 - Error handling and edge cases for similarity computation
 - Performance benchmarks and monitoring
 - Integration testing between theme embeddings and similarity computation
-
-#### `test_failures.py`
-- Error scenario testing
-- Failure mode validation
-
-#### [NEW] Weaviate E2E and Health Check Tests
-
-### E2E: Weaviate Health Check (`tests/e2e/test_weaviate_health.py`)
-- **Purpose:** Quick health check for Weaviate connectivity, authentication, and basic search.
-- **Expectation:** Should pass if Weaviate is up, API key is valid, and some data is present.
-- **Marker:** `@pytest.mark.e2e`
-
-### E2E: Weaviate RAG Pipeline Integration (`tests/e2e/test_weaviate_e2e.py`)
-- **Purpose:** Full end-to-end test of the RAG pipeline (env/config → retrieval → LLM → answer).
-- **Expectation:** Should pass if the entire stack (config, retrieval, LLM, answer formatting) works.
-- **Marker:** `@pytest.mark.e2e`
-
-> **Note:**
-> - Old scripts (`test_weaviate_simple.py`, `test_weaviate_direct.py`, `test_weaviate_bypass.py`, etc.) have been removed.
-> - These two tests are now the canonical E2E tests for Weaviate integration and health.
-> - They follow the best practices and folder structure described below.
 
 ### 4. Validation Tests (`validation/`)
 Data quality, schema validation, and system sanity checks. **Total: 52 tests**
@@ -459,14 +427,26 @@ pytest
 # Run specific test categories
 pytest tests/unit/          # Unit tests only
 pytest tests/integration/   # Integration tests only
-pytest tests/e2e/          # End-to-end tests only
+pytest tests/e2e/          # End-to-end tests only (7 tests)
 pytest tests/validation/   # Validation tests only
 
 # Run tests with specific markers
 pytest -m unit             # Unit tests
 pytest -m integration      # Integration tests
-pytest -m e2e             # End-to-end tests
+pytest -m e2e             # End-to-end tests (7 tests)
 pytest -m validation      # Validation tests (52 tests)
+```
+
+### E2E Test Execution
+```bash
+# Run all E2E tests (7 tests)
+python -m pytest tests/e2e/ -m e2e -v
+
+# Run core E2E tests (without Modal live tests)
+python -m pytest tests/e2e/test_e2e_frontend_contract.py tests/e2e/test_weaviate_e2e.py tests/e2e/test_weaviate_health.py -v
+
+# Run Modal live service tests (requires deployed service)
+NOBELLM_TEST_MODAL_LIVE=1 python -m pytest tests/e2e/test_modal_service_live.py -v
 ```
 
 ### Test Configuration
@@ -516,11 +496,11 @@ pytest tests/validation/test_e2e_embed_faiss_sanity.py -m validation
 # Run Modal embedding integration tests
 pytest tests/integration/test_modal_embedding_integration.py -m integration
 
-# Run Modal embedding E2E tests
-pytest tests/e2e/test_modal_embedding_e2e.py -m e2e
+# Run Modal embedding unit tests
+pytest tests/unit/test_modal_embedding_service.py -m unit
 
-# Run Modal embedding tests with production environment
-NOBELLM_ENVIRONMENT=production pytest tests/e2e/test_modal_embedding_e2e.py -m e2e
+# Run Modal live service tests (requires deployed service)
+NOBELLM_TEST_MODAL_LIVE=1 python -m pytest tests/e2e/test_modal_service_live.py -v
 ```
 
 ## Best Practices
@@ -578,42 +558,44 @@ class TestComponentSanity:
         pass
 ```
 
-### Modal Embedding Service Test Patterns
+### E2E Test Patterns
 ```python
 @pytest.mark.e2e
-class TestModalEmbeddingE2E:
-    """End-to-end tests for Modal embedding service."""
+def test_realistic_embedding_service_integration():
+    """True E2E test: real retriever, embedding service, and index."""
     
-    @pytest.fixture(autouse=True)
-    def reset_embedding_service(self):
-        """Reset the global embedding service instance before each test."""
-        import rag.modal_embedding_service
-        rag.modal_embedding_service._embedding_service = None
+    # Only mock the query router and LLM call
+    with patch('rag.query_engine.get_query_router') as mock_router, \
+         patch('rag.query_engine.call_openai') as mock_openai:
         
-        with patch.dict(os.environ, {
-            "NOBELLM_USE_WEAVIATE": "0",
-            "NOBELLM_USE_FAISS_SUBPROCESS": "0"
-        }, clear=False):
-            yield
-    
-    def test_production_embedding_pipeline(self):
-        """Test complete embedding pipeline in production environment."""
-        with patch.dict(os.environ, {"NOBELLM_ENVIRONMENT": "production"}):
-            with patch('rag.modal_embedding_service.modal') as mock_modal:
-                # Mock Modal stub and function
-                mock_stub = Mock()
-                mock_function = Mock()
-                mock_embedding = np.random.rand(1024).astype(np.float32)
-                mock_function.remote.return_value = mock_embedding.tolist()
-                mock_stub.function.return_value = mock_function
-                mock_modal.App.lookup.return_value = mock_stub
-                
-                # Test embedding
-                result = embed_query("Test query")
-                
-                # Verify Modal was called
-                mock_function.remote.assert_called_once_with("Test query")
-                assert result.shape == (1024,)
+        # Mock router response for RAG query
+        mock_route_result = MagicMock()
+        mock_route_result.intent = "factual"
+        mock_route_result.answer_type = "rag"
+        mock_route_result.retrieval_config.filters = {}
+        mock_route_result.retrieval_config.top_k = 3
+        mock_route_result.retrieval_config.score_threshold = 0.2
+        mock_router.return_value.route_query.return_value = mock_route_result
+        
+        # Mock OpenAI response
+        mock_openai.return_value = {
+            "answer": "Test answer for embedding service integration.",
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "model": "gpt-3.5-turbo"
+        }
+        
+        # Test the query - this should use real retriever, embedding, and index
+        test_query = "What did Toni Morrison say about justice and race?"
+        result = answer_query(test_query)
+        
+        # Verify result structure
+        assert "answer" in result
+        assert "answer_type" in result
+        assert result["answer_type"] == "rag"
+        assert len(result["answer"]) > 0
+        assert isinstance(result["sources"], list)
+        assert len(result["sources"]) > 0
 ```
 
 ### Key Guidelines
@@ -631,6 +613,7 @@ class TestModalEmbeddingE2E:
 12. **Modal Service Testing**: Always reset global service instances and set consistent environment variables
 13. **Production Testing**: Mock Modal service for production environment testing
 14. **Fallback Testing**: Test both Modal and local embedding paths with proper error scenarios
+15. **E2E Testing**: Focus on true end-to-end scenarios with minimal mocking
 
 ### Test Naming Conventions
 - Unit tests: `test_function_name_scenario`

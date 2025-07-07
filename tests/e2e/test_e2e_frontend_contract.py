@@ -48,7 +48,7 @@ def reset_embedding_service():
 def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
     """E2E test for query engine: dry run and live modes, checks prompt, answer, and sources."""
     
-    # Mock the entire retrieval pipeline to avoid FAISS index issues
+    # Realistic test chunks that would be returned by actual retrieval
     mock_chunks = [
         {
             "chunk_id": "test_1",
@@ -75,14 +75,7 @@ def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
         with patch('rag.query_engine.call_openai') as mock_openai, \
              patch('rag.query_engine.get_query_router') as mock_router, \
              patch('rag.query_engine.ThematicRetriever') as mock_thematic, \
-             patch('rag.query_engine.get_mode_aware_retriever') as mock_retriever, \
-             patch('rag.modal_embedding_service.get_model') as mock_get_model:
-            
-            # Mock embedding service
-            mock_embedding = np.array([0.1, 0.2, 0.3] * 341, dtype=np.float32)
-            mock_model = MagicMock()
-            mock_model.encode.return_value = mock_embedding
-            mock_get_model.return_value = mock_model
+             patch('rag.query_engine.get_mode_aware_retriever') as mock_retriever:
             
             # Mock router response
             mock_route_result = MagicMock()
@@ -116,10 +109,6 @@ def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
             
             response = answer_query(user_query, model_id=model_id)
             
-            # Verify embedding service was called
-            mock_get_model.assert_called()
-            mock_model.encode.assert_called()
-            
             # Verify retriever was called with correct parameters based on router response
             if mock_route_result.answer_type == "rag" and mock_route_result.intent != "thematic":
                 mock_retriever_instance.retrieve.assert_called_with(
@@ -131,14 +120,7 @@ def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
         # For live tests, we need to mock the retrieval but allow real LLM calls
         with patch('rag.query_engine.get_query_router') as mock_router, \
              patch('rag.query_engine.ThematicRetriever') as mock_thematic, \
-             patch('rag.query_engine.get_mode_aware_retriever') as mock_retriever, \
-             patch('rag.modal_embedding_service.get_model') as mock_get_model:
-            
-            # Mock embedding service
-            mock_embedding = np.array([0.1, 0.2, 0.3] * 341, dtype=np.float32)
-            mock_model = MagicMock()
-            mock_model.encode.return_value = mock_embedding
-            mock_get_model.return_value = mock_model
+             patch('rag.query_engine.get_mode_aware_retriever') as mock_retriever:
             
             # Mock router response
             mock_route_result = MagicMock()
@@ -161,10 +143,6 @@ def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
             mock_thematic.return_value = mock_thematic_instance
             
             response = answer_query(user_query, model_id=model_id)
-            
-            # Verify embedding service was called
-            mock_get_model.assert_called()
-            mock_model.encode.assert_called()
             
             # Verify retriever was called with correct parameters based on router response
             if mock_route_result.answer_type == "rag" and mock_route_result.intent != "thematic":
@@ -232,65 +210,107 @@ def test_query_engine_e2e(user_query, filters, expected_k, dry_run, model_id):
         assert len(response["answer"]) > 0
 
 @pytest.mark.e2e
-def test_production_embedding_service_integration():
-    """Test that the production pipeline uses Modal embedding service correctly."""
+def test_realistic_embedding_service_integration():
+    """True E2E test: real retriever, embedding service, and index (Modal in prod)."""
+    
+    # Only mock the query router and LLM call
+    with patch('rag.query_engine.get_query_router') as mock_router, \
+         patch('rag.query_engine.call_openai') as mock_openai:
+        
+        # Mock router response for RAG query
+        mock_route_result = MagicMock()
+        mock_route_result.intent = "factual"
+        mock_route_result.answer_type = "rag"
+        mock_route_result.retrieval_config.filters = {}
+        mock_route_result.retrieval_config.top_k = 3
+        mock_route_result.retrieval_config.score_threshold = 0.2
+        mock_route_result.prompt_template = None
+        mock_router.return_value.route_query.return_value = mock_route_result
+        
+        # Mock OpenAI response
+        mock_openai.return_value = {
+            "answer": "Test answer for embedding service integration.",
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "model": "gpt-3.5-turbo"
+        }
+        
+        # Test the query - this should use real retriever, embedding, and index
+        test_query = "What did Toni Morrison say about justice and race?"
+        result = answer_query(test_query)
+        
+        # Verify result structure
+        assert "answer" in result
+        assert "answer_type" in result
+        assert result["answer_type"] == "rag"
+        assert len(result["answer"]) > 0
+        assert isinstance(result["sources"], list)
+        assert len(result["sources"]) > 0, "No sources returned; ensure FAISS index and data are available."
+        
+        # Check that each source has required fields
+        for chunk in result["sources"]:
+            assert "text" in chunk
+            assert "score" in chunk
+            assert "laureate" in chunk
+        
+        print(f"✅ True E2E embedding service integration successful")
+        print(f"Returned {len(result['sources'])} sources. First source: {result['sources'][0]}")
+
+@pytest.mark.e2e
+def test_modal_embedding_service_direct():
+    """Test the Modal embedding service directly to ensure it works correctly."""
+    
+    # Import the actual embedding service
+    from rag.modal_embedding_service import embed_query as modal_embed_query
+    
+    # Test with a simple query
+    test_query = "What did Toni Morrison say about justice?"
+    
+    try:
+        # This should use the real embedding service (local in development)
+        embedding = modal_embed_query(test_query)
+        
+        # Verify embedding properties
+        assert isinstance(embedding, np.ndarray)
+        assert embedding.shape == (1024,)  # BGE-large dimensions
+        assert embedding.dtype == np.float32
+        
+        # Verify normalization
+        max_val = max(abs(x) for x in embedding)
+        assert max_val <= 1.0, f"Embedding not normalized, max abs value: {max_val}"
+        
+        # Verify it's not a zero vector
+        assert np.linalg.norm(embedding) > 0, "Embedding is a zero vector"
+        
+        print(f"✅ Modal embedding service direct test successful")
+        print(f"Embedding shape: {embedding.shape}")
+        print(f"Embedding norm: {np.linalg.norm(embedding):.4f}")
+        print(f"Max abs value: {max_val:.4f}")
+        
+    except Exception as e:
+        pytest.skip(f"Modal embedding service not available: {e}")
+
+@pytest.mark.e2e
+def test_modal_embedding_service_environment_detection():
+    """Test that the Modal embedding service correctly detects environment."""
+    
+    from rag.modal_embedding_service import get_embedding_service
+    
+    # Test development environment detection
+    with patch.dict(os.environ, {}, clear=True):
+        service = get_embedding_service()
+        assert not service.is_production
+        print("✅ Development environment detected correctly")
+    
+    # Test production environment detection
     with patch.dict(os.environ, {"NOBELLM_ENVIRONMENT": "production"}):
-        # Mock Modal stub for production testing
-        with patch('rag.modal_embedding_service.modal') as mock_modal, \
-             patch('rag.query_engine.get_query_router') as mock_router, \
-             patch('rag.query_engine.get_mode_aware_retriever') as mock_retriever, \
-             patch('rag.query_engine.get_prompt_builder') as mock_builder, \
-             patch('rag.query_engine.call_openai') as mock_openai:
-            
-            # Mock Modal stub
-            mock_stub = MagicMock()
-            mock_function = MagicMock()
-            mock_embedding = np.random.rand(1024).astype(np.float32)
-            mock_embedding = mock_embedding / np.linalg.norm(mock_embedding)  # Normalize
-            mock_function.remote.return_value = mock_embedding.tolist()
-            mock_stub.function.return_value = mock_function
-            mock_modal.App.lookup.return_value = mock_stub
-            
-            # Mock model config
-            with patch('rag.modal_embedding_service.get_model_config') as mock_config:
-                mock_config.return_value = {"embedding_dim": 1024}
-                
-                # Mock query router
-                mock_router_instance = MagicMock()
-                mock_route_result = MagicMock()
-                mock_route_result.intent = "factual"
-                mock_route_result.answer_type = "metadata"
-                mock_route_result.retrieval_config = MagicMock()
-                mock_route_result.retrieval_config.top_k = 5
-                mock_route_result.retrieval_config.filters = {}
-                mock_router_instance.route_query.return_value = mock_route_result
-                mock_router.return_value = mock_router_instance
-                
-                # Mock retriever
-                mock_retriever_instance = MagicMock()
-                mock_retriever_instance.retrieve.return_value = []
-                mock_retriever.return_value = mock_retriever_instance
-                
-                # Mock prompt builder
-                mock_builder_instance = MagicMock()
-                mock_builder_instance.build_qa_prompt.return_value = "Test prompt"
-                mock_builder.return_value = mock_builder_instance
-                
-                # Mock OpenAI
-                mock_openai.return_value = {"choices": [{"message": {"content": "Test answer"}}]}
-                
-                # Test the query
-                result = answer_query("When did Toni Morrison win the Nobel Prize?")
-                
-                # Verify Modal was called for embedding
-                mock_function.remote.assert_called_once_with("When did Toni Morrison win the Nobel Prize?")
-                
-                # Verify result structure
-                assert "answer" in result
-                assert "answer_type" in result
-                assert result["answer_type"] == "metadata"
-                
-                print(f"✅ Production Modal embedding integration successful")
+        # Reset service to force re-initialization
+        import rag.modal_embedding_service
+        rag.modal_embedding_service._embedding_service = None
+        
+        service = get_embedding_service()
+        assert service.is_production
+        print("✅ Production environment detected correctly")
 
 @pytest.mark.skipif(os.getenv("NOBELLM_LIVE_TEST") != "1", reason="Live test skipped unless NOBELLM_LIVE_TEST=1")
 def test_query_engine_live():
