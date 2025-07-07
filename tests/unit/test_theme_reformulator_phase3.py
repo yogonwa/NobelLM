@@ -23,6 +23,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.unit
 class TestEnhancedThemeReformulator:
     """Test the enhanced ThemeReformulator with ranked expansion functionality."""
     
@@ -261,6 +262,7 @@ class TestEnhancedThemeReformulator:
         assert embedding_model is not None
 
 
+@pytest.mark.unit
 class TestThemeReformulatorPerformance:
     """Test performance characteristics of enhanced ThemeReformulator."""
     

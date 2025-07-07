@@ -18,6 +18,7 @@ from rag.thematic_retriever import ThematicRetriever
 from config.theme_reformulator import ThemeReformulator
 
 
+@pytest.mark.unit
 class TestThematicRetrieverPhase3:
     """Test suite for Phase 3B enhanced ThematicRetriever."""
 

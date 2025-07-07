@@ -16,6 +16,7 @@ def thematic_query() -> str:
     return "What themes of hope are present in Nobel Peace Prize speeches?"
 
 
+@pytest.mark.integration
 def test_routing_from_thematic_intent(thematic_query: str) -> None:
     """
     Integration test: Checks that a thematic query is classified and routed correctly.

@@ -26,6 +26,7 @@ def classifier():
 # Core Classification Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestFactualQueries:
     """Test factual query classification."""
     
@@ -57,6 +58,7 @@ class TestFactualQueries:
         assert isinstance(result.scoped_entities, list)
         assert isinstance(result.decision_trace, dict)
 
+@pytest.mark.unit
 class TestThematicQueries:
     """Test thematic query classification."""
     
@@ -80,6 +82,7 @@ class TestThematicQueries:
         assert isinstance(result.scoped_entities, list)
         assert isinstance(result.decision_trace, dict)
 
+@pytest.mark.unit
 class TestGenerativeQueries:
     """Test generative query classification."""
     
@@ -106,6 +109,7 @@ class TestGenerativeQueries:
 # Laureate Scoping Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestLaureateScoping:
     """Test laureate detection and scoping functionality."""
     
@@ -144,6 +148,7 @@ class TestLaureateScoping:
 # Precedence Logic Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestPrecedenceLogic:
     """Test precedence logic when multiple intents have similar scores."""
     
@@ -172,6 +177,7 @@ class TestPrecedenceLogic:
 # Confidence Scoring Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestConfidenceScoring:
     """Test hybrid confidence scoring functionality."""
     
@@ -202,6 +208,7 @@ class TestConfidenceScoring:
 # Decision Tracing Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestDecisionTracing:
     """Test decision trace functionality."""
     
@@ -244,6 +251,7 @@ class TestDecisionTracing:
 # Error Handling Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestErrorHandling:
     """Test error handling for invalid or vague queries."""
     
@@ -287,6 +295,7 @@ class TestErrorHandling:
 # Case Sensitivity Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestCaseSensitivity:
     """Test case insensitivity of classification."""
     
@@ -306,6 +315,7 @@ class TestCaseSensitivity:
 # Hybrid Query Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestHybridQueries:
     """Test queries that mix different intent types."""
     
@@ -325,6 +335,7 @@ class TestHybridQueries:
 # Configuration and Fallback Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestConfiguration:
     """Test configuration loading and fallback behavior."""
     
@@ -346,6 +357,7 @@ class TestConfiguration:
 # Performance and Edge Cases
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestEdgeCases:
     """Test edge cases and performance considerations."""
     
@@ -374,6 +386,7 @@ class TestEdgeCases:
 # Legacy Compatibility Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestLegacyCompatibility:
     """Test legacy method for backward compatibility."""
     
@@ -398,6 +411,7 @@ class TestLegacyCompatibility:
 # Integration Tests
 # -----------------------------------------------------------------------------
 
+@pytest.mark.unit
 class TestIntegration:
     """Test integration with other system components."""
     
