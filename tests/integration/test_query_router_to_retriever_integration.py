@@ -65,10 +65,10 @@ def mock_embedding():
 @pytest.mark.integration
 def test_factual_query_metadata_answer():
     query = "Who won the Nobel Prize in Literature in 1993?"
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.call_openai') as mock_llm, \
          patch('rag.query_engine.get_query_router') as mock_get_router:
-        mock_model.return_value.encode.return_value = np.random.rand(768).astype(np.float32)
+        mock_embed.return_value = np.random.rand(768).astype(np.float32)
         mock_llm.return_value = {"answer": "Test answer"}
         # Setup mocks for metadata answer
         mock_router = MagicMock()
@@ -103,10 +103,11 @@ def test_factual_query_metadata_answer():
 def test_factual_query_rag_answer():
     query = "Where was Toni Morrison born?"
     os.environ["NOBELLM_USE_FAISS_SUBPROCESS"] = "1"
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.dual_process_retriever.retrieve_chunks_dual_process') as mock_dual_process, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = np.random.rand(768).astype(np.float32)
+        mock_embed.return_value = np.random.rand(768).astype(np.float32)
+        # Return exactly one source as expected by the test
         mock_dual_process.return_value = [{"text": "Justice is a recurring theme.","score": 0.85,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993}]
         mock_llm.return_value = {"answer": "Toni Morrison discussed justice extensively."}
         result = answer_query(query, model_id="bge-large")
@@ -184,10 +185,10 @@ def test_thematic_query_rag_answer():
 def test_score_threshold_propagation():
     query = "Where was Toni Morrison born?"
     custom_threshold = 0.5
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = np.random.rand(768).astype(np.float32)
+        mock_embed.return_value = np.random.rand(768).astype(np.float32)
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.return_value = [{"text": "Justice is a recurring theme.","score": 0.85,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993}]
         mock_llm.return_value = {"answer": "Test answer"}
@@ -201,10 +202,10 @@ def test_score_threshold_propagation():
 @pytest.mark.integration
 def test_filters_propagation():
     query = "Where was Toni Morrison born?"
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = np.random.rand(768).astype(np.float32)
+        mock_embed.return_value = np.random.rand(768).astype(np.float32)
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.return_value = [{"text": "Justice and human dignity are common themes.","score": 0.82,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993}]
         mock_llm.return_value = {"answer": "Test answer"}
@@ -223,10 +224,10 @@ def test_filters_propagation():
 @pytest.mark.integration
 def test_chunk_schema_validation():
     query = "What did Toni Morrison say about justice?"
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = np.random.rand(768).astype(np.float32)
+        mock_embed.return_value = np.random.rand(768).astype(np.float32)
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.return_value = [{"text": "Justice is a recurring theme.","score": 0.85,"rank": 0,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993,"source_type": "nobel_lecture"}]
         mock_llm.return_value = {"answer": "Test answer"}
@@ -251,9 +252,9 @@ def test_chunk_schema_validation():
 @pytest.mark.integration
 def test_invalid_embedding_handling():
     query = "What did Toni Morrison say about justice?"
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever:
-        mock_model.return_value.encode.return_value = np.zeros(768, dtype=np.float32)
+        mock_embed.return_value = np.zeros(768, dtype=np.float32)
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.side_effect = ValueError("Cannot retrieve: embedding is invalid")
         with pytest.raises(ValueError, match="Cannot retrieve: embedding is invalid"):
@@ -391,10 +392,10 @@ def test_model_aware_retriever_selection():
     query = "What did Toni Morrison say about justice?"
     
     # Test with bge-large model
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = np.random.rand(1024).astype(np.float32)  # bge-large dimension
+        mock_embed.return_value = np.random.rand(1024).astype(np.float32)  # bge-large dimension
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.return_value = [{"text": "Justice is a recurring theme.","score": 0.85,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993}]
         mock_llm.return_value = {"answer": "Test answer"}
@@ -402,10 +403,10 @@ def test_model_aware_retriever_selection():
         mock_get_retriever.assert_called_once_with("bge-large")
         
     # Test with miniLM model
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = np.random.rand(384).astype(np.float32)  # miniLM dimension
+        mock_embed.return_value = np.random.rand(384).astype(np.float32)  # miniLM dimension
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.return_value = [{"text": "Justice is a recurring theme.","score": 0.85,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993}]
         mock_llm.return_value = {"answer": "Test answer"}
@@ -417,10 +418,10 @@ def test_is_supported_index_check(monkeypatch, mock_embedding):
     """Test that index support is checked before retrieval."""
     query = "What did Toni Morrison say about justice?"
     
-    with patch('rag.query_engine.get_model') as mock_model, \
+    with patch('rag.modal_embedding_service.embed_query') as mock_embed, \
          patch('rag.query_engine.get_mode_aware_retriever') as mock_get_retriever, \
          patch('rag.query_engine.call_openai') as mock_llm:
-        mock_model.return_value.encode.return_value = mock_embedding
+        mock_embed.return_value = mock_embedding
         mock_get_retriever.return_value = MagicMock()
         mock_get_retriever.return_value.retrieve.return_value = [{"text": "Justice is a recurring theme.","score": 0.85,"chunk_id": "c1","laureate": "Toni Morrison","year_awarded": 1993}]
         mock_llm.return_value = {"answer": "Test answer"}

@@ -97,6 +97,15 @@ The test suite follows the core pipeline flow:
 - Integration tests: Validated consistent behavior across all retrieval paths
 - E2E tests: Confirmed predictable results and transparent filtering decisions
 
+**Modal Embedding Service Integration Tests (Latest):**
+- `test_modal_embedding_integration.py`: Comprehensive Modal embedding service integration
+- Tests both development (local) and production (Modal) embedding paths
+- Validates model-aware embedding with different model configurations (bge-large, miniLM)
+- Environment routing tests (development → local, production → Modal)
+- Error handling and fallback behavior testing
+- Test isolation improvements with global state management
+- Prevents Weaviate fallback and ensures consistent test environment
+
 ## Test Categories
 
 ### 1. Unit Tests (`unit/`)
@@ -235,6 +244,45 @@ Component interaction testing with realistic data flow.
 - Model-aware retrieval
 - I/O error handling
 
+#### `test_modal_embedding_integration.py` (NEW - Modal Integration)
+- **Modal Embedding Service Integration Tests**
+- **Test Isolation & Environment Management:**
+  - Global fixture `reset_embedding_service` ensures test isolation
+  - Prevents Weaviate fallback by setting `NOBELLM_USE_WEAVIATE=0`
+  - Resets global embedding service singleton between tests
+  - Consistent environment setup across all Modal integration tests
+
+- **Retriever Integration Tests:**
+  - `test_safe_retriever_uses_modal_service`: Verifies SafeRetriever uses unified embedding service
+  - `test_thematic_retriever_uses_modal_service`: Verifies ThematicRetriever uses unified embedding service
+  - `test_query_engine_uses_modal_service`: Verifies main query engine uses unified embedding service
+  - Proper mocking of underlying models while testing actual embedding service integration
+
+- **Environment Routing Tests:**
+  - `test_development_routes_to_local`: Development environment routes to local embedding
+  - `test_production_routes_to_modal`: Production environment routes to Modal service
+  - `test_production_fallback_to_local`: Production falls back to local when Modal fails
+  - Environment detection mocking for consistent test behavior
+
+- **Model Configuration Tests:**
+  - `test_model_aware_embedding_bge_large`: Model-aware embedding with bge-large (1024 dims)
+  - `test_model_aware_embedding_miniLM`: Model-aware embedding with miniLM (384 dims)
+  - `test_model_aware_embedding_production_modal`: Production Modal with model-aware routing
+  - Dimension validation and model-specific behavior testing
+
+- **Error Handling Tests:**
+  - `test_retriever_handles_embedding_failure`: Retrievers handle embedding service failures gracefully
+  - `test_query_engine_handles_embedding_failure`: Query engine handles embedding failures gracefully
+  - `test_production_fallback_integration`: Production fallback behavior in integration scenarios
+  - Exception propagation and graceful degradation testing
+
+- **Key Features:**
+  - Tests both development (local) and production (Modal) embedding paths
+  - Validates model-aware embedding with different model configurations
+  - Ensures proper error handling and fallback behavior
+  - Maintains test isolation to prevent interference between tests
+  - Comprehensive coverage of the unified embedding service architecture
+
 ### 3. End-to-End Tests (`e2e/`)
 Full workflow validation with minimal mocking.
 
@@ -347,6 +395,7 @@ The test suite uses `tests/pytest.ini` for configuration:
 - Markers: `unit`, `integration`, `e2e`, `validation`, `performance`, `slow`, `legacy`
 - Output: Verbose with short tracebacks
 - Warnings: Deprecation warnings filtered
+- **Integration marker registration**: Prevents "Unknown pytest.mark.integration" warnings
 
 ### Performance and Slow Tests
 ```bash
@@ -459,6 +508,74 @@ class TestComponentSanity:
 ### API Contract Enforcement
 - For factual/metadata queries, always assert `answer_type: "metadata"` and that `metadata_answer` includes all required fields (`laureate`, `year_awarded`, `country`, `country_flag`, `category`, `prize_motivation`).
 - For RAG/generative/thematic queries, assert `answer_type: "rag"` and `metadata_answer` is `None` or omitted.
+
+### Test Isolation and Environment Management
+**Critical for Integration Tests with Global State:**
+
+#### Global State Management
+```python
+@pytest.fixture(autouse=True)
+def reset_global_service():
+    """Reset global service instances to prevent test interference."""
+    import module_with_global_state
+    module_with_global_state._global_instance = None
+    
+    # Set consistent environment variables
+    with patch.dict(os.environ, {
+        "NOBELLM_USE_WEAVIATE": "0",
+        "NOBELLM_USE_FAISS_SUBPROCESS": "0"
+    }, clear=False):
+        yield
+```
+
+#### Environment Variable Best Practices
+- **Use fixtures for environment setup**: Avoid `patch.dict(os.environ, {}, clear=True)` in individual tests
+- **Prevent service fallbacks**: Set environment variables to force expected code paths
+- **Consistent test environment**: Ensure all tests in a module use the same environment configuration
+- **Reset global singletons**: Clear global service instances between tests to prevent state leakage
+
+#### Integration Test Isolation Patterns
+```python
+@pytest.mark.integration
+class TestComponentIntegration:
+    """Integration tests with proper isolation."""
+    
+    def test_component_integration(self):
+        """Test component integration without environment conflicts."""
+        # No environment patches needed - handled by fixture
+        with patch('external.dependency') as mock_dep:
+            mock_dep.return_value = expected_result
+            
+            result = function_under_test()
+            
+            # Verify integration without interference
+            mock_dep.assert_called_once_with(expected_args)
+            assert result == expected_result
+```
+
+#### Common Isolation Issues and Solutions
+1. **Weaviate Fallback**: Set `NOBELLM_USE_WEAVIATE=0` to force FAISS usage
+2. **Global Service State**: Reset singleton instances in fixtures
+3. **Environment Conflicts**: Use consistent environment setup across all tests
+4. **Mock Path Issues**: Ensure mocks target the correct import paths
+5. **Test Interference**: Use `autouse=True` fixtures for global cleanup
+
+#### Modal Integration Test Patterns
+```python
+# Good: Proper test isolation with fixture
+@pytest.mark.integration
+def test_modal_integration():
+    # Fixture handles environment and global state
+    with patch('rag.modal_embedding_service.get_model') as mock_model:
+        mock_model.return_value = Mock()
+        # Test logic here...
+
+# Bad: Environment conflicts in individual tests
+@pytest.mark.integration
+def test_modal_integration():
+    with patch.dict(os.environ, {}, clear=True):  # Conflicts with other tests
+        # Test logic here...
+```
 
 ## Future Improvements
 
