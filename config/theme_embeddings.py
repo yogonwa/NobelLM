@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from sentence_transformers import SentenceTransformer
 from rag.model_config import get_model_config, MODEL_CONFIGS
-from rag.cache import get_model
+from rag.modal_embedding_service import get_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +165,8 @@ class ThemeEmbeddings:
         Compute theme embeddings and save them to disk.
         """
         try:
-            # Get cached model
-            model = get_model(self.model_id)
+            # Get Modal embedding service
+            embedding_service = get_embedding_service()
             
             # Collect all unique keywords
             all_keywords = set()
@@ -175,15 +175,16 @@ class ThemeEmbeddings:
             
             # Convert to list for batch processing
             keyword_list = list(all_keywords)
-            logger.info(f"Computing embeddings for {len(keyword_list)} unique keywords")
+            logger.info(f"Computing embeddings for {len(keyword_list)} unique keywords using Modal")
             
-            # Batch embed all keywords
-            embeddings = model.encode(
-                keyword_list,
-                show_progress_bar=False,
-                normalize_embeddings=True,
-                convert_to_numpy=True
-            )
+            # Embed keywords one by one using Modal service
+            embeddings_list = []
+            for keyword in keyword_list:
+                embedding = embedding_service.embed_query(keyword, self.model_id)
+                embeddings_list.append(embedding)
+            
+            # Convert to numpy array
+            embeddings = np.array(embeddings_list, dtype=np.float32)
             
             # Validate embeddings
             if embeddings.shape[1] != self.embedding_dim:

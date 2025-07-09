@@ -3,13 +3,13 @@ WeaviateRetriever module for NobelLM RAG pipeline.
 
 - Implements a Weaviate-based retriever that conforms to the BaseRetriever interface.
 - Enables backend-agnostic retrieval: the pipeline can use either Weaviate or FAISS transparently.
-- Handles model loading, input validation, and result normalization.
+- Handles input validation and result normalization.
 - Used by the retriever factory in `rag/retriever.py`.
 - Calls low-level Weaviate query logic in `rag/query_weaviate.py`.
 
 Configuration:
 - Enable Weaviate by setting the appropriate config/env vars (e.g., `USE_WEAVIATE=1`, `WEAVIATE_URL`, `WEAVIATE_API_KEY`).
-- Embedding is always performed locally using the configured model (not via Weaviate inference module).
+- Embedding is performed via Modal service (not locally or via Weaviate inference module).
 - If Weaviate is not enabled/configured, the pipeline falls back to FAISS retrievers.
 
 Related files:
@@ -20,7 +20,6 @@ Related files:
 import logging
 from typing import List, Dict, Any, Optional
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from rag.retriever import BaseRetriever
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID

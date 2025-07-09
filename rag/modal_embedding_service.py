@@ -26,10 +26,10 @@ import os
 import logging
 from typing import Optional
 import numpy as np
+import requests
 from sentence_transformers import SentenceTransformer
 
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from rag.cache import get_model
 from rag.logging_utils import get_module_logger, log_with_context, QueryContext
 
 logger = get_module_logger(__name__)
@@ -49,7 +49,6 @@ class ModalEmbeddingService:
     def __init__(self):
         """Initialize the embedding service with environment detection."""
         self.is_production = self._detect_production_environment()
-        self.modal_stub = None
         
         log_with_context(
             logger,
@@ -58,7 +57,7 @@ class ModalEmbeddingService:
             "Initialized embedding service",
             {
                 "environment": "production" if self.is_production else "development",
-                "embedding_strategy": "Modal" if self.is_production else "Local"
+                "embedding_strategy": "Modal HTTP" if self.is_production else "Local"
             }
         )
     
@@ -124,29 +123,12 @@ class ModalEmbeddingService:
                 }
             )
             
-            try:
-                if self.is_production:
-                    return self._embed_via_modal(query, model_id)
-                else:
-                    return self._embed_local(query, model_id)
-                    
-            except Exception as e:
-                log_with_context(
-                    logger,
-                    logging.ERROR,
-                    "ModalEmbeddingService",
-                    "Embedding failed",
-                    {
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "environment": "production" if self.is_production else "development"
-                    }
-                )
-                raise
+            # Always use Modal embedding service
+            return self._embed_via_modal(query, model_id)
     
     def _embed_via_modal(self, query: str, model_id: str) -> np.ndarray:
         """
-        Embed query using Modal's cloud service with fallback to local embedding.
+        Embed query using Modal's HTTP endpoint.
         
         Args:
             query: The query string to embed
@@ -154,16 +136,24 @@ class ModalEmbeddingService:
             
         Returns:
             Normalized query embedding as numpy array
+            
+        Raises:
+            RuntimeError: If HTTP request fails or embedding is invalid
         """
+        url = "https://yogonwa--nobel-embedder-clean-slate-embed-query.modal.run"
+        api_key = "6dab23095a3f8968074d7c9152d6707f3f7445bc145022f46fcceb0712864147"
+
         try:
-            # Get Modal stub
-            if self.modal_stub is None:
-                self.modal_stub = self._get_modal_stub()
-            
-            # Call Modal embedding service
-            embedding_list = self.modal_stub.function("embed_query").remote(query)
+            response = requests.post(
+                url,
+                json={"api_key": api_key, "text": query},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+            embedding_list = data["embedding"]
             embedding = np.array(embedding_list, dtype=np.float32)
-            
+
             # Validate embedding dimensions
             expected_dim = get_model_config(model_id)["embedding_dim"]
             if embedding.shape[0] != expected_dim:
@@ -171,7 +161,7 @@ class ModalEmbeddingService:
                     f"Modal embedding dimension {embedding.shape[0]} "
                     f"doesn't match expected {expected_dim} for model {model_id}"
                 )
-            
+
             log_with_context(
                 logger,
                 logging.DEBUG,
@@ -183,79 +173,14 @@ class ModalEmbeddingService:
                     "model_id": model_id
                 }
             )
-            
+
             return embedding
-            
         except Exception as e:
-            log_with_context(
-                logger,
-                logging.WARNING,
-                "ModalEmbeddingService",
-                "Modal embedding failed, falling back to local",
-                {
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "model_id": model_id
-                }
-            )
-            
-            # Fallback to local embedding
-            return self._embed_local(query, model_id)
+            logger.error(f"Failed HTTP embedding request: {e}")
+            raise RuntimeError(f"Modal embedding service failed: {e}")
     
-    def _embed_local(self, query: str, model_id: str) -> np.ndarray:
-        """
-        Embed query using local sentence-transformers model.
-        
-        Args:
-            query: The query string to embed
-            model_id: Model identifier
-            
-        Returns:
-            Normalized query embedding as numpy array
-        """
-        try:
-            model = get_model(model_id)
-            embedding = model.encode(query, show_progress_bar=False, normalize_embeddings=True)
-            embedding = np.array(embedding, dtype=np.float32)
-            
-            log_with_context(
-                logger,
-                logging.DEBUG,
-                "ModalEmbeddingService",
-                "Local embedding successful",
-                {
-                    "query_length": len(query),
-                    "embedding_shape": embedding.shape,
-                    "model_id": model_id
-                }
-            )
-            
-            return embedding
-            
-        except Exception as e:
-            log_with_context(
-                logger,
-                logging.ERROR,
-                "ModalEmbeddingService",
-                "Local embedding failed",
-                {
-                    "error": str(e),
-                    "error_type": type(e).__name__,
-                    "model_id": model_id
-                }
-            )
-            raise RuntimeError(f"Local embedding failed for model {model_id}: {e}")
-    
-    def _get_modal_stub(self):
-        """Get or create Modal app stub for embedding service."""
-        try:
-            import modal
-            stub = modal.App.lookup("nobel-embedder")
-            logger.info("Successfully connected to Modal embedder service")
-            return stub
-        except Exception as e:
-            logger.error(f"Failed to connect to Modal embedder: {e}")
-            raise RuntimeError(f"Cannot connect to Modal embedder: {e}")
+
+
 
 
 def get_embedding_service() -> ModalEmbeddingService:

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Set, List, Tuple, Optional
 from config.theme_embeddings import ThemeEmbeddings
 from config.theme_similarity import compute_theme_similarities
-from rag.cache import get_model
+from rag.modal_embedding_service import ModalEmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,9 @@ class ThemeReformulator:
         return self._theme_embeddings
 
     def _get_embedding_model(self):
-        """Get embedding model instance (lazy loading)."""
+        """Get Modal embedding service instance (lazy loading)."""
         if self._embedding_model is None:
-            self._embedding_model = get_model(self.model_id)
+            self._embedding_model = ModalEmbeddingService()
         return self._embedding_model
 
     def lemmatize_word(self, word: str) -> str:
@@ -236,9 +236,9 @@ class ThemeReformulator:
                 logger.debug(f"Using full query for embedding: '{query}'")
                 text_to_embed = query
         
-        # Get embedding
-        model = self._get_embedding_model()
-        embedding = model.encode([text_to_embed], normalize_embeddings=True)[0]
+        # Get embedding using Modal service
+        modal_service = self._get_embedding_model()
+        embedding = modal_service.embed_query(text_to_embed, self.model_id)
         
         logger.debug(f"Generated embedding with shape: {embedding.shape}")
         return embedding

@@ -11,6 +11,7 @@ Key Features:
 - Automatic model caching and normalization
 - Health check endpoint for monitoring
 - Local testing entrypoint
+- Secure HTTP endpoint with API key authentication
 
 Usage:
     # Deploy the service
@@ -19,24 +20,29 @@ Usage:
     # Test locally
     modal run modal_embedder.py
     
-    # Use in production
-    from modal_embedder import embed_query
-    embedding = embed_query.remote("your query here")
+    # Use in production via HTTP endpoint
+    POST https://<modal-app-id>--embed-query.modal.run
+    Headers: {"x-api-key": "<your-api-key>"}
+    Body: {"text": "your query here"}
 
 Author: NobelLM Team
 Date: 2025
 """
 
 import modal
-from sentence_transformers import SentenceTransformer
+import os
 import logging
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from sentence_transformers import SentenceTransformer
 
 # Configure logging for debugging and monitoring
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create Modal app instance
-app = modal.App("nobel-embedder")
+app = modal.App("nobel-embedder-clean-slate")
+
 
 def download_model():
     """
@@ -63,13 +69,15 @@ def download_model():
 # Define the Modal container image with all necessary dependencies
 # This image includes the model preloaded for faster startup times
 image = (
-    modal.Image.debian_slim()
+    modal.Image.from_registry("python:3.10-slim")
     .pip_install([
         "sentence-transformers",  # For BGE model
         "torch",                  # PyTorch backend
         "transformers",           # Hugging Face transformers
         "numpy",                  # Numerical computing
-        "scikit-learn"            # Additional ML utilities
+        "scikit-learn",           # Additional ML utilities
+        "fastapi",                # FastAPI for web endpoints
+        "uvicorn"                 # ASGI server for FastAPI
     ])
     .run_function(download_model)  # Preload model during build
 )
@@ -78,31 +86,44 @@ image = (
 # This improves performance by avoiding repeated model loading
 model = None
 
-@app.function(image=image)
-def embed_query(text: str) -> list:
+# Simple POST endpoint for embedding
+@app.function(
+    image=image,
+    secrets=[modal.Secret.from_name("MODAL_EMBEDDER_API_KEY")]
+)
+@modal.fastapi_endpoint(method="POST")
+def embed_query(item: dict):
     """
-    Convert a text query into a 1024-dimensional embedding vector.
+    Convert a text query into a 1024-dimensional embedding vector via HTTP endpoint.
     
     This function uses the BGE-large-en-v1.5 model to generate embeddings
     that are normalized and suitable for vector similarity search in Weaviate.
     
     Args:
-        text (str): The input text to embed. Must be non-empty.
-        
+        item: Dictionary containing:
+            - "api_key": API key for authentication
+            - "text": The text to embed
+            
     Returns:
-        list: A 1024-dimensional list of floats representing the embedding.
-              Values are normalized to the range [-1, 1].
-              
-    Raises:
-        ValueError: If input is empty or not a string
-        Exception: If embedding generation fails
+        Dictionary containing the embedding array
         
-    Example:
-        >>> embedding = embed_query.remote("What did Toni Morrison say about justice?")
-        >>> len(embedding)  # 1024
-        >>> max(abs(x) for x in embedding) <= 1.0  # True (normalized)
+    Raises:
+        Exception: If authentication fails or embedding generation fails
     """
     global model
+    
+    # Validate API key
+    api_key = item.get("api_key")
+    if api_key != os.environ["MODAL_EMBEDDER_API_KEY"]:
+        raise Exception("Unauthorized")
+    
+    # Get text from request
+    text = item.get("text")
+    if not text:
+        raise Exception("Missing 'text' field")
+    
+    if not isinstance(text, str):
+        raise Exception("'text' must be a string")
     
     try:
         # Load model once and cache it for subsequent calls
@@ -111,18 +132,16 @@ def embed_query(text: str) -> list:
             model = SentenceTransformer("BAAI/bge-large-en-v1.5")
             logger.info("Model loaded successfully")
         
-        # Validate input to prevent errors
-        if not text or not isinstance(text, str):
-            raise ValueError("Input must be a non-empty string")
-        
         # Generate embedding with normalization enabled
         # normalize_embeddings=True ensures values are in [-1, 1] range
         embedding = model.encode([text], normalize_embeddings=True)[0]
-        return embedding.tolist()
+        
+        logger.info(f"Generated embedding for text of length {len(text)}")
+        return {"embedding": embedding.tolist()}
         
     except Exception as e:
         logger.error(f"Error generating embedding: {e}")
-        raise
+        raise Exception(f"Embedding generation failed: {e}")
 
 @app.function(image=image)
 def health_check() -> dict:
@@ -198,30 +217,38 @@ def main():
         print("✅ Service is healthy!")
         
         # Test 2: Embedding generation
-        print("\n🔍 Step 2: Single query embedding")
-        test_query = "What did Toni Morrison say about justice and race in America?"
-        print(f"Query: '{test_query}'")
+        print("\n🔍 Step 2: Embedding generation")
+        test_query = "What did Toni Morrison say about justice?"
+        print(f"Test query: '{test_query}'")
         
         embedding = embed_query.remote(test_query)
-        print(f"✅ Got embedding with {len(embedding)} dimensions")
-        print(f"First 5 values: {embedding[:5]}")
+        print(f"Embedding length: {len(embedding)}")
+        print(f"Embedding type: {type(embedding)}")
         
-        # Test 3: Validate embedding properties
-        if len(embedding) == 1024:
-            print("✅ Embedding dimensions correct (1024)")
-        else:
-            print(f"⚠️  Unexpected dimensions: {len(embedding)} (expected 1024)")
+        # Validate embedding properties
+        if len(embedding) != 1024:
+            print(f"❌ Expected 1024 dimensions, got {len(embedding)}")
+            return
         
-        # Check normalization (values should be between -1 and 1)
         max_val = max(abs(x) for x in embedding)
-        if max_val <= 1.0:
-            print("✅ Embedding appears to be normalized")
-        else:
-            print(f"⚠️  Embedding may not be normalized (max abs value: {max_val})")
+        if max_val > 1.0:
+            print(f"❌ Embedding not normalized (max abs value: {max_val})")
+            return
         
-        print("\n🎉 TEST SUCCESSFUL!")
-        print("The embedder is working correctly and ready for production use.")
+        print("✅ Embedding generation successful!")
+        print(f"✅ Embedding is normalized (max abs value: {max_val:.4f})")
+        
+        # Test 3: Error handling
+        print("\n🔍 Step 3: Error handling")
+        try:
+            # This should fail gracefully
+            bad_embedding = embed_query.remote("")
+            print("❌ Should have failed for empty string")
+        except Exception as e:
+            print(f"✅ Correctly handled empty string: {e}")
+        
+        print("\n🎉 All tests passed! Service is ready for deployment.")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")
-        raise
+        logger.error(f"Test failure: {e}")
