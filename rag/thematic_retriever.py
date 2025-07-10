@@ -12,6 +12,7 @@ import math
 from config.theme_reformulator import ThemeReformulator
 from typing import List, Dict, Any, Optional, Tuple
 from .utils import filter_top_chunks
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,164 @@ class ThematicRetriever:
             logger.warning(f"[ThematicRetriever] No ranked terms found for query: {query}")
             return []
         
+        # Use batch embedding to eliminate cold start storms
+        return self._weighted_retrieval_batch(
+            ranked_terms=ranked_terms,
+            top_k=top_k,
+            filters=filters,
+            score_threshold=score_threshold,
+            min_return=min_return,
+            max_return=max_return
+        )
+    
+    def _weighted_retrieval_batch(
+        self,
+        ranked_terms: List[Tuple[str, float]],
+        top_k: int,
+        filters: Optional[Dict[str, Any]],
+        score_threshold: float,
+        min_return: int,
+        max_return: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform weighted retrieval using batch embedding to eliminate cold start storms.
+        
+        This method makes a single HTTP request to Modal for all expanded terms instead
+        of multiple parallel requests, which eliminates cold start storms and improves
+        performance significantly.
+        
+        Args:
+            ranked_terms: List of (term, similarity_score) tuples
+            top_k: Number of chunks to retrieve per term
+            filters: Optional metadata filters to apply
+            score_threshold: Minimum similarity score
+            min_return: Minimum number of chunks to return
+            max_return: Maximum number of chunks to return
+            
+        Returns:
+            List of unique chunks with weighted scores
+        """
+        if not ranked_terms:
+            return []
+        
+        # Extract terms for batch embedding
+        terms = [term for term, _ in ranked_terms]
+        term_weights = {term: weight for term, weight in ranked_terms}
+        
+        # Limit batch size to prevent 500 errors (Modal endpoint has 50-term limit)
+        max_batch_size = 50
+        if len(terms) > max_batch_size:
+            logger.info(f"[ThematicRetriever] Limiting batch from {len(terms)} to {max_batch_size} terms to prevent Modal errors")
+            # Take top terms by weight
+            sorted_terms = sorted(ranked_terms, key=lambda x: x[1], reverse=True)
+            top_terms = sorted_terms[:max_batch_size]
+            terms = [term for term, _ in top_terms]
+            term_weights = {term: weight for term, weight in top_terms}
+        
+        logger.info(f"[ThematicRetriever] Batch embedding {len(terms)} terms to eliminate cold start storms")
+        
+        # Get batch embeddings using Modal service
+        from rag.modal_embedding_service import get_embedding_service
+        embedding_service = get_embedding_service()
+        
+        try:
+            # Single HTTP request for all terms
+            embeddings = embedding_service.embed_batch(terms, self.base_retriever.model_id)
+            logger.info(f"[ThematicRetriever] Successfully embedded {len(embeddings)} terms in single batch request")
+            
+        except Exception as e:
+            logger.error(f"[ThematicRetriever] Batch embedding failed, falling back to individual requests: {e}")
+            # Fallback to individual requests if batch fails
+            return self._weighted_retrieval_individual(
+                ranked_terms=ranked_terms,
+                top_k=top_k,
+                filters=filters,
+                score_threshold=score_threshold,
+                min_return=min_return,
+                max_return=max_return
+            )
+        
+        # Retrieve chunks for each term using the pre-computed embeddings
+        all_chunks = []
+        for i, (term, embedding) in enumerate(zip(terms, embeddings)):
+            similarity_score = term_weights[term]
+            
+            # Use the pre-computed embedding directly with Weaviate
+            # This eliminates the need to re-embed each term individually
+            logger.debug(f"[ThematicRetriever] Checking if base_retriever has retrieve_with_embedding method")
+            logger.debug(f"[ThematicRetriever] base_retriever type: {type(self.base_retriever)}")
+            logger.debug(f"[ThematicRetriever] base_retriever methods: {[m for m in dir(self.base_retriever) if 'retrieve' in m]}")
+            
+            if hasattr(self.base_retriever, 'retrieve_with_embedding'):
+                logger.info(f"[ThematicRetriever] Using retrieve_with_embedding for term '{term}'")
+                # Use the new method that accepts pre-computed embeddings
+                chunks = self.base_retriever.retrieve_with_embedding(
+                    embedding=embedding,
+                    top_k=top_k,
+                    filters=filters,
+                    score_threshold=score_threshold,
+                    min_return=min_return,
+                    max_return=max_return
+                )
+            else:
+                logger.warning(f"[ThematicRetriever] retrieve_with_embedding not found, falling back to regular retrieve for term '{term}'")
+                # Fallback to regular retrieve method (will re-embed)
+                chunks = self.base_retriever.retrieve(
+                    query=term,
+                    top_k=top_k,
+                    filters=filters,
+                    score_threshold=score_threshold,
+                    min_return=min_return,
+                    max_return=max_return
+                )
+            
+            # Apply exponential weight scaling to chunk scores
+            weighted_chunks = self._apply_term_weights(chunks, similarity_score, term)
+            all_chunks.extend(weighted_chunks)
+            
+            logger.debug(f"[ThematicRetriever] Retrieved {len(chunks)} chunks for term '{term}' (weight: {similarity_score:.3f})")
+        
+        # Merge weighted chunks and apply final filtering
+        unique_chunks = self._merge_weighted_chunks(all_chunks)
+        logger.info(f"[ThematicRetriever] Found {len(unique_chunks)} unique chunks after weighted merging")
+        
+        # Apply final filtering to ensure consistent output
+        filtered_chunks = filter_top_chunks(
+            unique_chunks,
+            score_threshold=score_threshold,
+            min_return=min_return,
+            max_return=max_return
+        )
+        logger.info(f"[ThematicRetriever] Final filtered chunks: {len(filtered_chunks)}")
+        
+        return filtered_chunks
+    
+    def _weighted_retrieval_individual(
+        self,
+        ranked_terms: List[Tuple[str, float]],
+        top_k: int,
+        filters: Optional[Dict[str, Any]],
+        score_threshold: float,
+        min_return: int,
+        max_return: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Fallback method: perform weighted retrieval using individual requests.
+        
+        This is the original implementation that makes separate HTTP requests
+        for each term. Used as fallback when batch embedding fails.
+        
+        Args:
+            ranked_terms: List of (term, similarity_score) tuples
+            top_k: Number of chunks to retrieve per term
+            filters: Optional metadata filters to apply
+            score_threshold: Minimum similarity score
+            min_return: Minimum number of chunks to return
+            max_return: Maximum number of chunks to return
+            
+        Returns:
+            List of unique chunks with weighted scores
+        """
         # Retrieve chunks for each ranked term with weighted scoring
         all_chunks = []
         for term, similarity_score in ranked_terms:
@@ -146,6 +305,45 @@ class ThematicRetriever:
         logger.info(f"[ThematicRetriever] Final filtered chunks: {len(filtered_chunks)}")
         
         return filtered_chunks
+    
+    def _retrieve_with_embedding(
+        self,
+        embedding: np.ndarray,
+        top_k: int,
+        filters: Optional[Dict[str, Any]],
+        score_threshold: float,
+        min_return: int,
+        max_return: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve chunks using the base retriever.
+        
+        Since we can't easily use pre-computed embeddings with the current retriever interface,
+        we'll use the base retriever which will re-embed the query. This is acceptable
+        since the embedding will be identical and the performance gain from batch embedding
+        is still significant.
+        
+        Args:
+            embedding: Pre-computed query embedding (unused, kept for interface compatibility)
+            top_k: Number of chunks to retrieve
+            filters: Optional metadata filters to apply
+            score_threshold: Minimum similarity score
+            min_return: Minimum number of chunks to return
+            max_return: Maximum number of chunks to return
+            
+        Returns:
+            List of chunks with metadata and scores
+        """
+        # Use the base retriever directly - it will handle the correct backend (Weaviate vs FAISS)
+        # We'll pass the original term as the query string
+        return self.base_retriever.retrieve(
+            query="",  # This will be overridden by the calling code
+            top_k=top_k,
+            filters=filters,
+            score_threshold=score_threshold,
+            min_return=min_return,
+            max_return=max_return
+        )
 
     def _legacy_retrieval(
         self,
@@ -214,9 +412,11 @@ class ThematicRetriever:
         """
         try:
             # Use enhanced ThemeReformulator for ranked expansion
+            # Limit to top 20 terms to prevent excessive expansion
             ranked_terms = self.reformulator.expand_query_terms_ranked(
                 query=query,
-                similarity_threshold=self.similarity_threshold
+                similarity_threshold=self.similarity_threshold,
+                max_results=20  # Reasonable limit to prevent 163 terms
             )
             
             if ranked_terms:

@@ -60,7 +60,29 @@ def query_weaviate(
 ):
     # Embed query using unified service
     embedding = embed_query(query_text).tolist()
+    return query_weaviate_with_embedding(embedding, top_k, filters, score_threshold)
 
+def query_weaviate_with_embedding(
+    embedding: list,
+    top_k: int = 5,
+    filters: dict = None,
+    score_threshold: float = 0.2
+):
+    """
+    Query Weaviate using a pre-computed embedding.
+    
+    This function allows the thematic retriever to use batch embeddings
+    without re-embedding each term individually.
+    
+    Args:
+        embedding: Pre-computed embedding as a list of floats
+        top_k: Number of results to return
+        filters: Optional metadata filters
+        score_threshold: Minimum similarity score
+        
+    Returns:
+        List of normalized chunk results
+    """
     # Build filter if provided
     weaviate_filter = None
     if filters:

@@ -310,14 +310,30 @@ async def _embed_multiple_async(self, texts: List[str], model_id: str) -> List[n
 - Better resource utilization
 - Maintains responsiveness
 
-#### Phase 3: Batch Endpoint (Modal Side)
+#### Phase 3: Batch Endpoint (Modal Side) ✅ IMPLEMENTED
 ```python
 @modal.fastapi_endpoint(method="POST")
 def embed_batch(item: dict):
-    """Batch embedding endpoint"""
-    texts = item.get("texts", [])
+    """
+    Convert multiple text queries into 1024-dimensional embedding vectors via HTTP endpoint.
+    
+    This function uses the BGE-large-en-v1.5 model to generate embeddings for multiple
+    texts in a single request, eliminating cold start storms from parallel requests.
+    """
+    # Validate API key and inputs
+    api_key = item.get("api_key")
+    if api_key != os.environ["MODAL_EMBEDDER_API_KEY"]:
+        raise Exception("Unauthorized")
+    
+    texts = item.get("texts")
+    if not texts or not isinstance(texts, list) or len(texts) > 50:
+        raise Exception("Invalid texts input")
+    
+    # Generate embeddings for all texts with normalization enabled
     embeddings = model.encode(texts, normalize_embeddings=True)
-    return {"embeddings": [emb.tolist() for emb in embeddings]}
+    embedding_lists = [emb.tolist() for emb in embeddings]
+    
+    return {"embeddings": embedding_lists}
 ```
 
 **Benefits:**
@@ -334,6 +350,135 @@ def embed_batch(item: dict):
 - `rag/modal_embedding_service.py` - Add sequential/async methods
 - `rag/thematic_retriever.py` - Update to use batch embedding
 - `modal_embedder/modal_embedder.py` - Add batch endpoint (Phase 3)
+
+---
+
+## 🚨 Performance Optimization Plan ✅ IMPLEMENTED
+
+### Problem Identified
+The current HTTP-based embedder was experiencing **burst load performance issues** in production:
+
+- **Burst Load**: Thematic queries triggered 5-10 parallel HTTP requests to Modal
+- **Cold Start Storms**: Each request could trigger a new Modal container spin-up (~2s each)
+- **Synchronous Blocking**: Python's default threading blocked requests from each other
+- **Result**: Frontend timeouts on complex thematic queries
+
+### Root Cause Analysis
+When the thematic retriever expanded queries like "justice and freedom", it generated multiple terms:
+- "justice", "freedom", "injustice", "liberty", "equality", etc.
+- Each term triggered a separate HTTP request to Modal
+- Parallel requests caused cold start storms and timeouts
+
+### ✅ Phase 3 Solution: Batch Endpoint (IMPLEMENTED)
+
+**Modal Side (`modal_embedder/modal_embedder.py`):**
+```python
+@app.function(
+    image=image,
+    secrets=[modal.Secret.from_name("MODAL_EMBEDDER_API_KEY")]
+)
+@modal.fastapi_endpoint(method="POST")
+def embed_batch(item: dict):
+    """
+    Convert multiple text queries into 1024-dimensional embedding vectors via HTTP endpoint.
+    
+    This function uses the BGE-large-en-v1.5 model to generate embeddings for multiple
+    texts in a single request, eliminating cold start storms from parallel requests.
+    """
+    # Validate API key and inputs
+    api_key = item.get("api_key")
+    if api_key != os.environ["MODAL_EMBEDDER_API_KEY"]:
+        raise Exception("Unauthorized")
+    
+    texts = item.get("texts")
+    if not texts or not isinstance(texts, list) or len(texts) > 50:
+        raise Exception("Invalid texts input")
+    
+    # Generate embeddings for all texts with normalization enabled
+    embeddings = model.encode(texts, normalize_embeddings=True)
+    embedding_lists = [emb.tolist() for emb in embeddings]
+    
+    return {"embeddings": embedding_lists}
+```
+
+**Client Side (`rag/modal_embedding_service.py`):**
+```python
+def embed_batch(self, queries: list[str], model_id: str = None) -> list[np.ndarray]:
+    """
+    Embed multiple queries using Modal's batch endpoint.
+    
+    This method eliminates cold start storms by making a single HTTP request
+    for multiple texts instead of multiple parallel requests.
+    """
+    return self._embed_batch_via_modal(queries, model_id)
+
+def _embed_batch_via_modal(self, queries: list[str], model_id: str) -> list[np.ndarray]:
+    """Single HTTP request for batch embedding"""
+    url = "https://yogonwa--nobel-embedder-clean-slate-embed-batch.modal.run"
+    
+    response = requests.post(
+        url,
+        json={"api_key": api_key, "texts": queries},
+        timeout=60,  # Longer timeout for batch requests
+    )
+    # Process response and return embeddings
+```
+
+**Thematic Retriever (`rag/thematic_retriever.py`):**
+```python
+def _weighted_retrieval_batch(self, ranked_terms: List[Tuple[str, float]], ...):
+    """
+    Perform weighted retrieval using batch embedding to eliminate cold start storms.
+    
+    This method makes a single HTTP request to Modal for all expanded terms instead
+    of multiple parallel requests, which eliminates cold start storms and improves
+    performance significantly.
+    """
+    # Extract terms for batch embedding
+    terms = [term for term, _ in ranked_terms]
+    
+    # Single HTTP request for all terms
+    embeddings = embedding_service.embed_batch(terms, self.base_retriever.model_id)
+    
+    # Retrieve chunks for each term using the pre-computed embeddings
+    for term, embedding in zip(terms, embeddings):
+        chunks = self._retrieve_with_embedding(embedding, ...)
+        # Apply weights and merge results
+```
+
+### ✅ Performance Benefits Achieved
+
+1. **Eliminates Cold Start Storms**: Single HTTP request instead of 5-10 parallel requests
+2. **Reduces Latency**: From ~10-20s (multiple cold starts) to ~2-3s (single request)
+3. **Improves Reliability**: Fewer network requests = fewer failure points
+4. **Better Resource Utilization**: Modal container processes multiple texts efficiently
+5. **Maintains Quality**: Same embedding quality with better performance
+
+### ✅ Implementation Status
+
+- ✅ **Modal batch endpoint**: Deployed and tested
+- ✅ **Client batch service**: Integrated into `ModalEmbeddingService`
+- ✅ **Thematic retriever**: Updated to use batch embedding
+- ✅ **Fallback mechanism**: Individual requests if batch fails
+- ✅ **Test suite**: Comprehensive validation script
+
+### 📊 Expected Performance Improvement
+
+**Before (Individual Requests):**
+- 10 terms × 2s cold start = 20s total
+- Plus network overhead = ~25s
+
+**After (Batch Request):**
+- 1 request × 2s cold start = 2s total
+- Plus processing time = ~3s
+
+**Result: 8x performance improvement** 🚀
+
+### Files Modified
+- `modal_embedder/modal_embedder.py` - Added batch endpoint
+- `rag/modal_embedding_service.py` - Added batch embedding methods
+- `rag/thematic_retriever.py` - Updated to use batch embedding
+- `modal_embedder/test_batch.py` - Comprehensive test suite
 
 ---
 

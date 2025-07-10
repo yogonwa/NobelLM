@@ -290,7 +290,19 @@ class BaseRetriever(ABC):
             model = get_model(model_id)
             model_dim = model.get_sentence_embedding_dimension()
             
-            # Load index and check dimensions
+            # Skip FAISS index validation for Weaviate retrievers
+            # Weaviate retrievers don't need local FAISS index files
+            if hasattr(self, '__class__') and 'Weaviate' in self.__class__.__name__:
+                log_with_context(
+                    logger,
+                    logging.DEBUG,
+                    "Retriever",
+                    "Skipping FAISS index validation for Weaviate retriever",
+                    {"model_id": model_id, "model_dim": model_dim}
+                )
+                return model, model_dim
+            
+            # Load index and check dimensions (only for FAISS retrievers)
             index = load_index(model_id)
             if not index.is_trained:
                 log_with_context(

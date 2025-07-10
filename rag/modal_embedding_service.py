@@ -126,6 +126,44 @@ class ModalEmbeddingService:
             # Always use Modal embedding service
             return self._embed_via_modal(query, model_id)
     
+    def embed_batch(self, queries: list[str], model_id: str = None) -> list[np.ndarray]:
+        """
+        Embed multiple queries using Modal's batch endpoint.
+        
+        This method eliminates cold start storms by making a single HTTP request
+        for multiple texts instead of multiple parallel requests.
+        
+        Args:
+            queries: List of query strings to embed
+            model_id: Optional model identifier (default: DEFAULT_MODEL_ID)
+            
+        Returns:
+            List of normalized query embeddings as numpy arrays
+            
+        Raises:
+            RuntimeError: If HTTP request fails or embeddings are invalid
+        """
+        model_id = model_id or DEFAULT_MODEL_ID
+        
+        if not queries:
+            return []
+        
+        with QueryContext(model_id):
+            log_with_context(
+                logger,
+                logging.INFO,
+                "ModalEmbeddingService",
+                "Starting batch query embedding",
+                {
+                    "query_count": len(queries),
+                    "model_id": model_id,
+                    "environment": "production" if self.is_production else "development"
+                }
+            )
+            
+            # Use Modal batch embedding service
+            return self._embed_batch_via_modal(queries, model_id)
+    
     def _embed_via_modal(self, query: str, model_id: str) -> np.ndarray:
         """
         Embed query using Modal's HTTP endpoint.
@@ -179,6 +217,62 @@ class ModalEmbeddingService:
             logger.error(f"Failed HTTP embedding request: {e}")
             raise RuntimeError(f"Modal embedding service failed: {e}")
     
+    def _embed_batch_via_modal(self, queries: list[str], model_id: str) -> list[np.ndarray]:
+        """
+        Embed multiple queries using Modal's batch HTTP endpoint.
+        
+        Args:
+            queries: List of query strings to embed
+            model_id: Model identifier
+            
+        Returns:
+            List of normalized query embeddings as numpy arrays
+            
+        Raises:
+            RuntimeError: If HTTP request fails or embeddings are invalid
+        """
+        url = "https://yogonwa--nobel-embedder-clean-slate-embed-batch.modal.run"
+        api_key = "6dab23095a3f8968074d7c9152d6707f3f7445bc145022f46fcceb0712864147"
+
+        try:
+            response = requests.post(
+                url,
+                json={"api_key": api_key, "texts": queries},
+                timeout=60,  # Longer timeout for batch requests
+            )
+            response.raise_for_status()
+            data = response.json()
+            embedding_lists = data["embeddings"]
+            
+            # Convert to numpy arrays
+            embeddings = [np.array(emb_list, dtype=np.float32) for emb_list in embedding_lists]
+
+            # Validate embedding dimensions
+            expected_dim = get_model_config(model_id)["embedding_dim"]
+            for i, embedding in enumerate(embeddings):
+                if embedding.shape[0] != expected_dim:
+                    raise ValueError(
+                        f"Modal batch embedding {i} dimension {embedding.shape[0]} "
+                        f"doesn't match expected {expected_dim} for model {model_id}"
+                    )
+
+            log_with_context(
+                logger,
+                logging.DEBUG,
+                "ModalEmbeddingService",
+                "Modal batch embedding successful",
+                {
+                    "query_count": len(queries),
+                    "embedding_count": len(embeddings),
+                    "embedding_shape": embeddings[0].shape if embeddings else None,
+                    "model_id": model_id
+                }
+            )
+
+            return embeddings
+        except Exception as e:
+            logger.error(f"Failed HTTP batch embedding request: {e}")
+            raise RuntimeError(f"Modal batch embedding service failed: {e}")
 
 
 

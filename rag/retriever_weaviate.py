@@ -168,3 +168,108 @@ class WeaviateRetriever(BaseRetriever):
                     }
                 )
                 raise
+
+    def retrieve_with_embedding(
+        self,
+        embedding: np.ndarray,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+        score_threshold: float = 0.2,
+        min_return: int = 3,
+        max_return: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve chunks using Weaviate vector search with a pre-computed embedding.
+        
+        This method allows the thematic retriever to use batch embeddings
+        without re-embedding each term individually.
+        
+        Args:
+            embedding: Pre-computed query embedding as numpy array
+            top_k: Number of chunks to retrieve
+            filters: Optional metadata filters
+            score_threshold: Minimum similarity score
+            min_return: Minimum number of chunks to return
+            max_return: Maximum number of chunks to return
+            
+        Returns:
+            List of chunk dictionaries with metadata and scores
+        """
+        with QueryContext(self.model_id):
+            # Validate inputs
+            if embedding is None or embedding.size == 0:
+                raise ValueError("Embedding cannot be None or empty")
+            
+            validate_retrieval_parameters(
+                top_k=top_k,
+                score_threshold=score_threshold,
+                min_return=min_return,
+                max_return=max_return,
+                context="WeaviateRetriever.retrieve_with_embedding"
+            )
+            validate_filters(filters, context="WeaviateRetriever.retrieve_with_embedding")
+            
+            log_with_context(
+                logger,
+                logging.INFO,
+                "WeaviateRetriever",
+                "Starting Weaviate retrieval with pre-computed embedding",
+                {
+                    "embedding_shape": embedding.shape,
+                    "top_k": top_k,
+                    "score_threshold": score_threshold,
+                    "has_filters": filters is not None
+                }
+            )
+            
+            try:
+                # Convert numpy array to list for Weaviate
+                embedding_list = embedding.tolist()
+                
+                # Use the new query function with pre-computed embedding
+                from rag.query_weaviate import query_weaviate_with_embedding
+                chunks = query_weaviate_with_embedding(
+                    embedding=embedding_list,
+                    top_k=top_k,
+                    filters=filters,
+                    score_threshold=score_threshold
+                )
+                
+                # Handle edge case of None or malformed response
+                if not chunks:
+                    chunks = []
+                    logger.warning("Weaviate returned None or empty response, using empty list")
+                
+                # Apply min/max return constraints
+                if min_return and len(chunks) < min_return:
+                    logger.warning(f"Weaviate returned {len(chunks)} chunks, but min_return={min_return}")
+                
+                if max_return and len(chunks) > max_return:
+                    chunks = chunks[:max_return]
+                    logger.info(f"Truncated results to {max_return} chunks")
+                
+                log_with_context(
+                    logger,
+                    logging.INFO,
+                    "WeaviateRetriever",
+                    "Retrieval completed",
+                    {
+                        "chunks_returned": len(chunks),
+                        "mean_score": np.mean([c.get("score", 0) for c in chunks]) if chunks else 0
+                    }
+                )
+                
+                return chunks
+                
+            except Exception as e:
+                log_with_context(
+                    logger,
+                    logging.ERROR,
+                    "WeaviateRetriever",
+                    "Retrieval failed",
+                    {
+                        "error": str(e),
+                        "error_type": type(e).__name__
+                    }
+                )
+                raise

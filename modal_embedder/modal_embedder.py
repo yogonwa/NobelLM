@@ -143,6 +143,76 @@ def embed_query(item: dict):
         logger.error(f"Error generating embedding: {e}")
         raise Exception(f"Embedding generation failed: {e}")
 
+@app.function(
+    image=image,
+    secrets=[modal.Secret.from_name("MODAL_EMBEDDER_API_KEY")]
+)
+@modal.fastapi_endpoint(method="POST")
+def embed_batch(item: dict):
+    """
+    Convert multiple text queries into 1024-dimensional embedding vectors via HTTP endpoint.
+    
+    This function uses the BGE-large-en-v1.5 model to generate embeddings for multiple
+    texts in a single request, eliminating cold start storms from parallel requests.
+    
+    Args:
+        item: Dictionary containing:
+            - "api_key": API key for authentication
+            - "texts": List of texts to embed
+            
+    Returns:
+        Dictionary containing list of embedding arrays
+        
+    Raises:
+        Exception: If authentication fails or embedding generation fails
+    """
+    global model
+    
+    # Validate API key
+    api_key = item.get("api_key")
+    if api_key != os.environ["MODAL_EMBEDDER_API_KEY"]:
+        raise Exception("Unauthorized")
+    
+    # Get texts from request
+    texts = item.get("texts")
+    if not texts:
+        raise Exception("Missing 'texts' field")
+    
+    if not isinstance(texts, list):
+        raise Exception("'texts' must be a list")
+    
+    if len(texts) == 0:
+        raise Exception("'texts' list cannot be empty")
+    
+    if len(texts) > 50:  # Reasonable limit to prevent abuse
+        raise Exception("'texts' list cannot exceed 50 items")
+    
+    # Validate all texts are strings
+    for i, text in enumerate(texts):
+        if not isinstance(text, str):
+            raise Exception(f"Text at index {i} must be a string")
+    
+    try:
+        # Load model once and cache it for subsequent calls
+        if model is None:
+            logger.info("Loading model...")
+            model = SentenceTransformer("BAAI/bge-large-en-v1.5")
+            logger.info("Model loaded successfully")
+        
+        # Generate embeddings for all texts with normalization enabled
+        # normalize_embeddings=True ensures values are in [-1, 1] range
+        embeddings = model.encode(texts, normalize_embeddings=True)
+        
+        # Convert to list of lists for JSON serialization
+        embedding_lists = [emb.tolist() for emb in embeddings]
+        
+        logger.info(f"Generated {len(embeddings)} embeddings for {len(texts)} texts")
+        return {"embeddings": embedding_lists}
+        
+    except Exception as e:
+        logger.error(f"Error generating batch embeddings: {e}")
+        raise Exception(f"Batch embedding generation failed: {e}")
+
 @app.function(image=image)
 def health_check() -> dict:
     """
