@@ -11,7 +11,7 @@ import logging
 import json
 import faiss
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
