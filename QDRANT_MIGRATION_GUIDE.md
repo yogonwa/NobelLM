@@ -1,6 +1,6 @@
-# Qdrant Migration Guide for NobelLM
+# Qdrant Migration Guide for NobelLM (Docker Strategy)
 
-This guide provides a step-by-step process to migrate the NobelLM project from Weaviate to Qdrant as the vector database backend. It covers code changes, configuration, testing, and documentation updates.
+This guide provides a step-by-step process to migrate the NobelLM project from Weaviate to Qdrant as the vector database backend, using Docker for local and production deployments. It covers code changes, configuration, testing, and documentation updates.
 
 ---
 
@@ -13,13 +13,22 @@ This guide provides a step-by-step process to migrate the NobelLM project from W
 
 ---
 
-## 2. Install Qdrant
+## 2. Install Qdrant (Docker)
 
-- **Install Qdrant Client:**
-  - `pip install qdrant-client`
-- **Run Qdrant Locally (No Docker Needed):**
-  - Download the Qdrant binary for your OS: https://qdrant.tech/documentation/quick_start/#run-qdrant-without-docker
-  - Start Qdrant: `./qdrant` (or the appropriate command for your OS)
+- **Install Docker:**
+  - Download and install Docker Desktop for your OS: https://www.docker.com/products/docker-desktop/
+  - Start Docker Desktop and ensure it is running.
+- **Pull the Qdrant Docker Image:**
+  - `docker pull qdrant/qdrant`
+- **Run Qdrant in a Docker Container:**
+  - ```sh
+    docker run -p 6333:6333 -p 6334:6334 \
+      -v "$(pwd)/qdrant_storage:/qdrant/storage:z" \
+      qdrant/qdrant
+    ```
+  - This exposes the REST API at `localhost:6333` and persists data in the `qdrant_storage` directory.
+- **Access the Qdrant Web UI:**
+  - Open [http://localhost:6333/dashboard](http://localhost:6333/dashboard) in your browser.
 
 ---
 
@@ -28,11 +37,10 @@ This guide provides a step-by-step process to migrate the NobelLM project from W
 - **Prepare Data:**
   - Ensure your embeddings and metadata are in a format compatible with Qdrant: `{ "id": ..., "vector": [...], "payload": { ... } }`
 - **Import Data:**
-  - Use the Qdrant Python client to create a collection and upload your vectors and payloads.
-  - Example:
+  - Use the Qdrant Python client to connect to the running Docker instance:
     ```python
     from qdrant_client import QdrantClient
-    client = QdrantClient("localhost", port=6333)
+    client = QdrantClient(url="http://localhost:6333")
     client.recreate_collection(
         collection_name="nobellm",
         vectors_config={"size": 1024, "distance": "Cosine"}
@@ -84,7 +92,7 @@ This guide provides a step-by-step process to migrate the NobelLM project from W
 
 - **README Files:**
   - Update all references to Weaviate in `README.md`, `backend/README.md`, `rag/README.md`, and any other docs.
-  - Document new environment variables and configuration for Qdrant.
+  - Document new environment variables and configuration for Qdrant, including Docker usage.
 
 ---
 
@@ -99,7 +107,7 @@ This guide provides a step-by-step process to migrate the NobelLM project from W
 
 ## 9. Production Cutover
 
-- **Switch Environment Variables/Configs** to point to Qdrant.
+- **Switch Environment Variables/Configs** to point to Qdrant (Docker host/port).
 - **Monitor** for errors or performance issues.
 - **Decommission Weaviate** only after Qdrant is stable.
 
@@ -110,7 +118,8 @@ This guide provides a step-by-step process to migrate the NobelLM project from W
 - [Qdrant Python Client Docs](https://qdrant.tech/documentation/quick_start/)
 - [Qdrant Data Model](https://qdrant.tech/documentation/concepts/data_model/)
 - [Qdrant vs. Weaviate Comparison](https://qdrant.tech/documentation/comparisons/weaviate/)
+- [Qdrant Docker Quickstart](https://qdrant.tech/documentation/quick_start/#run-qdrant-with-docker)
 
 ---
 
-**This guide is tailored for the NobelLM project. Adapt as needed for your specific deployment and workflow.** 
+**This guide is tailored for the NobelLM project and assumes Docker is the primary method for running Qdrant locally and in production. Adapt as needed for your specific deployment and workflow.** 
