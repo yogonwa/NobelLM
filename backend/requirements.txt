@@ -17,9 +17,6 @@ python-dotenv
 Pillow
 pycountry
 
-# Weaviate client for vector database
-weaviate-client>=3.26.0
-
 # Modal for cloud embedding service
 modal
 

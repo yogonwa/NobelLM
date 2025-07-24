@@ -1,6 +1,20 @@
 # Qdrant Migration Guide for NobelLM (Docker Strategy)
 
-This guide provides a step-by-step process to migrate the NobelLM project from Weaviate to Qdrant as the vector database backend, using Docker for local and production deployments. It covers code changes, configuration, testing, and documentation updates.
+---
+
+## Progress Checklist (as of 2025-07-24)
+
+- [x] Data migration script created and committed to git (`scripts/migrate_to_qdrant.py`)
+- [x] Embeddings and metadata uploaded to Qdrant Cloud (UUIDv5 IDs, .env for credentials)
+- [ ] Refactor retriever and query modules for Qdrant
+- [ ] Update retriever factory and backend config for Qdrant
+- [ ] Update backend dependency injection and health check for Qdrant
+- [ ] Replace Weaviate scripts with Qdrant equivalents
+- [ ] Update and run E2E tests for Qdrant
+- [ ] Update documentation and READMEs for Qdrant
+- [ ] Remove Weaviate client from requirements (after full cutover)
+
+_Note: The migration script uses UUIDv5 for Qdrant Cloud compatibility and loads credentials from .env._
 
 ---
 

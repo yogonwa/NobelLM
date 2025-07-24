@@ -15,12 +15,13 @@ pinned: false
 
 ---
 
-## 🚨 Migration Notice (June 2025)
+## �� Migration Notice (July 2025)
 
 - The Streamlit UI (Hugging Face Spaces) is now deprecated.
 - The canonical frontend is now a modern React + Vite + TypeScript app in `/frontend`.
 - All new features, bugfixes, and deployments should target the React frontend.
 - See `/frontend/README.md` for setup and usage.
+- **Qdrant is now the only supported remote vector database backend.**
 
 ---
 
@@ -30,7 +31,6 @@ NobelLM now uses a **unified, environment-aware embedding service** for all user
 
 - **Production:** All queries are embedded via a dedicated Modal microservice (see `modal_embedder.py`).
 - **Development:** Embedding is performed locally using the BGE-Large model.
-- **No more embedding in Weaviate or Fly API.**
 - The embedding logic is centralized in `rag/modal_embedding_service.py` and used by all retrievers.
 - The system automatically detects the environment and routes embedding requests accordingly, with robust fallback logic.
 
@@ -57,24 +57,28 @@ NobelLM is a modular, full-stack GenAI project that:
 ## Architecture
 
 - **Backend:** FastAPI (Python) with RAG pipeline
-    - **Vector DB:** Supports both FAISS (default, local/dev) and Weaviate (production, cloud-native)
-    - **Retriever Selection:** The backend dynamically selects between FAISS and Weaviate based on environment/configuration. See `/rag/retriever.py` and `/rag/retriever_weaviate.py` for details.
+    - **Vector DB:** Supports both FAISS (default, local/dev) and Qdrant (production, cloud-native)
+    - **Retriever Selection:** The backend dynamically selects between FAISS and Qdrant based on environment/configuration. See `/rag/retriever.py` and `/rag/retriever_qdrant.py` for details.
     - **RAG Logic:** Modular, model-aware, and backend-agnostic. All retrieval is routed through a unified interface.
-    - **Weaviate Integration:** See `/rag/query_weaviate.py` and `/rag/retriever_weaviate.py` for Weaviate-specific logic and configuration.
+    - **Qdrant Integration:** See `/rag/query_qdrant.py` and `/rag/retriever_qdrant.py` for Qdrant-specific logic and configuration.
 - **Frontend:** React + Vite + TypeScript (see `/frontend`)
 - **Deployment:** Dockerized, Fly.io for production
 
 ---
 
-## Weaviate Vector DB Support
+## Qdrant Vector DB Support
 
-- **Production deployments** now support Weaviate as a vector database backend for semantic search and retrieval.
+- **Production deployments** now use Qdrant as the vector database backend for semantic search and retrieval.
 - **Configuration:**
-    - Set `USE_WEAVIATE=1` (or equivalent) in your backend config or environment to enable Weaviate.
-    - Required environment variables: `WEAVIATE_URL`, `WEAVIATE_API_KEY` (see `/rag/query_weaviate.py`).
-    - Embedding is always performed locally using the configured model (not via Weaviate inference module).
-- **Fallback:** If Weaviate is not enabled/configured, the backend uses FAISS (in-process or subprocess for Mac/Intel).
+    - Set `QDRANT_URL` and `QDRANT_API_KEY` in your environment or `.env` file to enable Qdrant.
+    - Embedding is always performed using the configured model (via Modal or local).
 - **All retrieval logic is backend-agnostic** and routed through the `BaseRetriever` interface.
+
+**Example .env configuration:**
+```
+QDRANT_URL=https://your-qdrant-instance.cloud.qdrant.io:6333
+QDRANT_API_KEY=your-qdrant-api-key
+```
 
 ---
 

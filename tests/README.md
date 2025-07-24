@@ -32,6 +32,13 @@ os.environ["NOBELLM_USE_FAISS_SUBPROCESS"] = "0"  # For explicit control
 
 > **Note**: See `main/README.md` and `rag/README.md` for detailed information about the environment toggle and dual-mode retrieval logic.
 
+### Qdrant Environment Variables
+To run E2E tests with Qdrant as the backend, set the following in your `.env` file:
+```
+QDRANT_URL=https://your-qdrant-instance.cloud.qdrant.io:6333
+QDRANT_API_KEY=your-qdrant-api-key
+```
+
 ## Test Architecture
 
 ### Model-Aware, Config-Driven Testing
@@ -72,31 +79,9 @@ The test suite follows the core pipeline flow:
     - `laureate`, `year_awarded`, `country`, `country_flag`, `category`, `prize_motivation`
 - This contract is enforced in all unit, integration, and E2E tests. The frontend expects these fields to render the factual answer card.
 
-**Phase 2 Intent Classifier Tests:**
-- `test_intent_classifier.py`: Comprehensive coverage of new structured intent classification
-- Tests for hybrid confidence scoring, config-driven weights, multiple laureate detection
-- Validation of decision traces, lemmatization integration, and backward compatibility
-
-**Phase 3A Theme Embedding Infrastructure Tests:**
-- `test_theme_embedding_infrastructure.py`: Core theme embedding and similarity computation infrastructure
-- `test_theme_reformulator_phase3.py`: Enhanced ThemeReformulator with ranked expansion
-- Tests for pre-computed embeddings, model-aware storage, quality filtering
-- Validation of hybrid keyword extraction, fallback behavior, and performance benchmarks
-
-**Phase 3B Enhanced ThematicRetriever Tests:**
-- `test_thematic_retriever.py`: Enhanced ThematicRetriever with weighted retrieval functionality
-- Tests for similarity-based ranked expansion integration, exponential weight scaling
-- Validation of weighted chunk merging, deduplication, and sorting
-- Backward compatibility testing with legacy retrieval methods
-- Performance monitoring and logging validation
-- Comprehensive coverage of dual retrieval architecture (weighted vs legacy)
-
-**Phase 4 Retrieval Logic Enhancement Tests:**
-- `test_utils.py`: Updated filter_top_chunks with centralized retrieval logic
-- `test_answer_query.py`: End-to-end retrieval pipeline with consistent thresholds
-- `test_thematic_retriever.py`: Enhanced with unified fallback behavior
-- Integration tests: Validated consistent behavior across all retrieval paths
-- E2E tests: Confirmed predictable results and transparent filtering decisions
+**Qdrant E2E Tests:**
+- `test_qdrant_health.py`: Qdrant connectivity and basic search test
+- `test_qdrant_e2e.py`: Full RAG pipeline integration test with Qdrant as the backend
 
 **Modal Embedding Service Integration Tests (Latest):**
 - `test_modal_embedding_integration.py`: Comprehensive Modal embedding service integration
@@ -105,7 +90,6 @@ The test suite follows the core pipeline flow:
 - Environment routing tests (development → local, production → Modal)
 - Error handling and fallback behavior testing
 - Test isolation improvements with global state management
-- Prevents Weaviate fallback and ensures consistent test environment
 
 **Modal Embedding Service Unit Tests (Enhanced):**
 - `test_modal_embedding_service.py`: Comprehensive unit testing with both mock and real embedding tests
@@ -314,50 +298,22 @@ Component interaction testing with realistic data flow.
   - Comprehensive coverage of the unified embedding service architecture
 
 ### 3. End-to-End Tests (`e2e/`)
-Full workflow validation with minimal mocking. **Total: 7 focused tests**
+Full workflow validation with minimal mocking.
 
-#### `test_e2e_frontend_contract.py` (3 tests)
-- **`test_realistic_embedding_service_integration`**: True E2E test with real retriever, embedding service, and index
-- **`test_modal_embedding_service_direct`**: Direct embedding service test for debugging
-- **`test_modal_embedding_service_environment_detection`**: Environment detection validation
-- Full user query → answer flow validation:
-  - Factual queries: **asserts `answer_type: "metadata"` and all required fields in `metadata_answer`**
-  - Thematic queries
-  - Generative queries
-  - No-results handling
-  - Error scenarios
-- Frontend output contract stability
-- **Modal Embedding Service Integration:**
-  - Real embedding service integration with minimal mocking
-  - Environment-aware testing with proper isolation
-  - Embedding service verification in complete pipeline
-  - Production vs development environment validation
-
-#### `test_modal_service_live.py` (2 tests)
-- **`test_modal_service_live`**: Live E2E test for deployed Modal embedding service
-  - Comprehensive validation of deployed Modal service
-  - Health check, embedding generation, format validation, performance testing
-  - Consistency testing and error handling
-  - Requires deployed Modal service and `NOBELLM_TEST_MODAL_LIVE=1`
-- **`test_modal_service_health_only`**: Quick health check for Modal service
-  - Lightweight test for service availability
-  - Good for CI/CD validation
-  - Requires deployed Modal service and `NOBELLM_TEST_MODAL_LIVE=1`
-
-#### `test_weaviate_e2e.py` (1 test)
-- **`test_weaviate_e2e`**: Full Weaviate RAG pipeline integration test
-  - Complete end-to-end test with Weaviate as vector backend
-  - Environment configuration, query routing, retrieval, LLM integration
-  - Answer compilation and source citation
-  - Requires Weaviate setup and configuration
-
-#### `test_weaviate_health.py` (1 test)
-- **`test_weaviate_health`**: Weaviate connectivity and basic functionality test
+#### `test_qdrant_health.py` (1 test)
+- **`test_qdrant_health`**: Qdrant connectivity and basic functionality test
   - Connection and authentication validation
   - Basic vector search functionality
   - Data availability and quality checks
   - Environment configuration validation
   - Quick health check for CI/CD validation
+
+#### `test_qdrant_e2e.py` (1 test)
+- **`test_qdrant_e2e`**: Full Qdrant RAG pipeline integration test
+  - Complete end-to-end test with Qdrant as vector backend
+  - Environment configuration, query routing, retrieval, LLM integration
+  - Answer compilation and source citation
+  - Requires Qdrant setup and configuration
 
 #### `test_failures.py`
 - Error scenario testing
@@ -427,26 +383,27 @@ pytest
 # Run specific test categories
 pytest tests/unit/          # Unit tests only
 pytest tests/integration/   # Integration tests only
-pytest tests/e2e/          # End-to-end tests only (7 tests)
+pytest tests/e2e/          # End-to-end tests only
 pytest tests/validation/   # Validation tests only
 
 # Run tests with specific markers
 pytest -m unit             # Unit tests
 pytest -m integration      # Integration tests
-pytest -m e2e             # End-to-end tests (7 tests)
-pytest -m validation      # Validation tests (52 tests)
+pytest -m e2e             # End-to-end tests
+pytest -m validation      # Validation tests
 ```
 
 ### E2E Test Execution
 ```bash
-# Run all E2E tests (7 tests)
-python -m pytest tests/e2e/ -m e2e -v
+# Run all E2E tests
+pytest tests/e2e/ -m e2e -v
 
-# Run core E2E tests (without Modal live tests)
-python -m pytest tests/e2e/test_e2e_frontend_contract.py tests/e2e/test_weaviate_e2e.py tests/e2e/test_weaviate_health.py -v
+# Run Qdrant E2E and health tests
+pytest tests/e2e/test_qdrant_health.py -v
+pytest tests/e2e/test_qdrant_e2e.py -v
 
 # Run Modal live service tests (requires deployed service)
-NOBELLM_TEST_MODAL_LIVE=1 python -m pytest tests/e2e/test_modal_service_live.py -v
+NOBELLM_TEST_MODAL_LIVE=1 pytest tests/e2e/test_modal_service_live.py -v
 ```
 
 ### Test Configuration
@@ -500,7 +457,7 @@ pytest tests/integration/test_modal_embedding_integration.py -m integration
 pytest tests/unit/test_modal_embedding_service.py -m unit
 
 # Run Modal live service tests (requires deployed service)
-NOBELLM_TEST_MODAL_LIVE=1 python -m pytest tests/e2e/test_modal_service_live.py -v
+NOBELLM_TEST_MODAL_LIVE=1 pytest tests/e2e/test_modal_service_live.py -v
 ```
 
 ## Best Practices

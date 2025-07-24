@@ -33,10 +33,9 @@ class Settings(BaseSettings):
     default_top_k: int = 5
     default_score_threshold: float = 0.2
 
-    # --- Weaviate ---
-    use_weaviate: bool = True
-    weaviate_url: str = "https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud"
-    weaviate_api_key: str = ""
+    # --- Qdrant ---
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
 
     # --- Modal Embedding Service ---
     modal_app_name: str = "nobel-embedder"
@@ -74,16 +73,6 @@ class Settings(BaseSettings):
         # Fall back to comma-separated string
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
         return origins
-
-    @field_validator('weaviate_url')
-    @classmethod
-    def validate_weaviate_url(cls, v: str) -> str:
-        """Validate Weaviate URL format."""
-        if not v:
-            return v
-        if not v.startswith(('http://', 'https://')):
-            raise ValueError('Weaviate URL must start with http:// or https://')
-        return v
 
     @field_validator('default_score_threshold')
     @classmethod

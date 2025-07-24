@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health_check():
-        """Comprehensive health check including Weaviate connectivity."""
+        """Comprehensive health check including Qdrant connectivity."""
         current_settings = get_settings()
         health_status = {
             "status": "healthy",
@@ -152,35 +152,31 @@ def create_app() -> FastAPI:
             "checks": {}
         }
         
-        # Check Weaviate connectivity if enabled
-        if current_settings.use_weaviate:
+        # Check Qdrant connectivity
+        try:
+            from qdrant_client import QdrantClient
+            qdrant_url = current_settings.qdrant_url
+            qdrant_api_key = current_settings.qdrant_api_key
+            client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+            # Test basic connectivity
+            client.get_collections()
+            health_status["checks"]["qdrant_connectivity"] = "ok"
+            # Perform warmup search
             try:
-                from rag.query_weaviate import get_weaviate_client
-                client = get_weaviate_client()
-                
-                # Test basic connectivity
-                client.is_ready()
-                health_status["checks"]["weaviate_connectivity"] = "ok"
-                
-                # Perform warmup query
-                try:
-                    from rag.query_weaviate import query_weaviate
-                    warmup_results = query_weaviate(
-                        query_text="test",
-                        top_k=1,
-                        score_threshold=0.0
-                    )
-                    health_status["checks"]["weaviate_query"] = "ok"
-                    health_status["checks"]["weaviate_results"] = len(warmup_results) if warmup_results else 0
-                except Exception as e:
-                    health_status["checks"]["weaviate_query"] = f"error: {str(e)}"
-                    health_status["status"] = "degraded"
-                    
+                from rag.query_qdrant import query_qdrant
+                warmup_results = query_qdrant(
+                    query_text="test",
+                    top_k=1,
+                    score_threshold=0.0
+                )
+                health_status["checks"]["qdrant_query"] = "ok"
+                health_status["checks"]["qdrant_results"] = len(warmup_results) if warmup_results else 0
             except Exception as e:
-                health_status["checks"]["weaviate_connectivity"] = f"error: {str(e)}"
-                health_status["status"] = "unhealthy"
-        else:
-            health_status["checks"]["weaviate"] = "disabled"
+                health_status["checks"]["qdrant_query"] = f"error: {str(e)}"
+                health_status["status"] = "degraded"
+        except Exception as e:
+            health_status["checks"]["qdrant_connectivity"] = f"error: {str(e)}"
+            health_status["status"] = "unhealthy"
         
         # Check theme embeddings
         try:

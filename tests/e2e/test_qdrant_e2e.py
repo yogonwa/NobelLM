@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-E2E: Weaviate RAG Pipeline Integration Test
+E2E: Qdrant RAG Pipeline Integration Test
 
-This test verifies the complete RAG pipeline with Weaviate as the vector backend:
+This test verifies the complete RAG pipeline with Qdrant as the vector backend:
 - Environment configuration loading
 - Query routing and intent classification
-- Weaviate retrieval and chunk processing
+- Qdrant retrieval and chunk processing
 - LLM prompt building and generation
 - Answer compilation and source citation
 
-This is the main end-to-end integration test for the Weaviate backend.
+This is the main end-to-end integration test for the Qdrant backend.
 """
 import os
 import sys
@@ -18,20 +18,19 @@ import pytest
 from dotenv import load_dotenv
 
 @pytest.mark.e2e
-def test_weaviate_e2e():
-    """E2E: Run end-to-end integration test with Weaviate backend."""
-    load_dotenv('backend/.env.production')
+def test_qdrant_e2e():
+    """E2E: Run end-to-end integration test with Qdrant backend."""
+    load_dotenv('.env')
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
     query = "What do laureates say about the creative process?"
-    logger.info("🚀 Starting Weaviate E2E Integration Test")
+    logger.info("🚀 Starting Qdrant E2E Integration Test")
     logger.info(f"Query: {query}")
-    logger.info(f"USE_WEAVIATE: {os.getenv('USE_WEAVIATE', 'Not set')}")
-    logger.info(f"WEAVIATE_API_KEY set: {bool(os.getenv('WEAVIATE_API_KEY'))}")
-    logger.info(f"WEAVIATE_URL: {os.getenv('WEAVIATE_URL', 'NOT SET')}")
+    logger.info(f"QDRANT_URL: {os.getenv('QDRANT_URL', 'NOT SET')}")
+    logger.info(f"QDRANT_API_KEY set: {bool(os.getenv('QDRANT_API_KEY'))}")
     try:
         from rag.query_engine import answer_query
-        logger.info("📡 Calling answer_query() with Weaviate backend...")
+        logger.info("📡 Calling answer_query() with Qdrant backend...")
         result = answer_query(
             query_string=query,
             model_id="bge-large",
@@ -51,12 +50,13 @@ def test_weaviate_e2e():
                 logger.info(f"  {i+1}. {source.get('laureate', 'Unknown')} ({source.get('year_awarded', '?')})")
                 logger.info(f"     Score: {source.get('score', 0):.3f}")
                 logger.info(f"     Text: {source.get('text', '')[:100]}...")
+            assert len(result.get('sources', [])) > 0, "No sources returned for RAG answer"
         elif result.get('answer_type') == 'metadata':
             logger.info("📊 Metadata Answer:")
             logger.info(result.get('answer', 'No metadata answer'))
-        logger.info("🎉 Weaviate E2E Integration Test PASSED!")
+        logger.info("🎉 Qdrant E2E Integration Test PASSED!")
     except Exception as e:
-        logger.error(f"❌ Weaviate E2E Integration Test FAILED: {e}")
+        logger.error(f"❌ Qdrant E2E Integration Test FAILED: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        pytest.fail(f"Weaviate E2E Integration Test failed: {e}") 
+        pytest.fail(f"Qdrant E2E Integration Test failed: {e}") 

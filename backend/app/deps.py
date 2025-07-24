@@ -17,57 +17,24 @@ logger = logging.getLogger(__name__)
 
 
 class RAGDependencies:
-    """Container for RAG pipeline dependencies."""
+    """Container for RAG pipeline dependencies (Qdrant-only)."""
     
     def __init__(self):
-        self._faiss_index = None
-        self._metadata = None
-        self._model = None
         self._model_id = DEFAULT_MODEL_ID
         self._initialized = False
     
     def initialize(self, model_id: str = None) -> None:
-        """Initialize RAG dependencies."""
+        """Initialize RAG dependencies (Qdrant-only)."""
         if self._initialized:
             return
-        
-        model_id = model_id or DEFAULT_MODEL_ID
-        self._model_id = model_id
-        
-        try:
-            logger.info(f"Initializing RAG dependencies for model: {model_id}")
-            
-            # Production mode: Only use Weaviate + Modal, never load local models
-            settings = get_settings()
-            if settings.use_weaviate:
-                logger.info("Weaviate is enabled - using Modal embedding service only")
-                # Never load local models in production
-                self._model = None
-                self._faiss_index = None
-                self._metadata = None
-            else:
-                raise RuntimeError("FAISS mode is not supported in production. Use Weaviate + Modal only.")
-            
-            self._initialized = True
-            logger.info(f"RAG dependencies initialized successfully for model: {model_id}")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize RAG dependencies: {e}")
-            raise
-    
-
+        self._model_id = model_id or DEFAULT_MODEL_ID
+        self._initialized = True
+        logger.info(f"RAG dependencies initialized for model: {self._model_id}")
     
     @property
     def model_id(self) -> str:
         """Get current model ID."""
         return self._model_id
-    
-    @property
-    def is_weaviate_mode(self) -> bool:
-        """Check if running in Weaviate mode."""
-        if not self._initialized:
-            self.initialize()
-        return True  # Always true in production
 
 
 # Global RAG dependencies instance

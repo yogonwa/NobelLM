@@ -425,13 +425,13 @@ def get_mode_aware_retriever(model_id: str = None) -> BaseRetriever:
     Returns:
         BaseRetriever: The appropriate retriever instance
     """
-    # ALWAYS use Weaviate - no fallbacks, no checks
-    from rag.retriever_weaviate import WeaviateRetriever
+    # Qdrant is now the only supported remote vector DB backend.
+    from rag.retriever_qdrant import QdrantRetriever
     log_with_context(
         logger,
         logging.INFO,
         "Retriever",
-        "Using Weaviate retriever",
-        {"retriever": "WeaviateRetriever"}
+        "Using Qdrant retriever",
+        {"retriever": "QdrantRetriever"}
     )
-    return WeaviateRetriever(model_id) 
+    return QdrantRetriever(model_id) 

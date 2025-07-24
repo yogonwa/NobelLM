@@ -1,29 +1,18 @@
 """
-WeaviateRetriever module for NobelLM RAG pipeline.
+QdrantRetriever module for NobelLM RAG pipeline.
 
-- Implements a Weaviate-based retriever that conforms to the BaseRetriever interface.
-- Enables backend-agnostic retrieval: the pipeline can use either Weaviate or FAISS transparently.
+- Implements a Qdrant-based retriever that conforms to the BaseRetriever interface.
+- Enables backend-agnostic retrieval: the pipeline can use Qdrant transparently.
 - Handles input validation and result normalization.
 - Used by the retriever factory in `rag/retriever.py`.
-- Calls low-level Weaviate query logic in `rag/query_weaviate.py`.
-
-Configuration:
-- Enable Weaviate by setting the appropriate config/env vars (e.g., `USE_WEAVIATE=1`, `WEAVIATE_URL`, `WEAVIATE_API_KEY`).
-- Embedding is performed via Modal service (not locally or via Weaviate inference module).
-- If Weaviate is not enabled/configured, the pipeline falls back to FAISS retrievers.
-
-Related files:
-- rag/retriever.py: Retriever factory and interface.
-- rag/query_weaviate.py: Low-level Weaviate query logic.
+- Calls low-level Qdrant query logic in `rag/query_qdrant.py`.
 """
-
 import logging
 from typing import List, Dict, Any, Optional
 import numpy as np
-
 from rag.retriever import BaseRetriever
 from rag.model_config import get_model_config, DEFAULT_MODEL_ID
-from rag.query_weaviate import query_weaviate
+from rag.query_qdrant import query_qdrant, query_qdrant_with_embedding
 from rag.logging_utils import get_module_logger, log_with_context, QueryContext
 from rag.validation import validate_query_string, validate_retrieval_parameters, validate_filters
 
@@ -32,41 +21,30 @@ logger = get_module_logger(__name__)
 # Import unified embedding service
 from rag.modal_embedding_service import embed_query
 
-
-class WeaviateRetriever(BaseRetriever):
+class QdrantRetriever(BaseRetriever):
     """
-    Weaviate-based retriever that implements the BaseRetriever interface.
-    
-    This retriever uses Weaviate as the vector database backend while maintaining
+    Qdrant-based retriever that implements the BaseRetriever interface.
+    This retriever uses Qdrant as the vector database backend while maintaining
     compatibility with the existing RAG pipeline architecture.
     """
-
     def __init__(self, model_id: str = None):
         """
-        Initialize the Weaviate retriever.
-        
+        Initialize the Qdrant retriever.
         Args:
             model_id: Model identifier (default: DEFAULT_MODEL_ID)
         """
-        # Handle None by using default model ID
         if model_id is None:
             model_id = DEFAULT_MODEL_ID
-            
-        # Validate model_id
         from rag.validation import validate_model_id
-        validate_model_id(model_id, context="WeaviateRetriever")
-            
+        validate_model_id(model_id, context="QdrantRetriever")
         self.model_id = model_id
-        
-        # Get embedding dimension for logging and validation
         config = get_model_config(self.model_id)
         self.embedding_dim = config["embedding_dim"]
-        
         log_with_context(
             logger,
             logging.INFO,
-            "WeaviateRetriever",
-            "Initialized Weaviate retriever",
+            "QdrantRetriever",
+            "Initialized Qdrant retriever",
             {
                 "model_id": self.model_id,
                 "embedding_dim": self.embedding_dim
@@ -83,8 +61,7 @@ class WeaviateRetriever(BaseRetriever):
         max_return: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve chunks using Weaviate vector search.
-        
+        Retrieve chunks using Qdrant vector search.
         Args:
             query: The query string
             top_k: Number of chunks to retrieve
@@ -92,27 +69,24 @@ class WeaviateRetriever(BaseRetriever):
             score_threshold: Minimum similarity score
             min_return: Minimum number of chunks to return
             max_return: Maximum number of chunks to return
-            
         Returns:
             List of chunk dictionaries with metadata and scores
         """
         with QueryContext(self.model_id):
-            # Validate inputs
-            validate_query_string(query, context="WeaviateRetriever.retrieve")
+            validate_query_string(query, context="QdrantRetriever.retrieve")
             validate_retrieval_parameters(
                 top_k=top_k,
                 score_threshold=score_threshold,
                 min_return=min_return,
                 max_return=max_return,
-                context="WeaviateRetriever.retrieve"
+                context="QdrantRetriever.retrieve"
             )
-            validate_filters(filters, context="WeaviateRetriever.retrieve")
-            
+            validate_filters(filters, context="QdrantRetriever.retrieve")
             log_with_context(
                 logger,
                 logging.INFO,
-                "WeaviateRetriever",
-                "Starting Weaviate retrieval",
+                "QdrantRetriever",
+                "Starting Qdrant retrieval",
                 {
                     "query": query,
                     "top_k": top_k,
@@ -120,47 +94,37 @@ class WeaviateRetriever(BaseRetriever):
                     "has_filters": filters is not None
                 }
             )
-            
             try:
-                # Use the existing query_weaviate function
-                chunks = query_weaviate(
+                chunks = query_qdrant(
                     query_text=query,
                     filters=filters,
                     top_k=top_k,
                     score_threshold=score_threshold
                 )
-                
-                # Handle edge case of None or malformed response
                 if not chunks:
                     chunks = []
-                    logger.warning("Weaviate returned None or empty response, using empty list")
-                
-                # Apply min/max return constraints
+                    logger.warning("Qdrant returned None or empty response, using empty list")
                 if min_return and len(chunks) < min_return:
-                    logger.warning(f"Weaviate returned {len(chunks)} chunks, but min_return={min_return}")
-                
+                    logger.warning(f"Qdrant returned {len(chunks)} chunks, but min_return={min_return}")
                 if max_return and len(chunks) > max_return:
                     chunks = chunks[:max_return]
                     logger.info(f"Truncated results to {max_return} chunks")
-                
                 log_with_context(
                     logger,
                     logging.INFO,
-                    "WeaviateRetriever",
+                    "QdrantRetriever",
                     "Retrieval completed",
                     {
                         "chunks_returned": len(chunks),
                         "mean_score": np.mean([c.get("score", 0) for c in chunks]) if chunks else 0
                     }
                 )
-                
                 return chunks
-                
             except Exception as e:
                 log_with_context(
                     logger,
                     logging.ERROR,
-                    "WeaviateRetriever",
+                    "QdrantRetriever",
                     "Retrieval failed",
                     {
                         "error": str(e),
@@ -179,11 +143,7 @@ class WeaviateRetriever(BaseRetriever):
         max_return: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve chunks using Weaviate vector search with a pre-computed embedding.
-        
-        This method allows the thematic retriever to use batch embeddings
-        without re-embedding each term individually.
-        
+        Retrieve chunks using Qdrant vector search with a pre-computed embedding.
         Args:
             embedding: Pre-computed query embedding as numpy array
             top_k: Number of chunks to retrieve
@@ -191,29 +151,25 @@ class WeaviateRetriever(BaseRetriever):
             score_threshold: Minimum similarity score
             min_return: Minimum number of chunks to return
             max_return: Maximum number of chunks to return
-            
         Returns:
             List of chunk dictionaries with metadata and scores
         """
         with QueryContext(self.model_id):
-            # Validate inputs
             if embedding is None or embedding.size == 0:
                 raise ValueError("Embedding cannot be None or empty")
-            
             validate_retrieval_parameters(
                 top_k=top_k,
                 score_threshold=score_threshold,
                 min_return=min_return,
                 max_return=max_return,
-                context="WeaviateRetriever.retrieve_with_embedding"
+                context="QdrantRetriever.retrieve_with_embedding"
             )
-            validate_filters(filters, context="WeaviateRetriever.retrieve_with_embedding")
-            
+            validate_filters(filters, context="QdrantRetriever.retrieve_with_embedding")
             log_with_context(
                 logger,
                 logging.INFO,
-                "WeaviateRetriever",
-                "Starting Weaviate retrieval with pre-computed embedding",
+                "QdrantRetriever",
+                "Starting Qdrant retrieval with pre-computed embedding",
                 {
                     "embedding_shape": embedding.shape,
                     "top_k": top_k,
@@ -221,51 +177,38 @@ class WeaviateRetriever(BaseRetriever):
                     "has_filters": filters is not None
                 }
             )
-            
             try:
-                # Convert numpy array to list for Weaviate
                 embedding_list = embedding.tolist()
-                
-                # Use the new query function with pre-computed embedding
-                from rag.query_weaviate import query_weaviate_with_embedding
-                chunks = query_weaviate_with_embedding(
+                chunks = query_qdrant_with_embedding(
                     embedding=embedding_list,
                     top_k=top_k,
                     filters=filters,
                     score_threshold=score_threshold
                 )
-                
-                # Handle edge case of None or malformed response
                 if not chunks:
                     chunks = []
-                    logger.warning("Weaviate returned None or empty response, using empty list")
-                
-                # Apply min/max return constraints
+                    logger.warning("Qdrant returned None or empty response, using empty list")
                 if min_return and len(chunks) < min_return:
-                    logger.warning(f"Weaviate returned {len(chunks)} chunks, but min_return={min_return}")
-                
+                    logger.warning(f"Qdrant returned {len(chunks)} chunks, but min_return={min_return}")
                 if max_return and len(chunks) > max_return:
                     chunks = chunks[:max_return]
                     logger.info(f"Truncated results to {max_return} chunks")
-                
                 log_with_context(
                     logger,
                     logging.INFO,
-                    "WeaviateRetriever",
+                    "QdrantRetriever",
                     "Retrieval completed",
                     {
                         "chunks_returned": len(chunks),
                         "mean_score": np.mean([c.get("score", 0) for c in chunks]) if chunks else 0
                     }
                 )
-                
                 return chunks
-                
             except Exception as e:
                 log_with_context(
                     logger,
                     logging.ERROR,
-                    "WeaviateRetriever",
+                    "QdrantRetriever",
                     "Retrieval failed",
                     {
                         "error": str(e),
