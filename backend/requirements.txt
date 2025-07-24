@@ -30,3 +30,5 @@ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1
 # Additional utilities
 python-multipart 
 qdrant-client 
+# Audit logging analysis
+pandas

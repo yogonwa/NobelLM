@@ -6,6 +6,8 @@ This module defines the REST API endpoints for querying the RAG pipeline.
 
 import logging
 from typing import Dict, Any, Optional
+
+from utils.audit_logger import start_query_audit, complete_query_audit
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
