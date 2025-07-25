@@ -195,8 +195,54 @@ class PromptBuilder:
             laureate=laureate
         )
     
-    def _get_template_for_intent(self, intent: str, base_type: str) -> PromptTemplate:
-        """Get the appropriate template for the given intent."""
+    def _get_template_for_intent(self, intent: str, base_type: str, thematic_subtype: Optional[str] = None) -> PromptTemplate:
+        """
+        Get the appropriate template for the given intent.
+        
+        Enhanced with subtype-aware template selection for thematic queries.
+        When thematic_subtype is provided, selects the appropriate template:
+        - synthesis -> thematic_synthesis_clean
+        - enumerative -> thematic_enumerative
+        - analytical -> thematic_comparative
+        - exploratory -> thematic_contextual
+        
+        Falls back to synthesis template if subtype template not found.
+        
+        Args:
+            intent: The detected query intent
+            base_type: The base intent type
+            thematic_subtype: Optional thematic subtype for enhanced template selection
+            
+        Returns:
+            PromptTemplate: The selected template for the intent
+        """
+        # For thematic queries, use subtype-specific templates if available
+        if intent == "thematic" or base_type == "thematic":
+            if thematic_subtype:
+                # Map subtypes to template names
+                subtype_template_mapping = {
+                    "synthesis": "thematic_synthesis_clean",
+                    "enumerative": "thematic_enumerative", 
+                    "analytical": "thematic_comparative",  # analytical maps to comparative
+                    "exploratory": "thematic_contextual"   # exploratory maps to contextual
+                }
+                
+                template_name = subtype_template_mapping.get(thematic_subtype)
+                if template_name:
+                    subtype_template = self.templates.get(template_name)
+                    if subtype_template:
+                        return subtype_template
+            
+            # Fallback to synthesis template if no specific subtype template found
+            synthesis_template = self.templates.get("thematic_synthesis_clean")
+            if synthesis_template:
+                return synthesis_template
+            
+            # Fallback to other thematic templates
+            for template in self.templates.values():
+                if template.intent == "thematic" or "thematic" in template.tags:
+                    return template
+        
         # Try to find a specific template for the intent
         for template in self.templates.values():
             if template.intent == intent or intent in template.tags:
@@ -281,4 +327,4 @@ class PromptBuilder:
     
     def validate_template(self, template_name: str) -> bool:
         """Validate that a template exists and is properly configured."""
-        return template_name in self.templates 
+        return template_name in self.templates

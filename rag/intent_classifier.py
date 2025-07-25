@@ -23,6 +23,11 @@ class IntentResult:
     matched_terms: List[str]
     scoped_entities: List[str]
     decision_trace: Dict[str, Any]
+    
+    # Thematic subtype information (for thematic queries)
+    thematic_subtype: Optional[str] = None  # synthesis, enumerative, analytical, exploratory
+    subtype_confidence: Optional[float] = None
+    subtype_cues: Optional[List[str]] = None
 
 class IntentClassifier:
     """
@@ -348,6 +353,97 @@ class IntentClassifier:
         max_matches = self.config["settings"]["max_laureate_matches"]
         return found_laureates[:max_matches]
 
+    def _detect_thematic_subtype(self, query: str) -> tuple[Optional[str], Optional[float], Optional[List[str]]]:
+        """
+        Detect thematic subtype based on query patterns and keywords.
+        
+        Enhanced with flexible subject+verb matching for synthesis detection using
+        the intent_utils module. Supports four subtypes:
+        - synthesis: Cohesive, essay-like responses (enhanced with subject+verb patterns)
+        - enumerative: List-based, example-focused responses
+        - analytical: Comparative, contrast-focused responses  
+        - exploratory: Contextual, explanatory responses
+        
+        Args:
+            query: The user query string
+            
+        Returns:
+            Tuple of (subtype, confidence, cues) where:
+            - subtype: synthesis, enumerative, analytical, exploratory, or None
+            - confidence: confidence score (0.0-1.0) or None
+            - cues: list of keywords that triggered detection or None
+        """
+        query_lower = query.lower()
+        cues = []
+        max_confidence = 0.0
+        detected_subtype = None
+        
+        # Import flexible matching utility
+        try:
+            from rag.intent_utils import matches_synthesis_frame
+        except ImportError:
+            # Fallback if intent_utils not available
+            matches_synthesis_frame = lambda x: False
+        
+        # Define subtype patterns and keywords
+        subtype_patterns = {
+            "synthesis": [
+                "synthesize", "synthesis", "connect", "unify", "coherent", "narrative",
+                "draw together", "overall", "in general",
+                "unified", "cohesive", "integrated", "holistic"
+            ],
+            "enumerative": [
+                "list", "examples", "which speeches", "show me", "enumerate",
+                "what are the", "give me", "find", "search", "locate",
+                "specific", "instances", "cases", "occurrences"
+            ],
+            "analytical": [
+                "compare", "contrast", "difference", "evolution", "change over time",
+                "versus", "vs", "against", "similar", "different", "trend",
+                "development", "progression", "transformation", "shift"
+            ],
+            "exploratory": [
+                "context", "background", "significance", "history", "meaning",
+                "explain", "why", "what is", "how did", "when", "where",
+                "circumstances", "situation", "environment", "setting"
+            ]
+        }
+        
+        # Check each subtype pattern
+        for subtype, patterns in subtype_patterns.items():
+            subtype_cues = []
+            confidence = 0.0
+            
+            for pattern in patterns:
+                if pattern in query_lower:
+                    subtype_cues.append(pattern)
+                    confidence += 0.3  # Base confidence per match
+            
+            # Additional confidence for multiple matches
+            if len(subtype_cues) > 1:
+                confidence += 0.2
+            
+            # Check for strong indicators
+            if any(strong_indicator in query_lower for strong_indicator in ["synthesize", "compare", "list", "context"]):
+                confidence += 0.3
+            
+            # Enhanced synthesis detection using flexible subject+verb matching
+            if subtype == "synthesis" and matches_synthesis_frame(query_lower):
+                subtype_cues.append("synthesis_frame_match")
+                confidence += 0.3
+            
+            if confidence > max_confidence:
+                max_confidence = confidence
+                detected_subtype = subtype
+                cues = subtype_cues
+        
+        # Normalize confidence to 0.0-1.0 range
+        if max_confidence > 0:
+            max_confidence = min(max_confidence, 1.0)
+            return detected_subtype, max_confidence, cues
+        
+        return None, None, None
+
     def classify(self, query: str) -> IntentResult:
         """
         Classify query with hybrid confidence scoring and multiple laureate support.
@@ -387,6 +483,14 @@ class IntentClassifier:
         # Find laureates
         scoped_entities = self._find_laureates_in_query(query)
         
+        # Detect thematic subtype if this is a thematic query
+        thematic_subtype = None
+        subtype_confidence = None
+        subtype_cues = None
+        
+        if winning_intent == "thematic":
+            thematic_subtype, subtype_confidence, subtype_cues = self._detect_thematic_subtype(query)
+        
         # Build decision trace
         decision_trace = {
             "pattern_scores": intent_scores,
@@ -394,7 +498,10 @@ class IntentClassifier:
             "ambiguity": confidence < 0.7,
             "fallback_used": not intent_scores,
             "laureate_matches": len(scoped_entities),
-            "lemmatization_used": self.use_lemmatization
+            "lemmatization_used": self.use_lemmatization,
+            "thematic_subtype": thematic_subtype,
+            "subtype_confidence": subtype_confidence,
+            "subtype_cues": subtype_cues
         }
         
         return IntentResult(
@@ -402,7 +509,10 @@ class IntentClassifier:
             confidence=confidence,
             matched_terms=matched_terms,
             scoped_entities=scoped_entities,
-            decision_trace=decision_trace
+            decision_trace=decision_trace,
+            thematic_subtype=thematic_subtype,
+            subtype_confidence=subtype_confidence,
+            subtype_cues=subtype_cues
         )
     
     def _apply_precedence_logic(self, intent_scores: Dict[str, float]) -> str:

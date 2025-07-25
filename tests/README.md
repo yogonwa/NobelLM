@@ -64,13 +64,14 @@ The test suite follows the core pipeline flow:
 3. **Theme Embedding Infrastructure (Phase 3A - COMPLETED)**
 4. **Retrieval Logic Enhancements (Phase 4 - COMPLETED)**
 5. **Modal Embedding Service Integration (Latest - COMPLETED)**
-6. Metadata Direct Answer
-7. Chunking/Embeddings
-8. Retrieval
-9. Thematic Analysis
-10. RAG Pipeline
-11. Frontend E2E
-12. Cross-Cutting Tests
+6. **Thematic Synthesis Improvement (Phase 3 - COMPLETED)**
+7. Metadata Direct Answer
+8. Chunking/Embeddings
+9. Retrieval
+10. Thematic Analysis
+11. RAG Pipeline
+12. Frontend E2E
+13. Cross-Cutting Tests
 
 **API Contract for Factual/Metadata Answers (2024):**
 - For factual/metadata queries (e.g., "Who won in 1985?"), the backend and all tests now require:
@@ -98,6 +99,16 @@ The test suite follows the core pipeline flow:
 - Model-aware testing across different embedding configurations (bge-large, miniLM)
 - Performance benchmarking and edge case handling
 - Conditional test execution based on dependency availability
+
+**Thematic Synthesis Improvement Tests (Phase 3 - COMPLETED):**
+- `test_intent_utils.py`: Flexible subject+verb matching for synthesis detection
+- `test_thematic_subtype_detection.py`: Enhanced thematic subtype detection with confidence scoring
+- `test_thematic_prompt_templates.py`: Subtype-specific prompt template validation
+- `test_prompt_builder_integration.py`: Enhanced prompt builder with subtype-aware template selection
+- Comprehensive coverage of synthesis, enumerative, analytical, and exploratory subtypes
+- Flexible pattern matching for fuzzy synthesis phrases
+- Template selection based on user intent and subtype detection
+- Performance testing and edge case handling for all thematic improvements
 
 ## Test Categories
 
@@ -213,6 +224,83 @@ Individual component testing with mocked dependencies.
   - Model switching validation between different embedding models
   - Comprehensive coverage of real embedding pipeline functionality
   - Conditional test execution based on sentence-transformers availability
+
+#### `test_intent_utils.py` (NEW - Phase 3)
+- **Thematic Synthesis Intent Utils Tests**
+- Flexible subject+verb matching for synthesis detection
+- `SUBJECT_ALIASES` and `VERB_CUES` pattern matching validation
+- `matches_synthesis_frame()` function testing with various query patterns
+- Robust synthesis detection for fuzzy phrases like "how do winners think about"
+- Backward compatibility with existing intent classification
+- Performance testing for pattern matching efficiency
+- Edge case handling for malformed queries
+- Comprehensive coverage of flexible matching logic
+
+#### `test_thematic_subtype_detection.py` (NEW - Phase 3)
+- **Enhanced Thematic Subtype Detection Tests**
+- **Phase 3 Subtype Detection System:**
+  - Thematic subtype detection (synthesis, enumerative, analytical, exploratory)
+  - Flexible subject+verb matching integration
+  - Confidence scoring for subtype detection
+  - Subtype cue tracking and logging
+  - Backward compatibility with existing intent classification
+  - Comprehensive test coverage for all subtype detection scenarios
+
+- **Synthesis Detection Tests:**
+  - Fuzzy synthesis phrase detection ("how do they think about", "what do winners say")
+  - Subject alias matching (laureates, winners, recipients, authors)
+  - Verb cue matching (think, feel, say, reflect, talk about)
+  - Confidence threshold validation
+  - Edge case handling for ambiguous queries
+
+- **Subtype Classification Tests:**
+  - Enumerative subtype detection ("list examples", "what are the instances")
+  - Analytical subtype detection ("compare", "analyze", "examine")
+  - Exploratory subtype detection ("explore", "investigate", "context")
+  - Subtype confidence scoring and validation
+  - Multiple subtype detection and precedence handling
+
+#### `test_thematic_prompt_templates.py` (NEW - Phase 3)
+- **Thematic Subtype-Specific Prompt Template Tests**
+- **Template Selection Tests:**
+  - Subtype-aware template selection logic
+  - Template fallback behavior for missing subtypes
+  - Template configuration validation (chunk_count, citation_style, tone_preference)
+  - Template tag validation and categorization
+
+- **Template Content Tests:**
+  - `thematic_synthesis_clean` template validation
+  - `thematic_enumerative` template validation
+  - `thematic_comparative` template validation
+  - `thematic_contextual` template validation
+  - Template parameter substitution and formatting
+  - Template intent and tag validation
+
+- **Integration Tests:**
+  - Template selection with IntentClassifier integration
+  - Template usage with PromptBuilder integration
+  - End-to-end template selection and application
+  - Template performance and efficiency testing
+
+#### `test_prompt_builder_integration.py` (NEW - Phase 3)
+- **Enhanced Prompt Builder Integration Tests**
+- **Subtype-Aware Template Selection:**
+  - Template selection based on thematic subtypes
+  - Fallback behavior for missing subtype templates
+  - Template parameter validation and substitution
+  - Template configuration validation
+
+- **Integration with Intent Classification:**
+  - Prompt builder integration with enhanced intent classifier
+  - Subtype information flow through template selection
+  - Template selection with confidence scoring
+  - Error handling for malformed template configurations
+
+- **Template Performance Tests:**
+  - Template selection performance benchmarking
+  - Template caching and efficiency validation
+  - Template parameter optimization testing
+  - Memory usage and resource management validation
 
 ### 2. Integration Tests (`integration/`)
 Component interaction testing with realistic data flow.

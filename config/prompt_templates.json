@@ -66,6 +66,39 @@
     "citation_style": "footnote",
     "version": "1.0"
   },
+  "thematic_synthesis_clean": {
+    "template": "You are a cultural historian writing an essay on the theme of '{query}' as expressed through the voices of Nobel Literature laureates across time and place.\n\nYour goal is to synthesize their ideas into a coherent narrative. Do not reference the excerpts or speeches directly. Instead, express the insights as unified observations, drawing out tensions, shared values, and philosophical differences.\n\nUse a natural, flowing tone — one that feels human and thoughtful. You may reference specific cultures or authors sparingly when it adds depth.\n\nEssay:\n{context}",
+    "intent": "thematic",
+    "tags": ["thematic", "synthesis", "essay", "non-referential", "cohesive"],
+    "chunk_count": 12,
+    "citation_style": "inline",
+    "tone_preference": "reflective",
+    "version": "1.0"
+  },
+  "thematic_enumerative": {
+    "template": "List specific examples related to the theme of '{query}' as expressed by Nobel Laureates. Present each example with speaker name and year, and summarize the key point briefly.\n\nExamples:\n{context}",
+    "intent": "thematic",
+    "tags": ["thematic", "enumerative", "examples", "referential"],
+    "chunk_count": 10,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "thematic_comparative": {
+    "template": "Compare and contrast how the theme of '{query}' has been addressed by Nobel Laureates across time, culture, or worldview.\n\nBase your analysis on the excerpts below. Highlight major similarities and differences, and attribute views when appropriate.\n\nPassages:\n{context}",
+    "intent": "thematic",
+    "tags": ["thematic", "analytical", "contrast"],
+    "chunk_count": 12,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
+  "thematic_contextual": {
+    "template": "Explain the historical and cultural context in which the theme of '{query}' arises in Nobel Laureate speeches. Use the following excerpts to infer background factors, motivations, or influences.\n\nPassages:\n{context}",
+    "intent": "thematic",
+    "tags": ["thematic", "exploratory", "contextual"],
+    "chunk_count": 10,
+    "citation_style": "inline",
+    "version": "1.0"
+  },
   "thematic_temporal": {
     "template": "Analyze how the theme of '{query}' has evolved over time using these Nobel laureate perspectives:\n{context}\n\nTrace the historical development, changing perspectives, and contemporary relevance of this theme.",
     "intent": "thematic",

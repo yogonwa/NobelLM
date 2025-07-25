@@ -4,7 +4,7 @@ Comprehensive Audit Logger for NobelLM RAG Pipeline
 This module provides detailed audit logging that captures the entire RAG pipeline:
 1. User query
 2. Intent classification and routing
-3. Keyword expansion (for thematic queries)
+3. Keyword expansion (for thematic queries) & Thematic subtype detection
 4. Retrieval process and chunks
 5. Prompt construction
 6. LLM request and response
@@ -40,6 +40,11 @@ class QueryAuditLog:
     matched_terms: Optional[List[str]] = None
     scoped_entity: Optional[str] = None
     decision_trace: Optional[List[str]] = None
+    
+    # Thematic subtype detection (for thematic queries)
+    thematic_subtype: Optional[str] = None  # synthesis, enumerative, analytical, exploratory
+    subtype_confidence: Optional[float] = None
+    subtype_cues: Optional[List[str]] = None  # Keywords that triggered subtype detection
     
     # Keyword expansion (for thematic queries)
     expanded_terms: Optional[List[str]] = None
@@ -163,6 +168,21 @@ class AuditLogger:
             audit.matched_terms = matched_terms
             audit.scoped_entity = scoped_entity
             audit.decision_trace = decision_trace
+
+    def log_thematic_subtype(
+        self,
+        query_id: str,
+        thematic_subtype: str,
+        subtype_confidence: Optional[float] = None,
+        subtype_cues: Optional[List[str]] = None
+    ):
+        """Log thematic subtype detection results."""
+        if query_id in self.active_audits:
+            audit = self.active_audits[query_id]
+            audit.thematic_subtype = thematic_subtype
+            audit.subtype_confidence = subtype_confidence
+            audit.subtype_cues = subtype_cues
+            logger.info(f"Logged thematic subtype for {query_id}: {thematic_subtype} (confidence: {subtype_confidence})")
     
     def log_keyword_expansion(
         self,

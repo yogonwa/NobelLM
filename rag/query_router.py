@@ -48,6 +48,11 @@ class QueryRouteResult:
     retrieval_config: RetrievalConfig = None
     prompt_template: Optional[str] = None
     logs: Dict[str, Any] = field(default_factory=dict)
+    
+    # Thematic subtype information (for thematic queries)
+    thematic_subtype: Optional[str] = None  # synthesis, enumerative, analytical, exploratory
+    subtype_confidence: Optional[float] = None
+    subtype_cues: Optional[List[str]] = None
 
 # --- Helper Classes ---
 class PromptTemplateSelector:
@@ -126,6 +131,11 @@ class QueryRouter:
                 scoped_entities = intent_result.scoped_entities
                 decision_trace = intent_result.decision_trace
                 
+                # Extract thematic subtype information
+                thematic_subtype = intent_result.thematic_subtype
+                subtype_confidence = intent_result.subtype_confidence
+                subtype_cues = intent_result.subtype_cues
+                
                 # Convert string intent to enum and validate
                 try:
                     intent = QueryIntent(intent_str)
@@ -146,7 +156,10 @@ class QueryRouter:
                     'confidence': confidence,
                     'matched_terms': matched_terms,
                     'scoped_entities': scoped_entities,
-                    'decision_trace': decision_trace
+                    'decision_trace': decision_trace,
+                    'thematic_subtype': thematic_subtype,
+                    'subtype_confidence': subtype_confidence,
+                    'subtype_cues': subtype_cues
                 })
                 
                 log_with_context(
@@ -201,7 +214,10 @@ class QueryRouter:
                             metadata_answer=metadata_result,
                             retrieval_config=RetrievalConfig(top_k=0),  # No retrieval needed
                             prompt_template="",  # Not used for metadata
-                            logs=logs
+                            logs=logs,
+                            thematic_subtype=thematic_subtype,
+                            subtype_confidence=subtype_confidence,
+                            subtype_cues=subtype_cues
                         )
                     else:
                         logs['metadata_handler'] = 'no_match'
@@ -247,7 +263,10 @@ class QueryRouter:
                     metadata_answer=None,
                     retrieval_config=config,
                     prompt_template=template,
-                    logs=logs
+                    logs=logs,
+                    thematic_subtype=thematic_subtype,
+                    subtype_confidence=subtype_confidence,
+                    subtype_cues=subtype_cues
                 )
                 
             except Exception as e:
@@ -272,7 +291,10 @@ class QueryRouter:
                     metadata_answer=None,
                     retrieval_config=RetrievalConfig(top_k=5),
                     prompt_template=PromptTemplateSelector.get_template(QueryIntent.FACTUAL),
-                    logs=logs
+                    logs=logs,
+                    thematic_subtype=None,  # No thematic subtype for factual fallback
+                    subtype_confidence=None,
+                    subtype_cues=None
                 )
 
 # --- Module-level Functions ---
