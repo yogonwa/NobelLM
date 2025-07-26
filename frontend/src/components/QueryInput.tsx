@@ -48,7 +48,7 @@ const QueryInput: React.FC<QueryInputProps> = ({
     : "w-full max-w-3xl mx-auto mb-8";
 
   return (
-    <form onSubmit={handleSubmit} className={containerClasses}>
+    <form onSubmit={handleSubmit} className={containerClasses} data-umami-event="Query submitted">
       <div className="relative">
         <input
           type="text"
@@ -57,11 +57,13 @@ const QueryInput: React.FC<QueryInputProps> = ({
           placeholder="How do Nobel Laureates talk about technology?"
           className={inputClasses}
           disabled={isLoading}
+          data-umami-event="Query input focused"
         />
         <button
           type="submit"
           className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-md text-gray-500 hover:text-amber-600 transition-all disabled:opacity-50 hover:bg-amber-50"
           disabled={isLoading || !query.trim()}
+          data-umami-event="Search button clicked"
         >
           {isLoading ? (
             <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>

@@ -3,6 +3,15 @@ import Home from './pages/Home';
 import About from './About';
 import ErrorBoundary from './components/ErrorBoundary';
 
+// Declare Umami global for TypeScript
+declare global {
+  interface Window {
+    umami?: {
+      track: (eventName: string, data?: Record<string, any>) => void;
+    };
+  }
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -15,6 +24,8 @@ function App() {
                 className={({ isActive }) => 
                   `text-gray-600 hover:text-amber-600 transition-colors ${isActive ? 'text-amber-600' : ''}`
                 }
+                data-umami-event="Navigation"
+                data-umami-event-page="home"
               >
                 Home
               </NavLink>
@@ -23,6 +34,8 @@ function App() {
                 className={({ isActive }) => 
                   `text-gray-600 hover:text-amber-600 transition-colors ${isActive ? 'text-amber-600' : ''}`
                 }
+                data-umami-event="Navigation"
+                data-umami-event-page="about"
               >
                 About
               </NavLink>

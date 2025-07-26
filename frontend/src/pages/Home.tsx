@@ -9,6 +9,15 @@ import { fetchQueryResponse } from '../utils/api';
 import nobelLogo from '../assets/nobel_logo.png';
 import { Link } from 'react-router-dom';
 
+// Declare Umami global for TypeScript
+declare global {
+  interface Window {
+    umami?: {
+      track: (eventName: string, data?: Record<string, any>) => void;
+    };
+  }
+}
+
 const Home: React.FC = () => {
   const [response, setResponse] = useState<QueryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,15 +39,38 @@ const Home: React.FC = () => {
     setHasSearched(true);
     setIsLoading(true);
     
+    const startTime = Date.now();
+    
     try {
       const result = await fetchQueryResponse(query);
       setResponse(result);
-    } catch {
-      setResponse({
+      
+      // Track successful query
+      if (typeof window !== 'undefined' && window.umami) {
+        window.umami.track('Query success', {
+          query_length: query.length,
+          response_time: Date.now() - startTime,
+          has_special_chars: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(query),
+          contains_quotes: /["']/.test(query)
+        });
+      }
+      
+    } catch (error) {
+      const errorResponse = {
         answer: '',
         sources: [],
         error: 'An error occurred while processing your request. Please try again.'
-      });
+      };
+      setResponse(errorResponse);
+      
+      // Track query error
+      if (typeof window !== 'undefined' && window.umami) {
+        window.umami.track('Query error', {
+          query_length: query.length,
+          error_type: 'api_error',
+          error_message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +130,8 @@ const Home: React.FC = () => {
               onClick={handleClearSearch}
               className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all flex-shrink-0 hover-lift"
               title="Clear search and try again"
+              data-umami-event="Try again clicked"
+              data-umami-event-location="header"
             >
               <RotateCcw className="w-4 h-4" />
               <span className="hidden sm:inline font-medium">Try Again</span>
@@ -124,6 +158,8 @@ const Home: React.FC = () => {
                 onClick={handleClearSearch}
                 className="flex items-center gap-3 px-6 py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition-all font-medium shadow-sm hover-lift"
                 title="Clear search and start over"
+                data-umami-event="Try again clicked"
+                data-umami-event-location="footer"
               >
                 <RotateCcw className="w-5 h-5" />
                 Try Another Search
