@@ -167,6 +167,10 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# Audit logs and generated data files
+logs/audit/*.jsonl
+logs/audit/audit_log_*.jsonl
+
 # Ruff stuff:
 .ruff_cache/
 
