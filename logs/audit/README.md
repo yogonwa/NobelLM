@@ -8,13 +8,14 @@ Each audit log entry contains the complete trace of a query through the system:
 
 1. **User Query**: The original user input
 2. **Intent Classification**: How the system classified the query intent
-3. **Keyword Expansion**: For thematic queries, what terms were expanded
-4. **Retrieval Process**: What chunks were retrieved and their scores
-5. **Prompt Construction**: The final prompt sent to the LLM
-6. **LLM Interaction**: The LLM response and token usage
-7. **Final Result**: The compiled answer and sources used
-8. **Performance Metrics**: Processing times and costs
-9. **Error Information**: Any errors that occurred
+3. **Thematic Subtype Detection**: For thematic queries, which subtype was detected (synthesis, enumerative, analytical, exploratory)
+4. **Keyword Expansion**: For thematic queries, what terms were expanded
+5. **Retrieval Process**: What chunks were retrieved and their scores
+6. **Prompt Construction**: The final prompt sent to the LLM
+7. **LLM Interaction**: The LLM response and token usage
+8. **Final Result**: The compiled answer and sources used
+9. **Performance Metrics**: Processing times and costs
+10. **Error Information**: Any errors that occurred
 
 ## File Format
 
@@ -32,12 +33,30 @@ python scripts/analyze_audit_logs.py --recent 24h
 # Analyze specific query
 python scripts/analyze_audit_logs.py --query "your query text"
 
+# Analyze thematic subtype distribution
+python scripts/analyze_audit_logs.py --subtype-analysis
+
 # Export to CSV for further analysis
 python scripts/analyze_audit_logs.py --export --since 2025-07-24
 
 # Test audit logging
 python scripts/test_audit_logging.py
 ```
+
+## Thematic Subtype Tracking
+
+For thematic queries, the system now tracks:
+
+- **Subtype Detection**: Which subtype was identified (synthesis, enumerative, analytical, exploratory)
+- **Confidence Score**: How confident the system was in the subtype classification
+- **Triggering Cues**: Which keywords or patterns triggered the subtype detection
+- **Template Selection**: Which prompt template was used based on the subtype
+
+This enables analysis of:
+- Subtype distribution and frequency
+- Detection accuracy and confidence patterns
+- Template effectiveness by subtype
+- User query patterns that trigger different subtypes
 
 ## Monitoring
 
@@ -60,8 +79,17 @@ Audit logs contain:
 - ✅ User queries (for analysis)
 - ✅ System processing details
 - ✅ Performance metrics
+- ✅ Thematic subtype detection results
 - ❌ No user IP addresses
 - ❌ No personal identifiers
 - ❌ No session data
 
 Logs are stored locally and can be deleted at any time.
+
+## Recent Updates
+
+**2025-01-XX**: Added thematic subtype tracking to audit logs
+- Enhanced `QueryAuditLog` with `thematic_subtype`, `subtype_confidence`, and `subtype_cues` fields
+- Added `log_thematic_subtype()` method to `AuditLogger`
+- Updated query engine audit to capture subtype detection
+- Extended `QueryRouteResult` to include subtype information

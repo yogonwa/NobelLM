@@ -238,6 +238,17 @@ def answer_query_with_audit(
                 decision_trace=getattr(route_result, 'decision_trace', None)
             )
             
+            # Log thematic subtype if detected
+            if route_result.intent == "thematic":
+                thematic_subtype = getattr(route_result, 'thematic_subtype', None)
+                if thematic_subtype:
+                    audit_logger.log_thematic_subtype(
+                        query_id=query_id,
+                        thematic_subtype=thematic_subtype,
+                        subtype_confidence=getattr(route_result, 'subtype_confidence', None),
+                        subtype_cues=getattr(route_result, 'subtype_cues', None)
+                    )
+            
             if route_result.answer_type == "metadata":
                 log_with_context(
                     logger,

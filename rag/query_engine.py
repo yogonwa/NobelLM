@@ -277,7 +277,18 @@ def build_intent_aware_prompt(
             theme = query
             if route_result and hasattr(route_result, 'theme'):
                 theme = route_result.theme
-            return prompt_builder.build_thematic_prompt(query, chunks, theme)
+            
+            # Use thematic subtype information if available
+            if route_result and hasattr(route_result, 'thematic_subtype') and route_result.thematic_subtype:
+                # Log the subtype selection for debugging
+                logger.info(f"Thematic subtype detected: {route_result.thematic_subtype} (confidence: {route_result.subtype_confidence})")
+                
+                # For now, we'll use the synthesis template for all thematic queries
+                # In Phase 3, we'll add specific templates for each subtype
+                return prompt_builder.build_thematic_prompt(query, chunks, theme)
+            else:
+                # Fallback to default thematic prompt
+                return prompt_builder.build_thematic_prompt(query, chunks, theme)
         
         elif intent == "scoped":
             # Extract laureate from route result or query
