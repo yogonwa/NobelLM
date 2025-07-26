@@ -51,7 +51,6 @@ This project is part learning tool, part literary explorer. I wanted to deepen m
 
 Stay tuned — I’ll be opening this up for public exploration once the prototype is ready.
 
-Would you like a shorter version, or a more technical sidebar for readers who want to go deeper?
 
 
 
@@ -104,3 +103,113 @@ Why It Works
 This approach allows the system to match ideas, not just keywords. A passage about “coming of age” might still be retrieved even if you never used the word “childhood.”
 
 It’s like building a custom search engine where meaning matters more than wording — and where every answer is grounded in real human speech.
+
+
+---
+
+Blog Roadmap for NobelLM (Nobel Laureate Speech Explorer)
+Your blog series has three core tracks, each with different tones and target audiences:
+
+Track 1: The Big Reveal (Narrative + Positioning)
+For a general tech-curious audience, peers, and potential collaborators
+Goal: Tell the story, explain the value, hook interest.
+
+✅ Intro Post – Why I Built This
+
+What it is, why literature, why RAG, what you hoped to learn
+
+Human motivation + technical aspiration
+
+🔜 Demo + Use Case Showcase
+
+Show off the app with examples: factual, thematic, generative
+
+Use a teaser prompt like: “Ask Toni Morrison about justice”
+
+Include a live link or video walkthrough (if hosted)
+
+🔜 Series Overview Page (optional but helpful)
+
+Index to all blog posts
+
+Organized by track or audience (Builder / Thinker / Explorer)
+
+Track 2: How I Built It (Technical Deep Dives)
+For devs, AI builders, or recruiters who want to see how things work
+Goal: Show off your thinking, system design, and craft.
+
+🔧 RAG System Architecture Breakdown
+
+Scraping → Chunking → Embedding → Vector Search → Prompting
+
+Diagrams encouraged
+
+Reflect on tradeoffs (MiniLM vs. OpenAI, Streamlit, FAISS, etc.)
+
+🧠 How I Became a Full-Stack Prompt Engineer
+
+Draft is done
+
+Explains intent routing, prompt templating, context shaping
+
+Clarifies that prompt engineering is a system not a sentence
+
+🔄 Lessons Learned: What Surprised Me (post-MVP wrap-up)
+
+What you expected vs. what you learned
+
+Biggest challenges (e.g., scraper DOM fragility, thematic query classification)
+
+Riffs on ambiguity, iteration, and design flexibility
+
+Track 3: Human + Literary Reflection
+For thoughtful readers, AI skeptics, and people who care about voice, meaning, and ethics
+Goal: Offer a voice of nuance and humanity in the AI space.
+
+✨ What We Choose to Automate, and What We Choose to Revere
+
+Reflects on AI limits with literary/cultural material
+
+Why reading isn’t just consuming, but thinking
+
+How chunking loses voice, and what we sacrifice in favor of speed
+
+Already outlined and partially written
+
+🔮 The Future of Reading with AI (stretch/bonus post)
+
+Could be speculative: What if AI helped us explore Nobel speeches like a map?
+
+The tension between summary and discovery
+
+A reader-centered AI design philosophy
+
+📣 Light Marketing Plan
+✅ Who You’re Writing For
+Curious builders (like you) who want to learn RAG
+
+Tech peers or recruiters (credibility + craftsmanship)
+
+AI skeptics and literary people looking for thoughtfulness
+
+Yourself—as a record of creative and technical growth
+
+🔁 Where to Share
+Personal blog (your domain: joegonwa.com)
+
+LinkedIn posts (highlight lessons, use examples)
+
+Hacker News or Reddit (for tech posts like the architecture and prompt engineering)
+
+Substack cross-posting (optional if you want to build an audience)
+
+Pin a GitHub repo with a clean README + blog links
+
+📆 Cadence Plan
+Start with 1 post per week (low pressure, keeps rhythm)
+
+Launch the blog with 2 posts live:
+
+Why I Built This
+
+Use Case + Demo (or Prompt Engineering if Use Case isn’t ready)
