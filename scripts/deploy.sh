@@ -115,20 +115,6 @@ set_secrets() {
         fly secrets set OPENAI_API_KEY="$OPENAI_API_KEY" --app nobellm-api
     fi
     
-    # Set Weaviate secrets if needed
-    if echo "$existing_secrets" | grep -q "WEAVIATE_API_KEY"; then
-        print_status "Weaviate secrets already exist"
-    else
-        if [ -n "$WEAVIATE_API_KEY" ]; then
-            print_status "Setting Weaviate secrets..."
-            fly secrets set WEAVIATE_API_KEY="$WEAVIATE_API_KEY" --app nobellm-api
-            fly secrets set USE_WEAVIATE="true" --app nobellm-api
-            fly secrets set WEAVIATE_URL="https://a0dq8xtrtkw6lovkllxw.c0.us-east1.gcp.weaviate.cloud" --app nobellm-api
-        else
-            print_warning "WEAVIATE_API_KEY not set. Weaviate will be disabled."
-            fly secrets set USE_WEAVIATE="false" --app nobellm-api
-        fi
-    fi
     
     # Set CORS origins if not already set
     if echo "$existing_secrets" | grep -q "CORS_ORIGINS"; then
