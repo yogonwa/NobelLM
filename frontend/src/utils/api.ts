@@ -45,12 +45,14 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
     };
   }
 
+  const start = performance.now();
+
   // Create a timeout promise
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error('Request timeout')), 45000); // 45 second timeout
   });
 
-  try {
+  const attemptRequest = async (isRetry: boolean = false): Promise<Response> => {
     const apiUrl = `${getApiBaseUrl()}/api/query`;
     const response = await Promise.race([
       fetch(apiUrl, {
@@ -62,6 +64,24 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
       }),
       timeoutPromise
     ]);
+
+    // Check if we should retry
+    if (isRetry === false && (response.status === 502 || response.status === 504 || response.status === 503)) {
+      // Wait 2 seconds before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Show retry message to user (this will be handled by the UI)
+      console.log('🔄 Warming up the Nobel brain 🧠... trying again...');
+      
+      // Retry the request
+      return attemptRequest(true);
+    }
+
+    return response;
+  };
+
+  try {
+    const response = await attemptRequest();
 
     if (!response.ok) {
       let errorMessage = 'An error occurred while processing your request.';
@@ -87,7 +107,7 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
     }
     
     // Transform the backend response to match our frontend interface
-    return {
+    const result = {
       answer: data.answer || '',
       sources: data.sources?.map((source: any, index: number) => ({
         ...source,
@@ -98,6 +118,11 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
       answer_type: data.answer_type,
       metadata_answer: data.metadata_answer
     };
+
+    const duration = performance.now() - start;
+    console.log(`⏱ Query completed in ${duration.toFixed(1)}ms`);
+    
+    return result;
   } catch (error) {
     console.error('API Error:', error);
     
@@ -115,10 +140,55 @@ export const fetchQueryResponse = async (query: string): Promise<QueryResponse> 
       }
     }
     
+    const duration = performance.now() - start;
+    console.log(`⏱ Query failed after ${duration.toFixed(1)}ms`);
+    
     return {
       answer: '',
       sources: [],
       error: errorMessage
     };
   }
+};
+
+// Warm-up functions for service initialization
+export const warmUpServices = async (): Promise<{ backend: boolean; modal: boolean }> => {
+  const results = { backend: false, modal: false };
+  const start = performance.now();
+
+  try {
+    // Warm up backend using /api/readyz endpoint
+    const backendUrl = `${getApiBaseUrl()}/api/readyz`;
+    const backendResponse = await fetch(backendUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    
+    if (backendResponse.ok) {
+      results.backend = true;
+      console.log('✅ Backend service warmed up');
+    }
+  } catch (error) {
+    console.warn('⚠️ Backend warm-up failed:', error);
+  }
+  
+  try {
+    // Warm up Modal service
+    const modalUrl = `${getApiBaseUrl()}/api/modal/warmup`;
+    const modalResponse = await fetch(modalUrl, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    
+    if (modalResponse.ok || modalResponse.status === 204) {
+      results.modal = true;
+      console.log('✅ Modal service warmed up');
+    }
+  } catch (error) {
+    console.warn('⚠️ Modal warm-up failed:', error);
+  }
+  
+  const duration = performance.now() - start;
+  console.log(`⏱ Warm-up completed in ${duration.toFixed(1)}ms`);
+  return results;
 }; 

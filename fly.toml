@@ -18,11 +18,11 @@ app = "nobellm-api"
   min_machines_running = 0
 
 [http_service.health_check]
-  path = "/healthz"
-  interval = "15s"
-  timeout = "5s"
-  grace_period = "30s"
-  method = "get"
+path = "/health"
+interval = "15s"
+timeout = "10s"
+grace_period = "60s"
+method = "get"
 
 
 [[vm]]

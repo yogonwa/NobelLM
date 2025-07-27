@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, Search, AlertTriangle } from 'lucide-react';
 import type { QueryResponse } from '../types';
 import nobelLogo from '../assets/nobel_logo.png';
 import FactualAnswerCard from './FactualAnswerCard';
+import { getRandomLoadingQuote, type LoadingQuote } from '../utils/loadingQuotes';
 
 interface ResponseDisplayProps {
   response: QueryResponse | null;
@@ -15,14 +16,32 @@ const ResponseDisplay: React.FC<ResponseDisplayProps> = ({
   isLoading, 
   onRetry 
 }) => {
+  const [loadingQuote, setLoadingQuote] = useState<LoadingQuote | null>(null);
+
+  // Set loading quote when loading starts
+  useEffect(() => {
+    if (isLoading && !loadingQuote) {
+      setLoadingQuote(getRandomLoadingQuote());
+    } else if (!isLoading) {
+      setLoadingQuote(null);
+    }
+  }, [isLoading, loadingQuote]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
         <div className="relative">
           <Loader2 className="h-12 w-12 text-amber-500 animate-spin mb-4" />
         </div>
-        <p className="text-gray-600 font-medium mb-2">Searching through Nobel laureate speeches...</p>
-        <p className="text-gray-500 text-sm">This may take a few moments</p>
+        <p className="text-gray-600 font-medium mb-2 text-center max-w-md">
+          {loadingQuote?.text || 'Searching through Nobel laureate speeches...'}
+        </p>
+        {loadingQuote?.author && (
+          <p className="text-gray-500 text-sm italic">
+            — {loadingQuote.author}{loadingQuote.year ? ` (${loadingQuote.year})` : ''}
+          </p>
+        )}
+        <p className="text-gray-500 text-sm mt-2">This may take a few moments</p>
       </div>
     );
   }

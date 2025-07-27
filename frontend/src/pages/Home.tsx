@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
 import QueryInput from '../components/QueryInput';
 import ResponseDisplay from '../components/ResponseDisplay';
 import SourceCitation from '../components/SourceCitation';
 import SuggestedPrompts from '../components/SuggestedPrompts';
+import RetryFeedbackModal from '../components/RetryFeedbackModal';
 import type { QueryResponse, SuggestedPrompt } from '../types';
-import { fetchQueryResponse } from '../utils/api';
+import { fetchQueryResponse, warmUpServices } from '../utils/api';
 import nobelLogo from '../assets/nobel_logo.png';
 import { Link } from 'react-router-dom';
 
@@ -23,6 +24,9 @@ const Home: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentQuery, setCurrentQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [servicesWarmed, setServicesWarmed] = useState(false);
+  const [showRetryModal, setShowRetryModal] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   const suggestedPrompts: SuggestedPrompt[] = [
     { id: 'prompt1', text: 'Who won the Nobel Prize in Literature in 1965?' },
@@ -32,18 +36,56 @@ const Home: React.FC = () => {
     { id: 'prompt5', text: 'Write a job acceptance email in the tone of a Nobel Prize winner.' }
   ];
 
+  // Warm up services when component mounts
+  useEffect(() => {
+    const warmUp = async () => {
+      try {
+        console.log('🔥 Warming up NobelLM services...');
+        const results = await warmUpServices();
+        
+        if (results.backend || results.modal) {
+          setServicesWarmed(true);
+          console.log('✅ Services warmed up successfully');
+          
+          // Track successful warm-up
+          if (typeof window !== 'undefined' && window.umami) {
+            window.umami.track('Services warmed up', {
+              backend: results.backend,
+              modal: results.modal
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Service warm-up failed:', error);
+        // Don't block the UI if warm-up fails
+      }
+    };
+
+    // Warm up services in the background
+    warmUp();
+  }, []);
+
   const handleSubmit = async (query: string) => {
     if (!query.trim()) return;
     
     setCurrentQuery(query);
     setHasSearched(true);
     setIsLoading(true);
+    setRetryCount(0);
+    setShowRetryModal(false);
     
     const startTime = Date.now();
     
     try {
       const result = await fetchQueryResponse(query);
-      setResponse(result);
+      
+      // Check if the result has an error after retry attempts
+      if (result.error && retryCount > 0) {
+        setShowRetryModal(true);
+        setResponse(null);
+      } else {
+        setResponse(result);
+      }
       
       // Track successful query
       if (typeof window !== 'undefined' && window.umami) {
@@ -51,7 +93,9 @@ const Home: React.FC = () => {
           query_length: query.length,
           response_time: Date.now() - startTime,
           has_special_chars: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(query),
-          contains_quotes: /["']/.test(query)
+          contains_quotes: /["']/.test(query),
+          services_warmed: servicesWarmed,
+          retry_count: retryCount
         });
       }
       
@@ -61,14 +105,23 @@ const Home: React.FC = () => {
         sources: [],
         error: 'An error occurred while processing your request. Please try again.'
       };
-      setResponse(errorResponse);
+      
+      // Show retry modal if this is after a retry attempt
+      if (retryCount > 0) {
+        setShowRetryModal(true);
+        setResponse(null);
+      } else {
+        setResponse(errorResponse);
+      }
       
       // Track query error
       if (typeof window !== 'undefined' && window.umami) {
         window.umami.track('Query error', {
           query_length: query.length,
           error_type: 'api_error',
-          error_message: error instanceof Error ? error.message : 'Unknown error'
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+          services_warmed: servicesWarmed,
+          retry_count: retryCount
         });
       }
     } finally {
@@ -77,9 +130,16 @@ const Home: React.FC = () => {
   };
 
   const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setShowRetryModal(false);
     if (currentQuery.trim()) {
       handleSubmit(currentQuery);
     }
+  };
+
+  const handleCloseRetryModal = () => {
+    setShowRetryModal(false);
+    setRetryCount(0);
   };
 
   const handleClearSearch = () => {
@@ -92,120 +152,138 @@ const Home: React.FC = () => {
   // Results page layout
   if (hasSearched) {
     return (
-      <main className="max-w-6xl mx-auto px-4 animate-in">
-        {/* Top header with logo and search - full width layout */}
-        <div className="py-6 border-b border-gray-200 mb-8 animate-fade-in">
-          <div className="flex items-center gap-6">
-            {/* Logo and title - fixed width, now clickable */}
-            <Link
-              to="/"
-              className="flex items-center gap-3 flex-shrink-0 animate-scale-in group"
-              title="Go to home page"
-              style={{ textDecoration: 'none' }}
-            >
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center transition-shadow duration-200 group-hover:shadow-lg cursor-pointer">
-                <img
-                  src={nobelLogo}
-                  alt="Nobel Logo"
-                  className="w-10 h-10 rounded-full object-cover transition-transform duration-200"
+      <>
+        <main className="max-w-6xl mx-auto px-4 animate-in">
+          {/* Top header with logo and search - full width layout */}
+          <div className="py-6 border-b border-gray-200 mb-8 animate-fade-in">
+            <div className="flex items-center gap-6">
+              {/* Logo and title - fixed width, now clickable */}
+              <Link
+                to="/"
+                className="flex items-center gap-3 flex-shrink-0 animate-scale-in group"
+                title="Go to home page"
+                style={{ textDecoration: 'none' }}
+              >
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center transition-shadow duration-200 group-hover:shadow-lg cursor-pointer">
+                  <img
+                    src={nobelLogo}
+                    alt="Nobel Logo"
+                    className="w-10 h-10 rounded-full object-cover transition-transform duration-200"
+                  />
+                </div>
+                <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap group-hover:text-amber-700 transition-colors cursor-pointer">
+                  NobelLM
+                </h1>
+              </Link>
+              
+              {/* Search input - takes remaining space */}
+              <div className="flex-1 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+                <QueryInput 
+                  onSubmit={handleSubmit} 
+                  isLoading={isLoading}
+                  initialValue={currentQuery}
+                  compact={true}
                 />
               </div>
-              <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap group-hover:text-amber-700 transition-colors cursor-pointer">
-                NobelLM
-              </h1>
-            </Link>
-            
-            {/* Search input - takes remaining space */}
-            <div className="flex-1 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              <QueryInput 
-                onSubmit={handleSubmit} 
-                isLoading={isLoading}
-                initialValue={currentQuery}
-                compact={true}
-              />
-            </div>
-            
-            {/* Try again button - fixed width */}
-            <button
-              onClick={handleClearSearch}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all flex-shrink-0 hover-lift"
-              title="Clear search and try again"
-              data-umami-event="Try again clicked"
-              data-umami-event-location="header"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline font-medium">Try Again</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Results content */}
-        <div className="space-y-8 pb-12">
-          <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <ResponseDisplay response={response} isLoading={isLoading} onRetry={handleRetry} />
-          </div>
-          
-          {response && response.sources.length > 0 && !isLoading && (
-            <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              <SourceCitation sources={response.sources} />
-            </div>
-          )}
-          
-          {/* Bottom Try Again button - only show after results are loaded */}
-          {(response || (!isLoading && hasSearched)) && (
-            <div className="flex justify-center pt-8 border-t border-gray-100 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+              
+              {/* Try again button - fixed width */}
               <button
                 onClick={handleClearSearch}
-                className="flex items-center gap-3 px-6 py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition-all font-medium shadow-sm hover-lift"
-                title="Clear search and start over"
+                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all flex-shrink-0 hover-lift"
+                title="Clear search and try again"
                 data-umami-event="Try again clicked"
-                data-umami-event-location="footer"
+                data-umami-event-location="header"
               >
-                <RotateCcw className="w-5 h-5" />
-                Try Another Search
+                <RotateCcw className="w-4 h-4" />
+                <span className="hidden sm:inline font-medium">Try Again</span>
               </button>
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+
+          {/* Results content */}
+          <div className="space-y-8 pb-12">
+            <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <ResponseDisplay response={response} isLoading={isLoading} onRetry={handleRetry} />
+            </div>
+            
+            {response && response.sources.length > 0 && !isLoading && (
+              <div className="animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                <SourceCitation sources={response.sources} />
+              </div>
+            )}
+            
+            {/* Bottom Try Again button - only show after results are loaded */}
+            {(response || (!isLoading && hasSearched)) && (
+              <div className="flex justify-center pt-8 border-t border-gray-100 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                <button
+                  onClick={handleClearSearch}
+                  className="flex items-center gap-3 px-6 py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition-all font-medium shadow-sm hover-lift"
+                  title="Clear search and start over"
+                  data-umami-event="Try again clicked"
+                  data-umami-event-location="footer"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  Try Another Search
+                </button>
+              </div>
+            )}
+          </div>
+        </main>
+        
+        {/* Retry Feedback Modal */}
+        <RetryFeedbackModal
+          isOpen={showRetryModal}
+          onRetry={handleRetry}
+          onClose={handleCloseRetryModal}
+        />
+      </>
     );
   }
 
   // Initial home page layout
   return (
-    <main className="max-w-4xl mx-auto px-4">
-      {/* Hero section positioned at ~40% viewport height */}
-      <div className="flex flex-col items-center justify-center mt-8 mb-6">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4 animate-fade-in text-center">NobelLM</h1>
-        <div className="w-32 h-32 mb-4 flex items-center justify-center bg-gray-50 rounded-full group transition-transform duration-200">
-          <img
-            src={nobelLogo}
-            alt="Nobel Logo"
-            className="w-32 h-32 rounded-full object-cover transition-transform duration-200 hover:-translate-y-1"
-            style={{ transition: 'filter 0.2s', filter: 'none' }}
-            onMouseOver={e => e.currentTarget.style.filter = 'drop-shadow(0 8px 32px rgba(0,0,0,0.35))'}
-            onMouseOut={e => e.currentTarget.style.filter = 'none'}
+    <>
+      <main className="max-w-4xl mx-auto px-4">
+        {/* Hero section positioned at ~40% viewport height */}
+        <div className="flex flex-col items-center justify-center mt-8 mb-6">
+          <h1 className="text-4xl font-bold text-gray-800 mb-4 animate-fade-in text-center">NobelLM</h1>
+          <div className="w-32 h-32 mb-4 flex items-center justify-center bg-gray-50 rounded-full group transition-transform duration-200">
+            <img
+              src={nobelLogo}
+              alt="Nobel Logo"
+              className="w-32 h-32 rounded-full object-cover transition-transform duration-200 hover:-translate-y-1"
+              style={{ transition: 'filter 0.2s', filter: 'none' }}
+              onMouseOver={e => e.currentTarget.style.filter = 'drop-shadow(0 8px 32px rgba(0,0,0,0.35))'}
+              onMouseOut={e => e.currentTarget.style.filter = 'none'}
+            />
+          </div>
+          <h2 className="font-bold text-gray-800 mb-2 animate-fade-in text-center" style={{ animationDelay: '0.1s' }}>
+            Meet <span className="font-bold italic">NobelLM</span>, a semantic search engine for Nobel Prize speeches.
+          </h2>
+          <p className="text-gray-600 text-center max-w-2xl mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            What do Nobel Prize winners say about war, hope, or humanity? Ask and discover.
+          </p>
+          <div className="w-full animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <QueryInput onSubmit={handleSubmit} isLoading={isLoading} />
+          </div>
+        </div>
+        
+        <div className="pb-8 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <SuggestedPrompts 
+            prompts={suggestedPrompts} 
+            onPromptClick={handleSubmit}
+            isLoading={isLoading}
           />
         </div>
-        <h2 className="font-bold text-gray-800 mb-2 animate-fade-in text-center" style={{ animationDelay: '0.1s' }}>
-          Meet <span className="font-bold italic">NobelLM</span>, a semantic search engine for Nobel Prize speeches.
-        </h2>
-        <p className="text-gray-600 text-center max-w-2xl mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          What do Nobel Prize winners say about war, hope, or humanity? Ask and discover.
-        </p>
-        <div className="w-full animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <QueryInput onSubmit={handleSubmit} isLoading={isLoading} />
-        </div>
-      </div>
+      </main>
       
-      <div className="pb-8 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-        <SuggestedPrompts 
-          prompts={suggestedPrompts} 
-          onPromptClick={handleSubmit}
-          isLoading={isLoading}
-        />
-      </div>
-    </main>
+      {/* Retry Feedback Modal */}
+      <RetryFeedbackModal
+        isOpen={showRetryModal}
+        onRetry={handleRetry}
+        onClose={handleCloseRetryModal}
+      />
+    </>
   );
 };
 

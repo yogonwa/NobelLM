@@ -134,3 +134,95 @@ Reinforces trust and user comfort
 
 Deferred / Not Implemented
 ❌ Keep Modal Warm with pings (excluded due to cost)
+
+
+----
+implementationm details
+🧊 Cold Start UX — Cursor Handoff
+✅ Goal
+Improve first-load experience by displaying a “Cold Start” warning when services have not yet been warmed up, and offer a “Preheat the Ovens” button to trigger manual warm-up.
+
+🧩 Components Involved
+Home.tsx (main page layout)
+
+utils/api.ts (contains warmUpServices)
+
+🆕 Add new component: components/ColdStartBanner.tsx
+
+1. ➕ Create ColdStartBanner.tsx
+Location: components/ColdStartBanner.tsx
+
+tsx
+Copy
+Edit
+import { Flame, Info } from 'lucide-react';
+
+type Props = {
+  onPreheat: () => void;
+  servicesWarmed: boolean;
+};
+
+const ColdStartBanner: React.FC<Props> = ({ onPreheat, servicesWarmed }) => {
+  if (servicesWarmed) return null;
+
+  return (
+    <div className="bg-blue-50 border border-blue-200 text-sm text-gray-700 rounded-xl px-4 py-3 flex items-center justify-between gap-4 mt-4 shadow-sm animate-fade-in">
+      <div className="flex items-start gap-2">
+        <Info className="w-4 h-4 text-blue-500 mt-1" />
+        <div>
+          <div className="font-semibold text-blue-700">Cold Start</div>
+          <p className="text-sm text-gray-600">Systems are cold, first query may take longer</p>
+        </div>
+      </div>
+      <button
+        onClick={onPreheat}
+        className="flex items-center gap-1 bg-orange-100 hover:bg-orange-200 text-orange-800 px-3 py-1.5 text-sm rounded-lg font-medium transition"
+      >
+        <Flame className="w-4 h-4" />
+        Preheat the Ovens
+      </button>
+    </div>
+  );
+};
+
+export default ColdStartBanner;
+2. 🏠 Integrate into Home.tsx
+Import the component at the top:
+
+tsx
+Copy
+Edit
+import ColdStartBanner from '../components/ColdStartBanner';
+Then, insert this into the initial layout (just after <QueryInput />):
+
+tsx
+Copy
+Edit
+<ColdStartBanner 
+  servicesWarmed={servicesWarmed}
+  onPreheat={async () => {
+    const result = await warmUpServices();
+    setServicesWarmed(result.backend || result.modal);
+  }}
+/>
+3. 🧠 Optional Enhancements (If Time)
+Track button click in Umami:
+
+tsx
+Copy
+Edit
+if (window.umami) {
+  window.umami.track('Preheat ovens clicked');
+}
+Add animation delay if needed (match hero layout timing)
+
+Could auto-dismiss banner after 5–8 seconds if desired
+
+✅ Acceptance Criteria
+Banner only shows if servicesWarmed === false
+
+Clicking "Preheat the Ovens" triggers warm-up + hides banner
+
+No disruption to query flow or suggested prompts
+
+Let me know if you want to wire this up to a toast message, progress indicator, or log any warm-up failures visually.

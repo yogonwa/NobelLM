@@ -6,9 +6,11 @@ This module defines the REST API endpoints for querying the RAG pipeline.
 
 import logging
 from typing import Dict, Any, Optional
+import time
 
 from utils.audit_logger import start_query_audit, complete_query_audit
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from rag.query_engine import answer_query
@@ -73,6 +75,104 @@ async def health_check(
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         raise HTTPException(status_code=503, detail="Service unhealthy")
+
+
+@router.get("/api/readyz")
+async def readiness_check():
+    """
+    Lightweight readiness check endpoint for frontend warm-up.
+    
+    This endpoint is designed to be fast and lightweight for warming up
+    the backend service when users load the web app.
+    """
+    start_time = time.time()
+    try:
+        settings = get_settings_dep()
+        duration = time.time() - start_time
+        logger.info(f"Readiness check completed in {duration:.3f}s", extra={
+            "event": "warmup_backend_success",
+            "duration_ms": int(duration * 1000),
+            "service": "nobellm-api"
+        })
+        
+        return JSONResponse(
+            content={
+                "status": "ready",
+                "timestamp": time.time(),
+                "service": "nobellm-api",
+                "version": settings.app_version,
+            },
+            media_type="application/json"
+        )
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error(f"Readiness check failed after {duration:.3f}s: {e}", extra={
+            "event": "warmup_backend_failed",
+            "duration_ms": int(duration * 1000),
+            "error": str(e),
+            "service": "nobellm-api"
+        })
+        raise HTTPException(status_code=503, detail="Service unavailable")
+
+
+@router.get("/api/modal/warmup")
+async def modal_warmup():
+    """
+    Lightweight Modal warm-up endpoint.
+    
+    This endpoint triggers a simple embedding call to warm up the Modal
+    service when users load the web app. Returns 204 for successful no-op.
+    """
+    start_time = time.time()
+    try:
+        # Import Modal service
+        from rag.modal_embedding_service import ModalEmbeddingService
+        
+        # Create service instance and do a lightweight warm-up
+        modal_service = ModalEmbeddingService()
+        
+        # Simple warm-up call - embed a short text
+        warmup_text = "hello"
+        embedding = await modal_service.embed_text(warmup_text)
+        
+        if embedding and len(embedding) > 0:
+            duration = time.time() - start_time
+            logger.info(f"Modal service warmed successfully for warm-up probe in {duration:.3f}s", extra={
+                "event": "warmup_modal_success",
+                "duration_ms": int(duration * 1000),
+                "embedding_size": len(embedding),
+                "service": "modal-embedding"
+            })
+            # Return 204 No Content for successful no-op
+            return Response(status_code=204)
+        else:
+            duration = time.time() - start_time
+            logger.error(f"Modal warm-up failed after {duration:.3f}s: empty embedding returned", extra={
+                "event": "warmup_modal_failed",
+                "duration_ms": int(duration * 1000),
+                "error": "empty_embedding",
+                "service": "modal-embedding"
+            })
+            raise HTTPException(status_code=503, detail="Modal service warm-up failed")
+            
+    except ImportError as e:
+        duration = time.time() - start_time
+        logger.error(f"Modal import failed during warm-up after {duration:.3f}s: {e}", extra={
+            "event": "warmup_modal_failed",
+            "duration_ms": int(duration * 1000),
+            "error": "import_error",
+            "service": "modal-embedding"
+        })
+        raise HTTPException(status_code=503, detail="Modal service unavailable")
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error(f"Modal warm-up failed after {duration:.3f}s: {e}", extra={
+            "event": "warmup_modal_failed",
+            "duration_ms": int(duration * 1000),
+            "error": str(e),
+            "service": "modal-embedding"
+        })
+        raise HTTPException(status_code=503, detail="Modal service unavailable")
 
 
 @router.post("/query", response_model=QueryResponse)
