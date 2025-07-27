@@ -17,6 +17,14 @@ app = "nobellm-api"
   auto_start_machines = true
   min_machines_running = 0
 
+[http_service.health_check]
+  path = "/healthz"
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "30s"
+  method = "get"
+
+
 [[vm]]
   cpu_kind = "performance"
   cpus = 1

@@ -194,6 +194,35 @@ def create_app() -> FastAPI:
         
         return health_status
 
+    @app.get("/healthz")
+    async def fly_health_check():
+        """
+        Lightweight health check endpoint for Fly.io deployment.
+        
+        This endpoint is designed to be fast (< 1 second) and only checks
+        that the FastAPI application is responsive. It does NOT check
+        external dependencies like Qdrant or Modal, which can cause
+        deployment timeouts.
+        
+        For comprehensive health monitoring, use /health instead.
+        """
+        try:
+            current_settings = get_settings()
+            return {
+                "status": "ok",
+                "timestamp": time.time(),
+                "version": current_settings.app_version,
+                "service": "nobellm-api",
+                "environment": current_settings.environment
+            }
+        except Exception as e:
+            logger.error(f"Fly health check failed: {e}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "timestamp": time.time()
+            }
+
     @app.get("/debug/cors")
     def debug_cors():
         return {"cors_origins": cors_origins}
