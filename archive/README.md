@@ -52,4 +52,81 @@ This directory contains archived code and assets that are no longer actively use
 - **Performance:** Better scalability and user experience
 - **Development:** More maintainable and extensible codebase
 
+### `development_notes/`
+**Archived on:** January 2025  
+**Reason:** Development artifacts moved to archive for production readiness
+
+**Contents:**
+- `TASKS.md` - Development task list and execution plan
+- `NOTES.md` - Design decisions and implementation notes
+- `SPEC.md` - Original project specification
+- `IMPLEMENTATION_PLAN.md` - Development implementation phases
+- `META_ANALYSIS.md` - Development analysis and insights
+- `Improve_Prompts.md` - Prompt engineering development work
+- `gen_Audience_blog.md` - Blog content and audience analysis
+- `ux_upgrade.md` - UX development notes and improvements
+- `DOCUMENTATION_UPDATE_SUMMARY.md` - Documentation work tracking
+
+**Why archived:**
+- These files contain development history and planning artifacts
+- Not needed for production deployment or user documentation
+- Preserved for historical reference and development context
+
+### `completed_phases/`
+**Archived on:** January 2025  
+**Reason:** Completed development phases and implementation notes
+
+**Contents:**
+- `PHASE3_TODO.md` - Completed thematic reformulation expansion
+- `PHASE4_COMPLETED.md` - Completed retrieval logic enhancements
+- `PHASE5_COMPLETED.md` - Completed thematic synthesis improvements
+- `PHASE5_TODO.md` - Completed phase 5 implementation
+- `RAG_Audit.md` - RAG pipeline audit and analysis
+- `Dual_process_implementation.md` - FAISS dual-process implementation notes
+- `GENERATIVE_EMOTIONAL_RETRIEVAL_PROJECT.md` - Research and development notes
+- `MODAL_INTEGRATION_PLAN.md` - Completed Modal integration
+- `MODAL_EMBEDDING_TEST_PLAN.md` - Completed Modal testing strategy
+- `test_coverage_plan.md` - Completed test coverage implementation
+- `refactor.md` - Modal embedder refactoring notes
+
+**Why archived:**
+- These represent completed development work and implementation phases
+- Functionality is now integrated into the main codebase
+- Preserved for development history and reference
+
+### `legacy_docs/`
+**Archived on:** January 2025  
+**Reason:** Superseded documentation and legacy guides
+
+**Contents:**
+- `nobellm_fly_migration.md` - Completed migration documentation
+- `PRODUCTION_DEPLOYMENT.md` - Superseded by main deployment guide
+- `THEME_EMBEDDINGS.md` - Technical implementation documentation
+- `FLY_DEPLOYMENT.md` - Superseded backend deployment guide
+- `UMAMI_TRACKING.md` - Analytics setup documentation
+- `README.md` - Legacy frontend documentation
+
+**Why archived:**
+- These documents have been superseded by updated, consolidated documentation
+- Information is now covered in the main README and deployment guides
+- Preserved for reference and migration history
+
+## Archive Organization
+
+The archive is organized into logical categories:
+
+- **`development_notes/`** - Planning, specification, and development artifacts
+- **`completed_phases/`** - Completed implementation phases and technical notes
+- **`legacy_docs/`** - Superseded documentation and guides
+- **`frontend_prototype_20250623/`** - Initial frontend prototype
+- **`streamlit_legacy/`** - Original Streamlit implementation
+
+## Accessing Archived Content
+
+All archived content is preserved for historical reference and development context. The main project documentation is now consolidated in:
+
+- **Main README.md** - Comprehensive project overview and setup
+- **PRODUCTION_DEPLOYMENT_GUIDE.md** - Complete deployment instructions
+- **Module-specific README files** - Detailed documentation for each component
+
 **Note:** The main frontend in `/frontend/` and backend in `/backend/` are now the canonical implementations and should be used for all development. 
