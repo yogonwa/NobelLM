@@ -1,10 +1,5 @@
 # NobelLM Frontend
 
-**🚨 Migration Notice (June 2025):**
-- This is the canonical UI for NobelLM. The prototype has been archived.
-- All new development and features should target this app.
-- See the main project README for migration details.
-
 A modern React TypeScript application for exploring Nobel Prize laureate speeches and lectures through AI-powered search and discovery.
 
 ## Features
@@ -115,6 +110,17 @@ The application is configured for production deployment with:
 - **Vite Build**: Optimized production builds
 - **Static Assets**: Proper asset handling and optimization
 - **Environment Configuration**: Support for different deployment environments
+
+### Production Deployment
+
+The frontend is deployed on Fly.io:
+
+```bash
+# Deploy to production
+fly deploy --config fly.toml
+```
+
+**Production URL**: [nobellm.com](https://nobellm.com)
 
 ## Contributing
 

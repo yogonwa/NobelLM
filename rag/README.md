@@ -1,20 +1,21 @@
 # Query Engine – NobelLM RAG
 
-**�� Migration Notice (July 2025):**
-- NobelLM now uses a React/Vite frontend (see `/frontend`) and FastAPI backend.
-- The Streamlit UI is deprecated.
-- All RAG logic remains in this module, but UI and API integration are now handled by the new frontend/backend stack.
-- **Qdrant is now the only supported remote vector database backend.**
-
 **Status: COMPLETE as of July 2025.**
 
 This module provides a modular, extensible, and testable interface for querying the Nobel Literature corpus using retrieval-augmented generation (RAG).
+
+## Architecture
+
+The RAG pipeline is designed to work with the modern NobelLM architecture:
+- **Frontend**: React TypeScript application (`/frontend`)
+- **Backend**: FastAPI service (`/backend`)
+- **RAG Engine**: This module provides the core retrieval and generation logic
 
 ---
 
 ## Qdrant Vector DB Backend (July 2025)
 
-NobelLM now supports **Qdrant** as the production vector database backend for semantic search and retrieval. The retriever selection is automatic and backend-agnostic:
+NobelLM supports **Qdrant** as the production vector database backend for semantic search and retrieval. The retriever selection is automatic and backend-agnostic:
 
 - **Retriever Selection:**
     - The RAG pipeline dynamically selects between FAISS (local/dev) and Qdrant (production/cloud) based on environment/configuration.
@@ -25,7 +26,6 @@ NobelLM now supports **Qdrant** as the production vector database backend for se
     - Set `QDRANT_URL` and `QDRANT_API_KEY` as environment variables or in your `.env` file.
     - Embedding is always performed using the configured model (via Modal or local).
 - **All retrieval logic is backend-agnostic** and routed through the `BaseRetriever` interface.
-- **See also:** `/backend/README.md` for backend setup and `/frontend/README.md` for frontend setup.
 
 **Example .env configuration:**
 ```
@@ -72,7 +72,7 @@ QDRANT_API_KEY=your-qdrant-api-key
 
 ## Quickstart
 
-See `/backend/README.md` for backend setup and `/frontend/README.md` for frontend setup.
+See [`/backend/README.md`](../backend/README.md) for backend setup and [`/frontend/README.md`](../frontend/README.md) for frontend setup.
 
 ---
 

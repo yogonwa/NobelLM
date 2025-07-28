@@ -29,4 +29,27 @@ This directory contains archived code and assets that are no longer actively use
 - **Code Quality:** Main frontend includes proper error handling, testing, and modern React patterns
 - **Styling:** Prototype used basic Tailwind, main frontend has custom animations and comprehensive styling
 
-**Note:** The main frontend in `/frontend/` is now the canonical implementation and should be used for all development. 
+### `streamlit_legacy/`
+**Archived on:** January 2025  
+**Reason:** Migrated to React TypeScript frontend with FastAPI backend
+
+**What it was:**
+- Original Streamlit-based frontend for NobelLM
+- Deployed on Hugging Face Spaces
+- Monolithic app with embedded RAG pipeline
+- Basic UI with query input and response display
+
+**Why it was archived:**
+- Project migrated to modern React TypeScript frontend
+- Backend separated into dedicated FastAPI service
+- Deployed on Fly.io for better performance and control
+- Improved architecture with separation of concerns
+
+**Key differences:**
+- **Architecture:** Streamlit was monolithic, new system has separate frontend/backend
+- **Deployment:** Hugging Face Spaces → Fly.io
+- **Technology:** Streamlit → React + TypeScript + FastAPI
+- **Performance:** Better scalability and user experience
+- **Development:** More maintainable and extensible codebase
+
+**Note:** The main frontend in `/frontend/` and backend in `/backend/` are now the canonical implementations and should be used for all development. 

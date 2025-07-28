@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend API   │    │   Weaviate DB   │
+│   Frontend      │    │   Backend API   │    │   Qdrant DB     │
 │   (React)       │◄──►│   (FastAPI)     │◄──►│   (Vector DB)   │
 │   nobellm-web   │    │   nobellm-api   │    │   Cloud Instance│
 │   .fly.dev      │    │   .fly.dev      │    │                 │
@@ -18,17 +18,17 @@
 # Required
 export OPENAI_API_KEY="sk-your-openai-key"
 
-# Optional (for Weaviate)
-export WEAVIATE_API_KEY="your-weaviate-key"
+# Optional (for Qdrant)
+export QDRANT_API_KEY="your-qdrant-key"
 ```
 
 ### **2. Local Testing**
 ```bash
-# Test Weaviate health
-python tests/e2e/test_weaviate_health.py
+# Test Qdrant health
+python tests/e2e/test_qdrant_health.py
 
 # Test full E2E pipeline
-python tests/e2e/test_weaviate_e2e.py
+python tests/e2e/test_qdrant_e2e.py
 
 # Test backend locally
 uvicorn backend.app.main:app --reload
@@ -55,7 +55,7 @@ fly auth whoami
 ```
 
 **What this does:**
-- Sets all required secrets (OpenAI, Weaviate, CORS)
+- Sets all required secrets (OpenAI, Qdrant, CORS)
 - Builds and deploys backend Docker image
 - Starts the backend machine
 

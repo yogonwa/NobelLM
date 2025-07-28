@@ -1,75 +1,187 @@
-# Backend (FastAPI)
+# NobelLM Backend
 
-**Important:** Always run the backend from the NobelLM project root directory. This ensures that the `rag` module and other top-level packages are importable by Python.
+FastAPI backend for the NobelLM application, providing the RAG pipeline and API endpoints for semantic search of Nobel Prize speeches.
 
-**Example (development):**
+## Important Setup Notes
+
+**Always run the backend from the NobelLM project root directory.** This ensures that the `rag` module and other top-level packages are importable by Python.
+
+### Correct Usage
 
 ```bash
+# From project root (correct)
 cd /path/to/NobelLM
 uvicorn backend.app.main:app --reload --port 8000
 ```
 
-**If you run from within the `backend/` directory, you will get an error like:**
+### Common Error
 
+If you run from within the `backend/` directory, you will get:
 ```
 ModuleNotFoundError: No module named 'rag'
 ```
 
-**Troubleshooting:**
-- Always run commands from the NobelLM root.
-- Alternatively, set the `PYTHONPATH` to the project root:
-  ```bash
-  PYTHONPATH=$(pwd) uvicorn backend.app.main:app --reload --port 8000
-  ```
-- This is required for all scripts that import from top-level packages like `rag`, `embeddings`, etc. 
+### Alternative Setup
+
+If you need to run from a different directory, set the `PYTHONPATH`:
+```bash
+PYTHONPATH=$(pwd) uvicorn backend.app.main:app --reload --port 8000
+```
 
 ---
 
-## Qdrant Vector DB Backend
+## Architecture
 
-The backend now supports **Qdrant** as the production vector database backend for semantic search and retrieval. The retriever selection is automatic and backend-agnostic:
+### RAG Pipeline
+- **Query Processing**: Intent classification and routing
+- **Retrieval**: Vector search with FAISS (local) or Qdrant (production)
+- **Generation**: OpenAI GPT-3.5 integration
+- **Response Compilation**: Answer formatting with source citations
 
-- **Retriever Selection:**
-    - The backend dynamically selects between FAISS (local/dev) and Qdrant (production/cloud) based on environment/configuration.
-    - See `/rag/retriever.py` for the retriever factory and interface.
-    - See `/rag/retriever_qdrant.py` for the Qdrant retriever implementation.
-    - See `/rag/query_qdrant.py` for low-level Qdrant query logic and configuration.
-- **Configuration:**
-    - Set `QDRANT_URL` and `QDRANT_API_KEY` as environment variables or in your `.env` file.
-    - Embedding is always performed using the configured model (via Modal or local).
-- **All retrieval logic is backend-agnostic** and routed through the `BaseRetriever` interface.
+### Vector Database Support
+The backend supports both local and cloud vector databases:
 
-**Example .env configuration:**
-```
+- **FAISS** (local/development): Fast local vector search
+- **Qdrant** (production): Cloud-native vector database
+
+### Embedding Service
+- **Development**: Local embedding using sentence transformers
+- **Production**: Modal cloud service for scalable embedding
+
+---
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root with:
+
+```bash
+# Required
+OPENAI_API_KEY=your-openai-api-key
+
+# Optional - for production
 QDRANT_URL=https://your-qdrant-instance.cloud.qdrant.io:6333
 QDRANT_API_KEY=your-qdrant-api-key
+
+# Optional - for Modal embedding service
+MODAL_TOKEN_ID=your-modal-token-id
+MODAL_TOKEN_SECRET=your-modal-token-secret
+```
+
+### Environment Templates
+
+Use the provided template:
+```bash
+cp backend/env.production.template .env
+```
+
+---
+
+## API Endpoints
+
+### Core Endpoints
+- `POST /api/query` - Submit a query and receive AI-generated response
+- `GET /api/health` - Health check endpoint
+- `GET /api/readyz` - Kubernetes-style readiness probe
+
+### Documentation
+- `GET /docs` - Interactive API documentation (Swagger UI)
+- `GET /redoc` - Alternative API documentation
+
+### Example Usage
+
+```bash
+curl -X POST "http://localhost:8000/api/query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What did Toni Morrison say about justice?",
+    "model_id": "bge-large"
+  }'
+```
+
+---
+
+## Development
+
+### Prerequisites
+- Python 3.9+
+- Virtual environment activated
+- Dependencies installed: `pip install -r requirements.txt`
+
+### Running Locally
+
+1. **Start the backend**
+   ```bash
+   # From project root
+   uvicorn backend.app.main:app --reload --port 8000
+   ```
+
+2. **Access the API**
+   - API: http://localhost:8000
+   - Documentation: http://localhost:8000/docs
+   - Health check: http://localhost:8000/api/health
+
+### Development Features
+- **Hot Reload**: Automatic server restart on code changes
+- **Debug Mode**: Detailed error messages and CORS debugging
+- **API Documentation**: Interactive Swagger UI
+
+---
+
+## Production Deployment
+
+The backend is deployed on Fly.io with the following configuration:
+
+- **App Name**: `nobellm-api`
+- **URL**: https://nobellm-api.fly.dev
+- **Resources**: 1 CPU, 2GB RAM
+- **Health Checks**: Automatic monitoring
+
+### Deployment Commands
+
+```bash
+# Deploy to production
+fly deploy --config fly.toml
+
+# Check deployment status
+fly status
+
+# View logs
+fly logs
 ```
 
 ---
 
 ## Troubleshooting
 
-- Ensure all required Qdrant environment variables are set (`QDRANT_URL`, `QDRANT_API_KEY`).
-- If you encounter issues with Qdrant, check logs for errors and verify connectivity/configuration.
-- For local development, FAISS is used by default if Qdrant is not configured.
+### Common Issues
 
----
+1. **Module Import Errors**
+   - Ensure you're running from the project root
+   - Check that `PYTHONPATH` includes the project root
 
-## Quickstart
+2. **Qdrant Connection Issues**
+   - Verify `QDRANT_URL` and `QDRANT_API_KEY` are set correctly
+   - Check network connectivity to Qdrant instance
 
-1. Install dependencies:
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-2. Set up your `.env` file with Qdrant and OpenAI credentials.
-3. Start the backend:
-   ```bash
-   uvicorn backend.app.main:app --reload --port 8000
-   ```
-4. Access the API at `http://localhost:8000/api/` and docs at `/docs` (if debug enabled).
+3. **OpenAI API Errors**
+   - Verify `OPENAI_API_KEY` is valid and has sufficient credits
+   - Check rate limits and API quotas
+
+4. **Embedding Service Issues**
+   - For production: Verify Modal credentials
+   - For development: Ensure sentence-transformers models are downloaded
+
+### Logging
+
+The backend uses structured logging with different levels:
+- `INFO`: General application flow
+- `DEBUG`: Detailed debugging information
+- `ERROR`: Error conditions and exceptions
 
 ---
 
 ## License
 
-Part of the NobelLM project - see LICENSE for details. 
+Part of the NobelLM project - see main project LICENSE for details. 

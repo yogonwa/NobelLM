@@ -26,7 +26,7 @@ Folder Layout
 /scraper            # Scraping logic for NobelPrize.org
 /embeddings         # Vectorization and storage logic
 /rag                # Retrieval-augmented generation engine
-/frontend           # Streamlit or UI-facing components
+/frontend           # React TypeScript UI components
 /utils              # Shared helper functions
 /tests              # Unit tests organized by module
 
