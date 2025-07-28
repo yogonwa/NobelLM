@@ -255,6 +255,30 @@ def health_check() -> dict:
             "error": str(e)
         }
 
+@app.function(
+    image=image,
+    secrets=[modal.Secret.from_name("MODAL_EMBEDDER_API_KEY")]
+)
+@modal.fastapi_endpoint(method="GET")
+def health_check_web():
+    """
+    Web endpoint for health check that can be called by the backend warm-up.
+    
+    This endpoint is designed to be lightweight and fast for warming up
+    the Modal service when the frontend loads.
+    
+    Returns:
+        JSONResponse: Health status information
+    """
+    try:
+        health = health_check.remote()
+        return JSONResponse(content=health)
+    except Exception as e:
+        return JSONResponse(
+            content={"status": "unhealthy", "error": str(e)},
+            status_code=503
+        )
+
 @app.local_entrypoint()
 def main():
     """

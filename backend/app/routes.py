@@ -77,7 +77,7 @@ async def health_check(
         raise HTTPException(status_code=503, detail="Service unhealthy")
 
 
-@router.get("/api/readyz")
+@router.get("/readyz")
 async def readiness_check():
     """
     Lightweight readiness check endpoint for frontend warm-up.
@@ -115,7 +115,7 @@ async def readiness_check():
         raise HTTPException(status_code=503, detail="Service unavailable")
 
 
-@router.get("/api/modal/warmup")
+@router.get("/modal/warmup")
 async def modal_warmup():
     """
     Lightweight Modal warm-up endpoint.

@@ -54,12 +54,7 @@ Stay tuned — I’ll be opening this up for public exploration once the prototy
 
 
 
-
-
-
-You said:
-Ok tech sidebar on chunk embed and vector semantic search stuff 
-ChatGPT said:
+...
 Here’s a concise Tech Sidebar you can drop into your blog post for readers who want to understand what’s really going on under the hood with chunking, embeddings, and vector search:
 
 Tech Sidebar: How Semantic Search Actually Works
