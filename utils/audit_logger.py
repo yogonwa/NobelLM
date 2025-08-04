@@ -104,14 +104,21 @@ class AuditLogger:
     structured JSON files for analysis and debugging.
     """
     
-    def __init__(self, log_dir: str = "logs/audit", max_file_size_mb: int = 100):
+    def __init__(self, log_dir: str = None, max_file_size_mb: int = 100):
         """
         Initialize the audit logger.
         
         Args:
-            log_dir: Directory to store audit logs
+            log_dir: Directory to store audit logs (defaults to persistent volume in production)
             max_file_size_mb: Maximum size of log files before rotation
         """
+        # Use persistent volume in production, local logs in development
+        if log_dir is None:
+            if os.getenv("NOBELLM_ENVIRONMENT") == "production":
+                log_dir = "/app/logs/audit"
+            else:
+                log_dir = "logs/audit"
+        
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.max_file_size = max_file_size_mb * 1024 * 1024

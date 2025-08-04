@@ -1,17 +1,19 @@
 """
-Dependency injection for NobelLM FastAPI backend.
+Dependencies for NobelLM FastAPI backend.
 
-This module provides shared resources and dependencies that are
-initialized once and reused across requests.
+This module provides dependency injection for RAG components and settings.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Optional
+from functools import lru_cache
+
 from fastapi import Depends
 
-from rag.query_engine import answer_query
+# Use the audited version of answer_query for comprehensive logging
+from rag.query_engine_audit import answer_query
 from rag.model_config import DEFAULT_MODEL_ID
-from .config import get_settings, Settings
+from .config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 

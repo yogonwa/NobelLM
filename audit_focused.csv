@@ -1,0 +1,71 @@
+user_query,intent,prompt_template,final_prompt,final_answer,error_occurred,error_message,timestamp,query_id
+What themes did Gabriel García Márquez explore in his work?,thematic,intent_aware_thematic,"You are a cultural historian writing an essay on the theme of 'What themes did Gabriel García Márquez explore in his work?' as expressed through the voices of Nobel Literature laureates across time and place.
+
+Your goal is to synthesize their ideas into a coherent narrative. Do not reference the excerpts or speeches directly. Instead, express the insights as unified observations, drawing out tensions, shared values, and philosophical differences.
+
+Use a natural, flowing tone — one that feels hum...","Gabriel García Márquez, a literary giant whose works have captivated readers worldwide, delved into a myriad of themes that resonate deeply with the human experience. Through the voices of Nobel Literature laureates across different eras and cultures, we can discern a tapestry of insights that shed light on the profound explorations undertaken by García Márquez in his writing.
+
+One recurring theme that emerges is the intricate relationship between the individual and the external world. The idea ...",No,,2025-07-28T16:59:09.138027Z,e5dc710e-3386-4943-8d43-644bc2189c0c
+Who won the Nobel Prize in Literature in 1965?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: Who won the Nobel Prize in Literature in 1965?
+
+Context:
+[📚 Speech — Unknown, Unknown] This year’s Nobel Prize in Literature has therefore been awarded to one of the great authors of our time, one of those who, honestly and undauntedly, reproduces genuine features in the hard countenance of the age. Hemingway, now fifty-six years old, is the fifth American author so far to be honoured in this way. As the Prize winner himself is unfo...",The Nobel Prize in Literature in 1965 was awarded to the American author Ernest Hemingway.,No,,2025-07-28T17:00:49.568302Z,debe2538-1f6a-4ff4-ad4f-4d64deff279b
+Who won the nobel prize in 1982?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: Who won the nobel prize in 1982?
+
+Context:
+[📚 Speech — Unknown, Unknown] I thank the venerable Swedish Academy and the Swedish nation for the honour they have bestowed upon me in awarding me the Nobel Prize in Literature. Present in all our thoughts today is the founder, Alfred Nobel, whose generosity has done so much good for science, literature, and peace throughout the world. This great Swedish scientist and humanist linked the n...",The Nobel Prize in Literature for 1982 was awarded to Colombian author Gabriel García Márquez.,No,,2025-07-31T01:04:19.567670Z,6106b0f1-0e94-4203-a410-5f9ad1d88c5a
+Who won the Nobel Prize in Literature in 1965?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: Who won the Nobel Prize in Literature in 1965?
+
+Context:
+[📚 Speech — Unknown, Unknown] This year’s Nobel Prize in Literature has therefore been awarded to one of the great authors of our time, one of those who, honestly and undauntedly, reproduces genuine features in the hard countenance of the age. Hemingway, now fifty-six years old, is the fifth American author so far to be honoured in this way. As the Prize winner himself is unfo...",The Nobel Prize in Literature in 1965 was awarded to the American author Ernest Hemingway.,No,,2025-07-31T01:05:41.000890Z,1f7b0ec9-78d7-459f-98dd-007e91b01917
+What do Nobel laureates say about the importance of literature in society?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: What do Nobel laureates say about the importance of literature in society?
+
+Context:
+[📚 Speech — Unknown, Unknown] Mr. Agnon – In your writing we meet once again the ancient unity between literature and science, as antiquity knew it. In one of your stories you say that some will no doubt read it as they read fairy tales, others will read it for edification. Your great chronicle of the Jewish people’s spirit and life has therefore a ...","Nobel laureates have expressed various perspectives on the importance of literature in society. Some key points highlighted in the speeches and statements include:
+
+1. Literature serves as a source of inspiration, wisdom, and uplift for individuals. It provides a mine of never-failing riches for those who cannot live without literature.
+2. Literature plays a crucial role in reflecting historical dramas and participating in the collective spirit and life of a people.
+3. Literature has the power t...",No,,2025-07-31T01:06:54.035597Z,e5873882-7443-4202-90c5-d5c94dd99cff
+How do Nobel speeches describe the writer’s responsibility during times of war or crisis?,thematic,intent_aware_thematic,"You are a cultural historian writing an essay on the theme of 'How do Nobel speeches describe the writer’s responsibility during times of war or crisis?' as expressed through the voices of Nobel Literature laureates across time and place.
+
+Your goal is to synthesize their ideas into a coherent narrative. Do not reference the excerpts or speeches directly. Instead, express the insights as unified observations, drawing out tensions, shared values, and philosophical differences.
+
+Use a natural, flo...","The theme of a writer's responsibility during times of war or crisis emerges vividly through the diverse voices of Nobel Literature laureates across different eras and cultures. These laureates grapple with the intricate relationship between language, power, and human experience, shedding light on the complexities of communication and expression in tumultuous times.
+
+One recurring thread in these speeches is the profound impact of language on society and individual consciousness. Language is not...",No,,2025-07-31T01:11:10.613905Z,163a786f-1624-4098-89ec-2bc5a957f241
+Write a job acceptance email in the tone of a Nobel Prize winner.,generative,intent_aware_generative,"You are a Nobel laureate responding to a professional opportunity. Write a job acceptance email in the tone of a Nobel Prize winner.
+
+Use the following excerpts as inspiration for your response:
+[📚 Speech — Unknown, Unknown] I stopped opposite them and took my parking ticket out of its plastic envelope. They crossed to me. I asked if, as I had pressing business, I could go straight to the Town Hall and pay my fine on the spot. “No, sir,” said the senior policeman, “I’m afraid you can’t do that.”...","Subject: Acceptance of Professional Opportunity
+
+Dear Esteemed Colleagues,
+
+I am deeply honored and humbled to accept the professional opportunity extended to me by your esteemed organization. The recognition bestowed upon me is truly beyond words, and I am profoundly grateful for the trust and confidence placed in my work.
+
+Receiving the Nobel Prize for Literature is a momentous occasion that I never could have imagined in my wildest dreams. To be mentioned in the same breath as the literary gi...",No,,2025-07-31T01:19:37.964831Z,9a796cdf-1918-4ce4-9fd4-4fef5e89cc06
+What do Nobel laureates think about social media?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: What do Nobel laureates think about social media?
+
+Context:
+[📚 Speech — Unknown, Unknown] I have always thought of Sweden as a country adopted by the men who received the Nobel Prize, that unique and brilliant distinction in contemporary civilization. No other nation, in fact, has succeeded in proposing, much less realizing, a similar prize. Although it originates in a country of a few million men, the Nobel Prize is a model of univ...","Based on the provided speeches from various Nobel Literature laureates, it is not explicitly mentioned what they think about social media. The speeches primarily focus on themes such as the significance of the Nobel Prize, the role of literature in society, personal reflections on winning the prize, and the importance of promoting peace and unity through intellectual and cultural achievements. Social media is not directly addressed in these excerpts.",No,,2025-07-31T02:41:39.214044Z,e3fcbf60-f988-4ece-95f3-b183527c0799
+What's the weirdest advice a Nobel winner ever gave?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: What's the weirdest advice a Nobel winner ever gave?
+
+Context:
+[📚 Speech — Unknown, Unknown] The announcement of my Nobel Prize has led to controversy. At first I thought I was the target of the disputes, but over time I’ve come to realize that the real target was a person who had nothing to do with me. Like someone watching a play in a theater, I observed the performances around me. I saw the winner of the prize both garlanded with...","One of the weirdest advice given by a Nobel laureate was by Peter Handke in his Nobel Lecture. He said, ""Never mind your relatives, offer support to strangers, bend down to look at trifles, duck into deserted places, don’t fall for the high drama of destiny, laugh conflict to bits."" This advice is quite unconventional and encourages a unique perspective on life and interactions with others.",No,,2025-07-31T02:42:30.528201Z,dbcbe4d0-1338-4212-9387-c6b2ddb269be
+Do any laureates mention their pets or animals?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: Do any laureates mention their pets or animals?
+
+Context:
+[📚 Speech — Unknown, Unknown] The announcement of my Nobel Prize has led to controversy. At first I thought I was the target of the disputes, but over time I’ve come to realize that the real target was a person who had nothing to do with me. Like someone watching a play in a theater, I observed the performances around me. I saw the winner of the prize both garlanded with flow...","Yes, some Nobel Literature laureates have mentioned their pets or animals in their works. For example, British author Doris Lessing often wrote about her cats in her novels and essays. Another example is American author Ernest Hemingway, who had a deep connection with animals and featured them prominently in his writing, such as in ""The Old Man and the Sea.""",No,,2025-07-31T02:43:56.782206Z,5ba5e831-bafc-431d-a74e-0e573f4dd30e
+What does Toni Morrison say about freedom?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: What does Toni Morrison say about freedom?
+
+Context:
+[📚 Speech — Unknown, Unknown] toni morrison's works revolve around african - americans ; both their history and their situation in our own time. morrison's works often depict difficult circumstances and the dark side of humanity, but still convey integrity and redemption. the way she reveals the stories of individual lives conveys insight into, understanding of, and empathy for he...","Toni Morrison's works often explore themes of freedom, particularly in the context of African-Americans and their struggle for liberation. In one of the speeches mentioned, Morrison emphasizes the importance of freedom as a precious human possession, highlighting its significance in the struggle for self-determination and against oppression. She also expresses admiration for China's unity in fighting for freedom and acknowledges the common love of freedom shared by different cultures. Morrison's...",No,,2025-07-31T02:47:22.575601Z,b61f49bc-8ee1-43f4-85d9-4dfe777ba753
+What is the meaning of life,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: What is the meaning of life
+
+Context:
+[📚 Speech — Unknown, Unknown] A thinker who considers the perennial questions of human civilization from this point of view will soon learn that he cannot solve them either by ignoring their close interrelation or by limiting himself to epistemological questions. Undoubtedly these problems constantly impinge upon each other; they cover the whole of human existence, influence individuals that are...","The excerpts provided discuss various philosophical perspectives on the meaning of life, particularly focusing on the human experience and the pursuit of truth, beauty, and goodness. The texts explore themes such as the development of human consciousness, the struggle between higher and lower aspects of life, the eternal nature of truth, and the role of individual choice in shaping history and personal existence.
+
+While the question of the meaning of life is a deeply personal and subjective one,...",No,,2025-07-31T14:18:47.656476Z,5102769a-7961-4c40-be4f-c6387fd7b8a5
+What do laureates think about Donald Trump?,factual,intent_aware_factual,"Answer the following question about Nobel Literature laureates: What do laureates think about Donald Trump?
+
+Context:
+[📚 Speech — Unknown, Unknown] Prior to the speech, Hugo Theorell, Professor at the Caroline Institute, made the following remarks: «One of our most competent literary critics has pointed out that this year’s Nobel Prize winner in Literature, Miguel Angel Asturias, in one of his most important books, El Senor Presidente, produces a strong effect by skilfully working with time and ...","Based on the provided speeches and remarks about various Nobel Literature laureates, there is no direct mention or indication of what laureates think about Donald Trump. The speeches primarily focus on praising the laureates for their literary achievements and contributions to literature, rather than discussing their personal opinions on political figures such as Donald Trump.",No,,2025-07-31T14:20:14.441466Z,2f2163a4-fce5-4b27-9b37-6a691874ab7f

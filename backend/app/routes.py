@@ -13,7 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from rag.query_engine import answer_query
+# Use the audited version of answer_query for comprehensive logging
+from rag.query_engine_audit import answer_query
 from .deps import get_rag_dependencies, get_settings_dep, validate_query
 from .config import Settings
 

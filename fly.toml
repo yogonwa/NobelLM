@@ -24,6 +24,10 @@ timeout = "10s"
 grace_period = "60s"
 method = "get"
 
+# Persistent volume for audit logs
+[[mounts]]
+  source = "nobellm_audit_logs"
+  destination = "/app/logs"
 
 [[vm]]
   cpu_kind = "performance"

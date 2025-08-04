@@ -4,6 +4,19 @@ This directory contains archived code and assets that are no longer actively use
 
 ## Archived Items
 
+### `deployment_docs/`
+**Archived on:** January 2025  
+**Reason:** Redundant deployment documentation consolidated into single guide
+
+**Contents:**
+- `DEPLOYMENT_CHECKLIST.md` - Superseded by `PRODUCTION_DEPLOYMENT_GUIDE.md`
+- `PRODUCTION_DEPLOYMENT_CHECKLIST.md` - Superseded by `PRODUCTION_DEPLOYMENT_GUIDE.md`
+
+**Why archived:**
+- `PRODUCTION_DEPLOYMENT_GUIDE.md` in root provides comprehensive deployment documentation
+- These files contained redundant information and created maintenance overhead
+- Single source of truth for deployment documentation is preferred
+
 ### `frontend_prototype_20250623/`
 **Archived on:** June 23, 2025  
 **Reason:** Superseded by the main frontend implementation
