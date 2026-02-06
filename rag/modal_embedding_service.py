@@ -182,10 +182,19 @@ class ModalEmbeddingService:
         api_key = "6dab23095a3f8968074d7c9152d6707f3f7445bc145022f46fcceb0712864147"
 
         try:
+            # Adjust timeout based on query characteristics
+            # Thematic queries need more time for complex retrieval
+            if len(query) > 100 or any(word in query.lower() for word in ["theme", "pattern", "across", "common"]):
+                timeout = 45  # Thematic query
+            else:
+                timeout = 20  # Factual/simple query
+
+            logger.info(f"Modal embedding timeout set to {timeout}s based on query complexity")
+
             response = requests.post(
                 url,
                 json={"api_key": api_key, "text": query},
-                timeout=30,
+                timeout=timeout,
             )
             response.raise_for_status()
             data = response.json()
