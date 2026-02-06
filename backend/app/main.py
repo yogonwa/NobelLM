@@ -141,9 +141,14 @@ def create_app() -> FastAPI:
             "docs": "/docs" if settings.debug else "Documentation disabled in production"
         }
 
-    @app.get("/health")
-    async def health_check():
-        """Comprehensive health check including Qdrant connectivity."""
+    @app.get("/health/deep")
+    async def deep_health_check():
+        """
+        Comprehensive health check including external dependencies.
+
+        This endpoint checks Qdrant connectivity and theme embeddings.
+        Use for diagnostics, not for automated health checks (too slow).
+        """
         current_settings = get_settings()
         health_status = {
             "status": "healthy",
@@ -197,14 +202,12 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     async def fly_health_check():
         """
-        Lightweight health check endpoint for Fly.io deployment.
-        
-        This endpoint is designed to be fast (< 1 second) and only checks
-        that the FastAPI application is responsive. It does NOT check
-        external dependencies like Qdrant or Modal, which can cause
-        deployment timeouts.
-        
-        For comprehensive health monitoring, use /health instead.
+        Ultra-lightweight health check for Fly.io auto-scaling.
+
+        Returns 200 OK in < 100ms without checking external dependencies.
+        This prevents deployment timeouts during cold starts.
+
+        For comprehensive health monitoring, use /health/deep instead.
         """
         try:
             current_settings = get_settings()

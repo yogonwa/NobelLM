@@ -116,12 +116,15 @@ async def readiness_check():
         raise HTTPException(status_code=503, detail="Service unavailable")
 
 
-@router.get("/modal/warmup")
+@router.get("/modal/warmup", deprecated=True)
 async def modal_warmup():
     """
-    Lightweight Modal warm-up endpoint.
-    
-    This endpoint triggers a simple embedding call to warm up the Modal
+    DEPRECATED: Use /warmup instead.
+
+    This endpoint blocks until Modal responds (slower user experience).
+    The new /warmup endpoint uses fire-and-forget pattern for better UX.
+
+    Legacy endpoint - triggers a simple embedding call to warm up the Modal
     service when users load the web app. Returns 204 for successful no-op.
     """
     start_time = time.time()
@@ -174,6 +177,34 @@ async def modal_warmup():
             "service": "modal-embedding"
         })
         raise HTTPException(status_code=503, detail="Modal service unavailable")
+
+
+@router.get("/warmup")
+async def warmup_services():
+    """
+    Lightweight warmup endpoint to wake Modal embedding service.
+
+    Frontend calls this on page load to preemptively wake Modal.
+    Returns immediately (202 Accepted) and runs warmup in background.
+    """
+    import asyncio
+    from rag.modal_embedding_service import ModalEmbeddingService
+
+    async def background_warmup():
+        """Run warmup in background without blocking response."""
+        try:
+            logger.info("Starting background Modal warmup...")
+            service = ModalEmbeddingService()
+            # Tiny warmup text to wake Modal
+            await service.embed_text("warmup")
+            logger.info("Background Modal warmup completed successfully")
+        except Exception as e:
+            logger.error(f"Background Modal warmup failed: {e}")
+
+    # Fire and forget - don't await
+    asyncio.create_task(background_warmup())
+
+    return Response(status_code=202, content="Warmup initiated")
 
 
 @router.post("/query", response_model=QueryResponse)
