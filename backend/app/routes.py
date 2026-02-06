@@ -176,6 +176,34 @@ async def modal_warmup():
         raise HTTPException(status_code=503, detail="Modal service unavailable")
 
 
+@router.get("/warmup")
+async def warmup_services():
+    """
+    Lightweight warmup endpoint to wake Modal embedding service.
+
+    Frontend calls this on page load to preemptively wake Modal.
+    Returns immediately (202 Accepted) and runs warmup in background.
+    """
+    import asyncio
+    from rag.modal_embedding_service import ModalEmbeddingService
+
+    async def background_warmup():
+        """Run warmup in background without blocking response."""
+        try:
+            logger.info("Starting background Modal warmup...")
+            service = ModalEmbeddingService()
+            # Tiny warmup text to wake Modal
+            await service.embed_text("warmup")
+            logger.info("Background Modal warmup completed successfully")
+        except Exception as e:
+            logger.error(f"Background Modal warmup failed: {e}")
+
+    # Fire and forget - don't await
+    asyncio.create_task(background_warmup())
+
+    return Response(status_code=202, content="Warmup initiated")
+
+
 @router.post("/query", response_model=QueryResponse)
 async def process_query(
     request: QueryRequest,
