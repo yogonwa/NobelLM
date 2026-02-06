@@ -116,12 +116,15 @@ async def readiness_check():
         raise HTTPException(status_code=503, detail="Service unavailable")
 
 
-@router.get("/modal/warmup")
+@router.get("/modal/warmup", deprecated=True)
 async def modal_warmup():
     """
-    Lightweight Modal warm-up endpoint.
-    
-    This endpoint triggers a simple embedding call to warm up the Modal
+    DEPRECATED: Use /warmup instead.
+
+    This endpoint blocks until Modal responds (slower user experience).
+    The new /warmup endpoint uses fire-and-forget pattern for better UX.
+
+    Legacy endpoint - triggers a simple embedding call to warm up the Modal
     service when users load the web app. Returns 204 for successful no-op.
     """
     start_time = time.time()
